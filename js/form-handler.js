@@ -4,9 +4,9 @@
  */
 ModuleLoader.register('formHandler', function() {
 
-  // Referências aos elementos do formulário (preenchidas no mapFormElements)
+  // Referências aos elementos do formulário
   let formPre, formPos;
-  let currentRegistroId = null; // Armazena o ID do registro sendo editado/visualizado
+  let currentRegistroId = null;
 
   // Referências aos módulos e utilitários (preenchidas no init)
   let ApiClient = null;
@@ -14,56 +14,68 @@ ModuleLoader.register('formHandler', function() {
   let AppState = null;
   let Utils = null;
   let Security = null;
-  let Config = null; // Para acessar configurações como checklist
+  let Config = null;
 
   /**
    * Inicializa o módulo FormHandler.
-   * Obtém dependências, mapeia elementos e configura listeners.
    */
   function init() {
     console.log('Inicializando FormHandler...');
 
-    // Obter dependências do ModuleLoader e globais
-    ApiClient = ModuleLoader.get('apiClient');
-    PhotoHandler = ModuleLoader.get('photoHandler');
+    // Obter dependências
     AppState = ModuleLoader.get('state');
+    PhotoHandler = ModuleLoader.get('photoHandler');
     Security = ModuleLoader.get('security');
+    ApiClient = ModuleLoader.get('apiClient'); // Tenta obter ApiClient
     Utils = window.Utils; // Assume global
     Config = window.CONFIG; // Assume global
 
-    // Validação crítica de dependências
-    if (!PhotoHandler || !AppState || !Utils || !Config || !Security) {
-       console.error("FormHandler: Dependências essenciais (PhotoHandler, AppState, Utils, Config, Security) não carregadas!");
-       // Poderia notificar o usuário ou impedir a inicialização
-       if (Utils && Utils.showNotification) Utils.showNotification('Erro crítico ao carregar módulo de formulários.', 'error');
-       return; // Interrompe inicialização do módulo
+    // --- VERIFICAÇÃO DE DEPENDÊNCIAS REFINADA ---
+    let missingDeps = [];
+    // Módulos essenciais para o FormHandler operar minimamente
+    if (!AppState) missingDeps.push('AppState (state module)');
+    if (!PhotoHandler) missingDeps.push('PhotoHandler');
+    if (!Security) missingDeps.push('Security');
+    if (!Utils) missingDeps.push('Utils (window.Utils)');
+    if (!Config) missingDeps.push('Config (window.CONFIG)');
+
+    // Verifica se as dependências *essenciais* foram carregadas
+    if (missingDeps.length > 0) {
+       const errorMessage = `FormHandler: Dependências essenciais não carregadas: ${missingDeps.join(', ')}.`;
+       console.error(errorMessage);
+       // Tenta notificar mesmo sem Utils, se possível
+       window.showErrorMessage?.(errorMessage);
+       // Lança um erro para interromper a inicialização do módulo e sinalizar no ModuleLoader
+       throw new Error(errorMessage);
     }
-     // ApiClient pode ser opcional dependendo se o modo offline é aceitável
-     if (!ApiClient) {
-        console.warn("FormHandler: ApiClient não carregado. Funcionalidades online (salvar, listar) estarão indisponíveis.");
-     }
+
+    // Avisa se ApiClient não foi carregado, mas permite continuar offline
+    if (!ApiClient) {
+      console.warn("FormHandler: ApiClient não encontrado via ModuleLoader. Funcionalidades online (salvar, listar) estarão indisponíveis.");
+    }
+    // --- FIM DA VERIFICAÇÃO REFINADA ---
 
 
-    // Mapear elementos principais dos formulários
+    // Mapear elementos dos formulários
     mapFormElements();
 
-    // Configurar listeners dos formulários e botões principais
+    // Configurar listeners dos formulários
     setupFormListeners();
 
-    // Preencher selects dinâmicos (categorias, urgência)
+    // Preencher selects dinâmicos
     populateSelects();
 
-    // Preencher os checklists PRÉ e PÓS
-    populateChecklists();
+    // Preencher os checklists
+    populateChecklists(); // Função que usa Utils.sanitizeString
 
-    // Inicializar os containers de fotos (importante fazer após obter PhotoHandler)
-    // Passa 'new' como ID inicial para indicar um novo registro (será atualizado ao carregar/salvar)
-     if (document.getElementById('photo-container-pre')) {
+    // Inicializar os containers de fotos
+     if (document.getElementById('photo-container-pre') && PhotoHandler) {
         PhotoHandler.initContainerUI('photo-container-pre', 'pre', 'new');
-     }
-     if (document.getElementById('photo-container-pos')) {
+     } else if(!PhotoHandler) { console.error("FormHandler: PhotoHandler não disponível para initContainerUI PRÉ");}
+
+     if (document.getElementById('photo-container-pos') && PhotoHandler) {
         PhotoHandler.initContainerUI('photo-container-pos', 'pos', 'new');
-     }
+     } else if(!PhotoHandler) { console.error("FormHandler: PhotoHandler não disponível para initContainerUI PÓS");}
 
     console.log('FormHandler inicializado com sucesso.');
   }
@@ -74,7 +86,6 @@ ModuleLoader.register('formHandler', function() {
   function mapFormElements() {
     formPre = document.getElementById('formPreManutencao');
     formPos = document.getElementById('formPosManutencao');
-    // Poderia mapear outros elementos frequentemente usados aqui se necessário
     if (!formPre) console.error("Formulário 'formPreManutencao' não encontrado!");
     if (!formPos) console.error("Formulário 'formPosManutencao' não encontrado!");
   }
@@ -91,18 +102,16 @@ ModuleLoader.register('formHandler', function() {
       formPos.addEventListener('submit', handlePosSubmit);
       document.getElementById('btnVoltarPre')?.addEventListener('click', () => {
          // Ao voltar para PRE, garante que as fotos PRE sejam mostradas para o ID atual
-         if (currentRegistroId) {
+         if (currentRegistroId && PhotoHandler) {
             PhotoHandler.initContainerUI('photo-container-pre', 'pre', currentRegistroId);
          }
-         showScreen('telaPreManutencao');
+         Utils?.showScreen?.('telaPreManutencao'); // Usa Utils para mostrar tela
       });
     }
      // Listener para botão Editar na tela de Visualização
      document.getElementById('btnEditarVisualizacao')?.addEventListener('click', handleEditClick);
-     // Listener para botão Voltar da Visualização (já configurado no app.js, mas pode garantir aqui também)
+     // Listener para botão Voltar da Visualização (pode ser redundante se já estiver no app.js)
       document.getElementById('btnVoltarLista')?.addEventListener('click', goToList);
-
-      // Listeners nos botões principais (Novo, Lista) já estão no app.js
   }
 
   // --- Funções de Ação do Usuário ---
@@ -112,21 +121,27 @@ ModuleLoader.register('formHandler', function() {
    */
   function newRegistro() {
     console.log("Iniciando novo registro...");
-    currentRegistroId = 'new'; // Usa 'new' para consistência até salvar
+    currentRegistroId = 'new';
     resetForm(formPre);
     resetForm(formPos);
-    // Limpa e re-inicializa as UIs de fotos para o estado 'new'
-    PhotoHandler.clearPhotosForRegistro('new'); // Limpa fotos 'new' do estado
-    PhotoHandler.initContainerUI('photo-container-pre', 'pre', 'new');
-    PhotoHandler.initContainerUI('photo-container-pos', 'pos', 'new');
-    // Preencher campos padrão (ex: data, responsável logado) se necessário
-    // const currentUser = AppState.get('currentUser');
-    // if(currentUser) document.getElementById('responsavel').value = currentUser.name;
 
-    showScreen('telaPreManutencao');
-    document.getElementById('registroIdDisplay').textContent = 'Novo Registro'; // Atualiza display PRE
-     document.getElementById('registroIdPosDisplay').textContent = 'Novo Registro'; // Atualiza display POS
-     updatePosSummary({}); // Limpa resumo POS
+    // Limpa e re-inicializa as UIs de fotos para o estado 'new'
+    if (PhotoHandler) {
+       PhotoHandler.clearPhotosForRegistro('new');
+       PhotoHandler.initContainerUI('photo-container-pre', 'pre', 'new');
+       PhotoHandler.initContainerUI('photo-container-pos', 'pos', 'new');
+    } else {
+        console.error("newRegistro: PhotoHandler não disponível.");
+    }
+
+    // Atualiza displays de ID e resumo
+    const registroIdDisplayPre = document.getElementById('registroIdDisplay');
+    const registroIdDisplayPos = document.getElementById('registroIdPosDisplay');
+    if(registroIdDisplayPre) registroIdDisplayPre.textContent = 'Novo Registro';
+    if(registroIdDisplayPos) registroIdDisplayPos.textContent = 'Novo Registro';
+    updatePosSummary({}); // Limpa resumo POS
+
+    Utils?.showScreen?.('telaPreManutencao'); // Usa Utils
   }
 
   /**
@@ -141,43 +156,47 @@ ModuleLoader.register('formHandler', function() {
         goToList();
         return;
      }
-     currentRegistroId = registroId; // Define o ID atual
-     showLoadingSpinner(true, "Carregando dados do registro...");
+     currentRegistroId = registroId;
+     Utils?.showLoading?.(true, "Carregando dados do registro...");
 
      try {
-        const registro = await getRegistroData(registroId); // Busca dados (cache/API)
+        const registro = await getRegistroData(registroId);
         if (!registro) {
-           notify('error', `Registro ${registroId} não encontrado.`);
-           goToList();
-           return; // Sai da função se não encontrou
+           throw new Error(`Registro ${registroId} não encontrado.`);
         }
 
         // Limpa formulários antes de preencher
         resetForm(formPre);
         resetForm(formPos);
 
-        // Preencher formulário PRÉ com os dados encontrados
+        // Preencher formulários
         fillForm(formPre, registro);
-        // Preencher formulário PÓS com os dados encontrados (se existirem)
         fillForm(formPos, registro);
 
-        // Re-inicializa containers de fotos COM o ID correto para carregar fotos salvas
-        PhotoHandler.initContainerUI('photo-container-pre', 'pre', registroId);
-        PhotoHandler.initContainerUI('photo-container-pos', 'pos', registroId);
+        // Re-inicializa containers de fotos COM o ID correto
+        if (PhotoHandler) {
+           PhotoHandler.initContainerUI('photo-container-pre', 'pre', registroId);
+           PhotoHandler.initContainerUI('photo-container-pos', 'pos', registroId);
+        } else {
+            console.error("loadRegistro: PhotoHandler não disponível.");
+        }
 
-        // Atualizar displays de ID e resumo na tela PÓS
-        document.getElementById('registroIdDisplay').textContent = `ID: ${registroId}`;
-        document.getElementById('registroIdPosDisplay').textContent = `ID: ${registroId}`;
-        updatePosSummary(registro); // Atualiza resumo com dados carregados
 
-        showScreen('telaPreManutencao'); // Sempre começa pela tela PRÉ ao editar
+        // Atualizar displays de ID e resumo
+        const registroIdDisplayPre = document.getElementById('registroIdDisplay');
+        const registroIdDisplayPos = document.getElementById('registroIdPosDisplay');
+        if(registroIdDisplayPre) registroIdDisplayPre.textContent = `ID: ${registroId}`;
+        if(registroIdDisplayPos) registroIdDisplayPos.textContent = `ID: ${registroId}`;
+        updatePosSummary(registro);
+
+        Utils?.showScreen?.('telaPreManutencao'); // Sempre começa pela tela PRÉ
 
      } catch (error) {
         console.error(`Erro ao carregar registro ${registroId} para edição:`, error);
         notify('error', `Erro ao carregar dados: ${error.message}`);
-        goToList(); // Volta para lista em caso de erro
+        goToList();
      } finally {
-        showLoadingSpinner(false);
+        Utils?.hideLoading?.();
      }
   }
 
@@ -193,91 +212,88 @@ ModuleLoader.register('formHandler', function() {
            goToList();
            return;
         }
-       currentRegistroId = registroId; // Define ID para caso o usuário clique em Editar
-       showLoadingSpinner(true, "Carregando dados para visualização...");
+       currentRegistroId = registroId;
+       Utils?.showLoading?.(true, "Carregando dados para visualização...");
 
        try {
            const registro = await getRegistroData(registroId);
            if (!registro) {
-               notify('error', `Registro ${registroId} não encontrado.`);
-               goToList();
-               return;
+               throw new Error(`Registro ${registroId} não encontrado.`);
            }
 
            // Preencher campos da tela de visualização
            populateViewScreen(registro);
 
-           // Renderizar as fotos salvas diretamente na tela de visualização
+           // Renderizar as fotos salvas
            renderPhotosForView(registroId, 'pre', 'fotosPreView');
            renderPhotosForView(registroId, 'pos', 'fotosPosView');
 
-           showScreen('telaVisualizacao');
+           Utils?.showScreen?.('telaVisualizacao');
        } catch (error) {
            console.error(`Erro ao visualizar registro ${registroId}:`, error);
            notify('error', `Erro ao carregar dados para visualização: ${error.message}`);
            goToList();
        } finally {
-           showLoadingSpinner(false);
+           Utils?.hideLoading?.();
        }
    }
 
    // --- Funções de Submissão ---
 
   /**
-   * Manipula o envio do formulário PRÉ-manutenção. Valida, coleta dados,
-   * atualiza o estado e avança para a tela PÓS.
-   * @param {Event} event - O evento de submit do formulário.
+   * Manipula o envio do formulário PRÉ-manutenção.
    */
   async function handlePreSubmit(event) {
-    event.preventDefault(); // Impede o envio padrão do formulário
+    event.preventDefault();
     event.stopPropagation();
 
     if (!formPre || !validateForm(formPre)) {
       notify('warning', 'Por favor, corrija os erros no formulário PRÉ-manutenção.');
-      formPre.querySelector('.is-invalid')?.focus(); // Foca no primeiro campo inválido
+      formPre.querySelector('.is-invalid, input:invalid, select:invalid, textarea:invalid')?.focus();
       return;
     }
 
-    // Coletar dados do formulário PRÉ
     const dadosPre = collectFormData(formPre);
+    const isNew = !currentRegistroId || currentRegistroId === 'new';
 
-    // Definir ou confirmar ID do registro
-    if (!currentRegistroId || currentRegistroId === 'new') {
-       dadosPre.id = Utils.gerarId(); // Gera um novo ID único
-       dadosPre.dataCriacao = new Date().toISOString(); // Define data de criação
-       currentRegistroId = dadosPre.id; // Atualiza o ID atual
-       console.log(`Novo registro iniciado com ID: ${currentRegistroId}`);
-    } else {
-       dadosPre.id = currentRegistroId; // Usa o ID existente (modo edição)
-       // Não sobrescreve dataCriacao se já existia
-        const registroExistente = await getRegistroData(currentRegistroId);
-        dadosPre.dataCriacao = registroExistente?.dataCriacao || new Date().toISOString();
-       console.log(`Atualizando dados PRÉ para registro: ${currentRegistroId}`);
+    dadosPre.id = isNew ? Utils?.gerarId() : currentRegistroId;
+    if (!dadosPre.id) {
+        notify('error', 'Falha ao gerar ou obter ID do registro.');
+        return;
     }
+    currentRegistroId = dadosPre.id; // Garante que temos o ID atual
 
-     // Obter fotos PRÉ (objetos completos com dataUrl) associadas a este ID
-     dadosPre.fotosPre = PhotoHandler.getPhotos(currentRegistroId, 'pre');
+    // Busca registro existente ou cria objeto vazio
+    let registroExistente = isNew ? {} : ((AppState?.get('registros') || []).find(r => r.id === currentRegistroId) || {});
 
+    // Define data de criação apenas se for novo
+    dadosPre.dataCriacao = isNew ? new Date().toISOString() : (registroExistente.dataCriacao || new Date().toISOString());
 
-     // Salvar dados parciais no estado local (AppState)
-     updateAppStateRegistro(dadosPre);
+    // Obtém fotos PRÉ do PhotoHandler
+    dadosPre.fotosPre = PhotoHandler?.getPhotos(currentRegistroId, 'pre') || [];
+
+    // Mescla dados novos sobre os existentes (se houver)
+    const dadosParaSalvar = { ...registroExistente, ...dadosPre };
+
+    console.log(`Salvando dados PRÉ para registro ID: ${currentRegistroId}`);
+    updateAppStateRegistro(dadosParaSalvar); // Salva no estado local
 
      // --- Preparar e ir para a tela PÓS ---
-     document.getElementById('registroIdPos').value = currentRegistroId; // Define hidden input
-     document.getElementById('registroIdPosDisplay').textContent = `ID: ${currentRegistroId}`; // Atualiza display
-     updatePosSummary(dadosPre); // Atualiza resumo na tela PÓS com dados PRÉ
+     const idPosInput = document.getElementById('registroIdPos');
+     const idPosDisplay = document.getElementById('registroIdPosDisplay');
+     if (idPosInput) idPosInput.value = currentRegistroId;
+     if (idPosDisplay) idPosDisplay.textContent = `ID: ${currentRegistroId}`;
+     updatePosSummary(dadosParaSalvar); // Atualiza resumo na tela PÓS
 
      // Re-inicializa/carrega fotos PÓS com o ID correto
-     PhotoHandler.initContainerUI('photo-container-pos', 'pos', currentRegistroId);
+     PhotoHandler?.initContainerUI('photo-container-pos', 'pos', currentRegistroId);
 
      notify('info', 'Dados PRÉ salvos localmente. Prossiga para a etapa PÓS.');
-     showScreen('telaPosManutencao');
+     Utils?.showScreen?.('telaPosManutencao');
   }
 
   /**
-   * Manipula o envio do formulário PÓS-manutenção. Valida, coleta dados,
-   * combina com dados PRÉ, salva (via API ou localmente) e retorna à lista.
-   * @param {Event} event - O evento de submit do formulário.
+   * Manipula o envio do formulário PÓS-manutenção.
    */
   async function handlePosSubmit(event) {
     event.preventDefault();
@@ -285,86 +301,77 @@ ModuleLoader.register('formHandler', function() {
 
     if (!formPos || !validateForm(formPos)) {
       notify('warning', 'Por favor, corrija os erros no formulário PÓS-manutenção.');
-      formPos.querySelector('.is-invalid')?.focus();
+      formPos.querySelector('.is-invalid, input:invalid, select:invalid, textarea:invalid')?.focus();
       return;
     }
 
     if (!currentRegistroId || currentRegistroId === 'new') {
        notify('error', 'Erro crítico: ID do registro não definido para finalizar.');
-       showScreen('telaPreManutencao'); // Volta para PRE
+       Utils?.showScreen?.('telaPreManutencao'); // Volta para PRE
        return;
     }
 
-    showLoadingSpinner(true, "Finalizando e salvando registro...");
+    Utils?.showLoading?.(true, "Finalizando e salvando registro...");
 
-    // Coletar dados do formulário PÓS
     const dadosPos = collectFormData(formPos);
-    dadosPos.id = currentRegistroId; // Garante que o ID está nos dados PÓS
-    dadosPos.dataFinalizacao = new Date().toISOString(); // Marca data/hora da finalização
+    dadosPos.id = currentRegistroId; // Garante ID
+    dadosPos.dataFinalizacao = new Date().toISOString(); // Marca finalização
 
-    // Obter fotos PÓS associadas a este ID
-    dadosPos.fotosPos = PhotoHandler.getPhotos(currentRegistroId, 'pos');
-
+    // Obtém fotos PÓS
+    dadosPos.fotosPos = PhotoHandler?.getPhotos(currentRegistroId, 'pos') || [];
 
     // --- Combinar dados PRÉ e PÓS ---
-    // Busca o registro PRÉ (que já deve incluir fotos PRÉ) do estado
-    const registroPre = (AppState.get('registros') || []).find(r => r.id === currentRegistroId);
-
+    const registroPre = (AppState?.get('registros') || []).find(r => r.id === currentRegistroId);
     if (!registroPre) {
        notify('error', 'Erro crítico: Dados PRÉ não encontrados no estado para finalizar.');
-       showLoadingSpinner(false);
+       Utils?.hideLoading?.();
        return;
     }
-
-    // Mescla os dados: dadosPos sobrescrevem/complementam dadosPre
+    // Mescla dadosPos sobre registroPre
     const registroCompleto = { ...registroPre, ...dadosPos };
-
 
     console.log('Registro completo pronto para salvar:', registroCompleto);
 
     try {
-        // Tenta salvar via API se disponível e online
+        // Tenta salvar via API se ApiClient existe e estamos online
         if (ApiClient && navigator.onLine) {
             console.log("Tentando salvar registro via API...");
             const resultadoAPI = await ApiClient.salvarRegistro(registroCompleto);
 
-             if (resultadoAPI && resultadoAPI.success !== false) { // Assume sucesso se não for explicitamente false
+             if (resultadoAPI && resultadoAPI.success !== false) {
                  notify('success', `Registro ${currentRegistroId} salvo com sucesso na nuvem!`);
-                 // Atualiza estado local com a versão final da API (pode ter IDs de fotos, etc.)
                  updateAppStateRegistro(resultadoAPI.registro || registroCompleto);
-                 // Limpa fotos temporárias do registro que foi salvo com sucesso
-                 PhotoHandler.clearPhotosForRegistro(currentRegistroId);
-                 resetAndGoToList(); // Volta para a lista
+                 PhotoHandler?.clearPhotosForRegistro(currentRegistroId);
+                 resetAndGoToList();
              } else {
-                 // API retornou erro, mas estamos online - salva localmente como fallback
+                 // API retornou erro, salva localmente como fallback
                  console.warn("API retornou erro ou falha ao salvar. Salvando localmente.", resultadoAPI?.message);
-                 notify('warning', `Falha ao salvar na nuvem (${resultadoAPI?.message || 'Erro desconhecido'}). Registro salvo localmente para sincronização posterior.`);
-                 updateAppStateRegistro(registroCompleto); // Garante que está salvo localmente
-                 resetAndGoToList(); // Volta para a lista (com dados locais)
+                 notify('warning', `Falha ao salvar na nuvem (${resultadoAPI?.message || 'Erro desconhecido'}). Registro salvo localmente.`);
+                 updateAppStateRegistro(registroCompleto);
+                 resetAndGoToList();
              }
         } else {
            // Salva localmente (Offline ou ApiClient indisponível)
            console.log("Salvando registro localmente (Offline ou API indisponível)...");
            updateAppStateRegistro(registroCompleto);
-           notify('info', `Registro ${currentRegistroId} salvo localmente. Será sincronizado quando online.`);
-           resetAndGoToList(); // Volta para a lista
+           notify('info', `Registro ${currentRegistroId} salvo localmente.${navigator.onLine ? '' : ' Será sincronizado quando online.'}`);
+           resetAndGoToList();
         }
 
     } catch (error) {
-        // Erro durante a tentativa de salvar (ex: falha de rede não capturada antes)
+        // Erro durante a tentativa de salvar (ex: falha de rede não capturada antes, erro no ApiClient)
         console.error('Erro crítico ao tentar salvar registro final:', error);
         notify('error', `Erro ao salvar: ${error.message}. O registro foi salvo localmente.`);
         // Garante que está salvo localmente mesmo em caso de erro na API
         updateAppStateRegistro(registroCompleto);
-        resetAndGoToList(); // Volta para a lista
+        resetAndGoToList();
     } finally {
-        showLoadingSpinner(false);
+        Utils?.hideLoading?.();
     }
   }
 
    /**
     * Manipula o clique no botão Editar na tela de visualização.
-    * Simplesmente chama loadRegistro com o ID atual.
     */
    function handleEditClick() {
       if(currentRegistroId && currentRegistroId !== 'new') {
@@ -386,35 +393,44 @@ ModuleLoader.register('formHandler', function() {
    async function getRegistroData(registroId) {
       if (!registroId || registroId === 'new') return null;
 
-      // 1. Tenta do AppState (que pode ter vindo do cache ou API anteriormente)
-      const registrosState = AppState.get('registros') || [];
-      let registro = registrosState.find(r => r.id === registroId);
-      if (registro) {
+      // 1. Tenta do AppState
+      const registroState = (AppState?.get('registros') || []).find(r => r && r.id === registroId);
+      if (registroState) {
          console.log(`Registro ${registroId} encontrado no AppState.`);
-         // Importante: busca fotos associadas do PhotoHandler/AppState também
-         registro.fotosPre = PhotoHandler.getPhotos(registroId, 'pre');
-         registro.fotosPos = PhotoHandler.getPhotos(registroId, 'pos');
-         return registro;
+         // Combina com fotos do PhotoHandler (que também usa AppState internamente)
+         const registroCombinado = {
+            ...registroState,
+            fotosPre: PhotoHandler?.getPhotos(registroId, 'pre') || [],
+            fotosPos: PhotoHandler?.getPhotos(registroId, 'pos') || []
+         };
+         return registroCombinado;
       }
 
       // 2. Tenta da API (se disponível e online)
       if (ApiClient && navigator.onLine) {
          console.log(`Registro ${registroId} não encontrado no state, buscando na API...`);
          try {
-            // obterRegistro já deve tratar cache interno se implementado no ApiClient
             const registroApi = await ApiClient.obterRegistro(registroId);
             if (registroApi) {
                console.log(`Registro ${registroId} obtido da API.`);
                // Atualiza o AppState com o registro da API
                updateAppStateRegistro(registroApi);
-                // Busca fotos associadas (API pode ou não retornar URLs/IDs, PhotoHandler deve lidar)
-               registroApi.fotosPre = PhotoHandler.getPhotos(registroId, 'pre');
-               registroApi.fotosPos = PhotoHandler.getPhotos(registroId, 'pos');
-               return registroApi;
+               // Retorna combinado com fotos (que já devem ter sido buscadas ou estarão no state agora)
+                return {
+                   ...registroApi,
+                   fotosPre: PhotoHandler?.getPhotos(registroId, 'pre') || [],
+                   fotosPos: PhotoHandler?.getPhotos(registroId, 'pos') || []
+                };
+            } else {
+               // API buscou mas não encontrou
+               console.log(`Registro ${registroId} não encontrado na API.`);
+               return null;
             }
          } catch (error) {
             console.error(`Erro ao buscar registro ${registroId} da API:`, error);
-            // Não lança erro aqui, apenas falhou em encontrar via API
+            // Falhou em buscar na API, mas não lança erro, apenas retorna null
+             notify('warning', `Falha ao buscar ${registroId} na API: ${error.message}`);
+            return null;
          }
       }
 
@@ -434,7 +450,7 @@ ModuleLoader.register('formHandler', function() {
       }
 
       const registrosAtuais = AppState.get('registros') || [];
-      const index = registrosAtuais.findIndex(r => r.id === registro.id);
+      const index = registrosAtuais.findIndex(r => r && r.id === registro.id);
 
       let novosRegistros;
       if (index > -1) {
@@ -452,40 +468,26 @@ ModuleLoader.register('formHandler', function() {
    }
 
 
-  /**
-   * Preenche os selects de Categoria e Urgência com base no CONFIG.
-   */
+  /** Preenche os selects de Categoria e Urgência com base no CONFIG. */
   function populateSelects() {
     const catSelect = document.getElementById('categoriaProblema');
     const urgSelect = document.getElementById('urgencia');
+    const configCategorias = Config?.CATEGORIAS_PROBLEMA || [];
+    const configUrgencias = Config?.NIVEIS_URGENCIA || [];
 
-    // Limpa opções existentes (exceto a primeira "Selecione...")
-    const clearSelect = (select) => {
-       if(select) Array.from(select.options).forEach((option, index) => { if(index > 0) select.remove(index); });
+    const populate = (select, options) => {
+        if (!select || !Array.isArray(options)) return;
+        // Limpa opções exceto a primeira placeholder
+        while (select.options.length > 1) select.remove(1);
+        // Adiciona novas opções
+        options.forEach(opt => select.add(new Option(opt, opt)));
     };
 
-    if (catSelect) {
-       clearSelect(catSelect);
-      (Config?.CATEGORIAS_PROBLEMA || []).forEach(cat => {
-        catSelect.add(new Option(cat, cat));
-      });
-    } else {
-       console.warn("Elemento select #categoriaProblema não encontrado.");
-    }
-
-     if (urgSelect) {
-        clearSelect(urgSelect);
-       (Config?.NIVEIS_URGENCIA || []).forEach(urg => {
-         urgSelect.add(new Option(urg, urg));
-       });
-     } else {
-        console.warn("Elemento select #urgencia não encontrado.");
-     }
+    populate(catSelect, configCategorias);
+    populate(urgSelect, configUrgencias);
   }
 
-   /**
-    * Preenche os containers de checklist PRÉ e PÓS com base no CONFIG.
-    */
+   /** Preenche os containers de checklist PRÉ e PÓS com base no CONFIG. */
    function populateChecklists() {
        const checklistPreContainer = document.getElementById('checklistPreContainer');
        const checklistPosContainer = document.getElementById('checklistPosContainer');
@@ -493,371 +495,331 @@ ModuleLoader.register('formHandler', function() {
 
        if (!items || items.length === 0) {
           console.warn("Checklist não configurado em CONFIG.CHECKLIST_ITEMS");
-          const msg = '<p class="text-muted small fst-italic">Checklist não configurado.</p>';
+          const msg = '<p class="text-muted small fst-italic col-12">Checklist não configurado.</p>';
           if (checklistPreContainer) checklistPreContainer.innerHTML = msg;
           if (checklistPosContainer) checklistPosContainer.innerHTML = msg;
           return;
        }
 
-       // Função auxiliar para popular um container específico
-       const populateContainer = (container, suffix) => {
-          if (!container) return;
-          container.innerHTML = ''; // Limpa container
-          items.forEach(item => {
-              if (!item || !item.id || !item.label) {
-                 console.warn("Item de checklist inválido no config:", item);
-                 return; // Pula item inválido
-              }
-              const col = document.createElement('div');
-              col.className = 'col-md-6 col-lg-4 mb-3 checklist-item-wrapper'; // Wrapper para layout
-              const uniqueName = `checklist_${item.id}${suffix}`; // Nome único para o grupo de radios
-              const okId = `${uniqueName}_ok`;
-              const danificadoId = `${uniqueName}_danificado`;
-              const naId = `${uniqueName}_na`;
+       populateChecklistContainer(checklistPreContainer, items, 'Pre');
+       populateChecklistContainer(checklistPosContainer, items, 'Pos');
+   }
 
-              col.innerHTML = `
-                  <label class="form-label d-block fw-bold mb-1">${Utils.sanitizeString(item.label)} <span class="text-danger">*</span></label>
-                  <div class="btn-group w-100" role="group" aria-label="Checklist ${item.label}">
-                      <input type="radio" class="btn-check" name="${uniqueName}" id="${okId}" value="OK" required>
-                      <label class="btn btn-outline-success" for="${okId}"><i class="bi bi-check-lg"></i> OK</label>
+   /** Função auxiliar para criar os radios do checklist em um container. */
+   function populateChecklistContainer(container, items, suffix) {
+      if (!container) return;
+      container.innerHTML = ''; // Limpa
+      items.forEach(item => {
+          if (!item || !item.id || !item.label) {
+             console.warn("Item de checklist inválido no config:", item);
+             return;
+          }
+          const col = document.createElement('div');
+          col.className = 'col-md-6 col-lg-4 mb-3 checklist-item-wrapper';
+          const uniqueName = `checklist_${item.id}${suffix}`;
+          const okId = `${uniqueName}_ok`;
+          const danificadoId = `${uniqueName}_danificado`;
+          const naId = `${uniqueName}_na`;
+          const sanitizedLabel = Utils?.sanitizeString(item.label) || item.label; // Usa Utils
 
-                      <input type="radio" class="btn-check" name="${uniqueName}" id="${danificadoId}" value="Danificado">
-                      <label class="btn btn-outline-danger" for="${danificadoId}"><i class="bi bi-exclamation-triangle"></i> Danificado</label>
+          col.innerHTML = `
+              <label class="form-label d-block fw-bold mb-1">${sanitizedLabel} <span class="text-danger">*</span></label>
+              <div class="btn-group w-100" role="group" aria-label="Checklist ${sanitizedLabel}">
+                  <input type="radio" class="btn-check" name="${uniqueName}" id="${okId}" value="OK" required>
+                  <label class="btn btn-outline-success" for="${okId}"><i class="bi bi-check-lg"></i> OK</label>
 
-                      <input type="radio" class="btn-check" name="${uniqueName}" id="${naId}" value="N/A">
-                      <label class="btn btn-outline-secondary" for="${naId}">N/A</label>
-                  </div>
-                  <div class="invalid-feedback checklist-feedback" style="display: none; width: 100%; margin-top: 0.25rem; font-size: 0.875em;">Selecione uma opção.</div>
-              `;
-              container.appendChild(col);
-          });
-       };
+                  <input type="radio" class="btn-check" name="${uniqueName}" id="${danificadoId}" value="Danificado">
+                  <label class="btn btn-outline-danger" for="${danificadoId}"><i class="bi bi-exclamation-triangle"></i> Danificado</label>
 
-       populateContainer(checklistPreContainer, 'Pre');
-       populateContainer(checklistPosContainer, 'Pos');
+                  <input type="radio" class="btn-check" name="${uniqueName}" id="${naId}" value="N/A">
+                  <label class="btn btn-outline-secondary" for="${naId}">N/A</label>
+              </div>
+              <div class="checklist-feedback">Selecione uma opção.</div>
+          `;
+          container.appendChild(col);
+      });
    }
 
 
-  /**
-   * Coleta dados de um formulário, incluindo inputs, textareas, selects e radios customizados.
-   * @param {HTMLFormElement} form - O elemento do formulário.
-   * @returns {Object} Um objeto com os dados coletados (chave = id/name, valor = valor).
-   */
+  /** Coleta dados de um formulário. */
   function collectFormData(form) {
     if (!form) return {};
     const data = {};
-    const formData = new FormData(form); // Pega a maioria dos campos (exceto radios desmarcados, etc)
+    const formData = new FormData(form);
 
-    // Itera sobre FormData
     for (const [key, value] of formData.entries()) {
-       // Tratar múltiplos valores (checkboxes com mesmo nome) - Não usado aqui, mas como exemplo
-       // if (data.hasOwnProperty(key)) {
-       //    if (!Array.isArray(data[key])) data[key] = [data[key]];
-       //    data[key].push(value);
-       // } else {
-          data[key] = value;
-       // }
+      // Trata campos que podem aparecer múltiplas vezes (ex: checkboxes)
+      if (data.hasOwnProperty(key)) {
+         if (!Array.isArray(data[key])) data[key] = [data[key]];
+         data[key].push(value);
+      } else {
+         data[key] = value;
+      }
     }
 
-    // Coletar radios customizados (btn-check) que podem não ser pegos corretamente pelo FormData
+    // Coleta radios customizados (btn-check) que FormData pode não pegar corretamente
     form.querySelectorAll('.btn-check[type="radio"]:checked').forEach(radio => {
-        if (radio.name) {
-           data[radio.name] = radio.value;
-        }
+        if (radio.name) data[radio.name] = radio.value;
     });
 
-    // Garantir que todos os campos com ID sejam incluídos (caso não tenham name ou não foram pegos)
-    form.querySelectorAll('input[id], textarea[id], select[id]').forEach(el => {
-       if (el.id && !data.hasOwnProperty(el.id)) { // Adiciona se não foi pego pelo FormData (pode acontecer com name diferente de id)
-          if (el.type === 'checkbox') {
-             data[el.id] = el.checked;
-          } else {
-             data[el.id] = el.value;
-          }
-       } else if (el.id && data.hasOwnProperty(el.id) && el.type === 'number') {
-          // Converter para número se for input number
-          data[el.id] = parseFloat(el.value) || null; // Ou parseInt, dependendo do caso
+    // Coleta checkboxes (FormData só inclui os marcados) - Garante que desmarcado = false
+    form.querySelectorAll('input[type="checkbox"]').forEach(chk => {
+       if (chk.name && !data.hasOwnProperty(chk.name)) { // Se não foi incluído pelo FormData (estava desmarcado)
+          data[chk.name] = false;
+       } else if (chk.name) { // Se foi incluído, garante que o valor é booleano
+          data[chk.name] = true;
        }
     });
 
-     // Limpeza: remover chaves vazias que podem ser geradas
-     delete data[''];
+    // Garante que todos os campos com ID sejam considerados se não tiverem 'name'
+     form.querySelectorAll('input[id]:not([name]), textarea[id]:not([name]), select[id]:not([name])').forEach(el => {
+       if (el.id && !data.hasOwnProperty(el.id)) {
+          data[el.id] = el.value;
+       }
+    });
 
-    // console.debug("Dados coletados do formulário:", form.id, data);
+    // Converte números
+    form.querySelectorAll('input[type="number"]').forEach(numInput => {
+       if (numInput.name && data.hasOwnProperty(numInput.name)) {
+          data[numInput.name] = parseFloat(data[numInput.name]) || null; // Converte para número ou null
+       } else if (numInput.id && data.hasOwnProperty(numInput.id)) {
+           data[numInput.id] = parseFloat(data[numInput.id]) || null;
+       }
+    });
+
+    delete data['']; // Remove chave vazia se houver
     return data;
   }
 
 
-  /**
-   * Preenche um formulário com dados de um objeto.
-   * @param {HTMLFormElement} form - O formulário a ser preenchido.
-   * @param {Object} data - O objeto contendo os dados.
-   */
+  /** Preenche um formulário com dados de um objeto. */
   function fillForm(form, data) {
     if (!form || !data) return;
-    // resetForm(form); // Resetar antes de preencher é feito em loadRegistro/newRegistro
+    // Não reseta aqui, pois pode sobrescrever dados parciais
 
     for (const key in data) {
       if (data.hasOwnProperty(key)) {
-         // Tenta encontrar por name primeiro (padrão do FormData)
-         let element = form.elements[key];
+        let element = form.elements[key]; // Tenta por 'name'
 
-         // Se não achou por name, tenta por ID (para campos sem name ou radios customizados)
-         if (!element) {
-            element = form.querySelector(`#${key}`);
-         }
-         // Caso especial para radios (elements[key] retorna NodeList)
-         if (form.elements[key] && form.elements[key] instanceof NodeList) {
-            element = form.elements[key]; // Usa a NodeList
-         }
-
-
-        if (element) {
-          // Tratar Radio buttons (NodeList ou btn-check com mesmo name)
-          if (element instanceof NodeList || (element.type === 'radio' && element.name === key)) {
-             const radios = (element instanceof NodeList) ? Array.from(element) : form.querySelectorAll(`input[name="${key}"][type="radio"]`);
-             radios.forEach(radio => {
-                radio.checked = (radio.value === String(data[key])); // Compara valor
-             });
-          }
-          // Tratar Checkboxes
-          else if (element.type === 'checkbox') {
-            element.checked = !!data[key]; // Converte para booleano
-          }
-          // Outros tipos de input/select/textarea
-          else if (element.tagName === 'SELECT' || element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
-             // Tratar datas ISO para input type="date"
-             if (element.type === 'date' && typeof data[key] === 'string' && data[key]?.includes('T')) {
-                 try {
-                    element.value = data[key].split('T')[0];
-                 } catch (e) {
-                    console.warn(`Erro ao formatar data ${data[key]} para o campo ${key}`, e);
-                    element.value = data[key]; // Fallback
-                 }
-             } else {
-                 element.value = data[key] ?? ''; // Usa ?? para tratar null/undefined como string vazia
-             }
-          }
+        // Caso especial para radios (elements[key] retorna RadioNodeList)
+        if (element instanceof RadioNodeList) {
+            element.forEach(radio => radio.checked = (radio.value === String(data[key])));
         }
+        // Outros elementos (input, textarea, select)
+        else if (element) {
+           if (element.type === 'checkbox') {
+             element.checked = !!data[key];
+           } else if (element.type === 'date' && typeof data[key] === 'string' && data[key]?.includes('T')) {
+             // Formata data ISO para input date
+             element.value = data[key].split('T')[0];
+           } else if (element.tagName === 'SELECT') {
+              element.value = data[key] ?? ''; // Usa ?? para tratar null/undefined
+              // Dispara evento change para atualizar UI se necessário
+              // element.dispatchEvent(new Event('change'));
+           } else {
+             element.value = data[key] ?? '';
+           }
+        }
+         // Se não achou por 'name', tenta por ID (para elementos sem name ou radios btn-check)
+         else {
+            const elementById = form.querySelector(`#${key}`);
+            if (elementById && elementById.tagName !== 'FIELDSET' && elementById.tagName !== 'DIV') { // Evita tentar preencher divs/fieldsets
+               if (elementById.type === 'checkbox') {
+                   elementById.checked = !!data[key];
+               } else {
+                   elementById.value = data[key] ?? '';
+               }
+            }
+             // Tenta preencher radios btn-check pelo name (se key for o name)
+             else {
+                 const radios = form.querySelectorAll(`.btn-check[type="radio"][name="${key}"]`);
+                 if (radios.length > 0) {
+                     radios.forEach(radio => radio.checked = (radio.value === String(data[key])));
+                 }
+             }
+         }
       }
     }
   }
 
-  /**
-   * Reseta um formulário, limpando valores e classes de validação.
-   * @param {HTMLFormElement} form - O formulário a ser resetado.
-   */
+  /** Reseta um formulário, limpando valores e classes de validação. */
   function resetForm(form) {
     if (form) {
-       form.reset(); // Limpa valores dos campos
-       form.classList.remove('was-validated'); // Remove classe de validação Bootstrap
-       // Remove classes de erro/sucesso dos campos e feedback
-       form.querySelectorAll('.is-invalid, .is-valid').forEach(el => {
-         el.classList.remove('is-invalid', 'is-valid');
-       });
-       form.querySelectorAll('.invalid-feedback, .checklist-feedback').forEach(el => {
-          el.style.display = 'none'; // Esconde feedback customizado
-          // Reseta texto padrão se necessário
-          if(el.classList.contains('checklist-feedback')) el.textContent = 'Selecione uma opção.';
-       });
+       form.reset();
+       form.classList.remove('was-validated');
+       form.querySelectorAll('.is-invalid, .is-valid').forEach(el => el.classList.remove('is-invalid', 'is-valid'));
+       form.querySelectorAll('.invalid-feedback, .checklist-feedback').forEach(el => el.style.display = 'none');
     }
   }
 
-  /**
-   * Valida um formulário usando validação HTML5 nativa e validações customizadas (Security e checklists).
-   * @param {HTMLFormElement} form - O formulário a ser validado.
-   * @returns {boolean} True se o formulário for válido, False caso contrário.
-   */
+  /** Valida um formulário. */
   function validateForm(form) {
      if (!form) return false;
-     let isFormValid = true; // Assume válido inicialmente
+     let isFormValid = true;
 
-     // 1. Limpa validações anteriores e adiciona classe para feedback visual do Bootstrap
+     // Limpa validações anteriores
      form.classList.remove('was-validated');
-      form.querySelectorAll('.is-invalid, .is-valid').forEach(el => el.classList.remove('is-invalid', 'is-valid'));
-      form.querySelectorAll('.invalid-feedback, .checklist-feedback').forEach(el => el.style.display = 'none');
-     form.classList.add('was-validated'); // Ativa feedback do Bootstrap
+     form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+     form.querySelectorAll('.invalid-feedback, .checklist-feedback').forEach(el => el.style.display = 'none');
 
-     // 2. Validação HTML5 nativa (required, pattern, min, max, etc.)
+     // Adiciona classe para ativar feedback visual do Bootstrap
+     form.classList.add('was-validated');
+
+     // Validação HTML5 nativa (verifica todos os campos com 'required', 'pattern', etc.)
      if (!form.checkValidity()) {
-        console.log("Validação HTML5 falhou.");
+        console.log("Validação HTML5 padrão falhou.");
         isFormValid = false;
-        // Bootstrap já deve mostrar os erros padrões
+        // O navegador e Bootstrap devem destacar os campos inválidos automaticamente
      }
 
-     // 3. Validação customizada com o módulo Security (se houver campos com data-validate)
-     if (Security) {
-        form.querySelectorAll('[data-validate]').forEach(field => {
-           if (!Security.validateField(field)) { // validateField deve adicionar/remover classes is-invalid/is-valid
-              isFormValid = false;
-           }
-        });
-     }
-
-      // 4. Validação customizada para grupos de radio (checklists) marcados como required
+     // Validação customizada para radios btn-check (checkValidity pode não pegar corretamente)
       form.querySelectorAll('.checklist-item-wrapper').forEach(wrapper => {
          const radios = wrapper.querySelectorAll('input[type="radio"]');
-         if (radios.length > 0 && radios[0].required) { // Verifica se o primeiro radio (representando o grupo) é required
+         if (radios.length > 0 && radios[0].required) {
             const isChecked = Array.from(radios).some(radio => radio.checked);
             const feedbackElement = wrapper.querySelector('.checklist-feedback');
-
             if (!isChecked) {
                 isFormValid = false;
-                // Adiciona classe de inválido aos botões/labels para destaque (opcional)
-                wrapper.querySelectorAll('.btn-outline-success, .btn-outline-danger, .btn-outline-secondary')
-                   .forEach(label => label.classList.add('is-invalid')); // Borda vermelha nos botões
-                if (feedbackElement) feedbackElement.style.display = 'block'; // Mostra a mensagem de erro
+                // Adiciona classe inválida às labels dos botões
+                wrapper.querySelectorAll('.btn-group label').forEach(label => label.classList.add('is-invalid'));
+                if (feedbackElement) feedbackElement.style.display = 'block';
             } else {
-               // Remove classe de inválido dos botões se uma opção foi marcada
-               wrapper.querySelectorAll('.is-invalid').forEach(label => label.classList.remove('is-invalid'));
-               if (feedbackElement) feedbackElement.style.display = 'none'; // Esconde mensagem de erro
+               // Remove classe inválida se um foi marcado
+               wrapper.querySelectorAll('.btn-group label.is-invalid').forEach(label => label.classList.remove('is-invalid'));
+               if (feedbackElement) feedbackElement.style.display = 'none';
             }
          }
       });
 
 
+     // Validação customizada com Security (se existir)
+     if (Security) {
+        form.querySelectorAll('[data-validate]').forEach(field => {
+           if (!Security.validateField(field)) { // Assume que validateField adiciona/remove .is-invalid
+              isFormValid = false;
+           }
+        });
+     }
+
      return isFormValid;
   }
 
-   /**
-    * Atualiza a área de resumo na tela PÓS-manutenção com dados do registro.
-    * @param {Object} registroData - Dados do registro (geralmente da etapa PRÉ).
-    */
+   /** Atualiza a área de resumo na tela PÓS. */
    function updatePosSummary(registroData) {
-      const sanitize = Utils?.sanitizeString || (str => str); // Fallback
-      document.getElementById('placaPos').textContent = sanitize(registroData?.placa) || '--';
-      document.getElementById('modeloPos').textContent = sanitize(registroData?.modelo) || '--';
-      document.getElementById('idInternaPos').textContent = sanitize(registroData?.idInterna) || '--';
+      const sanitize = Utils?.sanitizeString || (str => str || ''); // Usa fallback
+      const placaEl = document.getElementById('placaPos');
+      const modeloEl = document.getElementById('modeloPos');
+      const idIntEl = document.getElementById('idInternaPos');
+      if(placaEl) placaEl.textContent = sanitize(registroData?.placa) || '--';
+      if(modeloEl) modeloEl.textContent = sanitize(registroData?.modelo) || '--';
+      if(idIntEl) idIntEl.textContent = sanitize(registroData?.idInterna) || '--';
    }
 
-   /**
-    * Preenche a tela de visualização com os dados do registro.
-    * @param {Object} registro - Objeto completo do registro.
-    */
+   /** Preenche a tela de visualização com os dados. */
    function populateViewScreen(registro) {
-      const sanitize = Utils?.sanitizeString || (str => str);
-      const formatDateTime = Utils?.formatarDataHora || (date => new Date(date).toLocaleString());
-      const formatDate = Utils?.formatarData || (date => new Date(date).toLocaleDateString());
+      const sanitize = Utils?.sanitizeString || (str => str || '');
+      const formatDateTime = Utils?.formatarDataHora || (d => d ? new Date(d).toLocaleString() : '--');
+      const formatDate = Utils?.formatarData || (d => d ? new Date(d).toLocaleDateString() : '--');
+      const formatKm = Utils?.formatarKm || (km => km ? `${km} km` : '--');
 
-      // IDs e informações básicas
-      document.getElementById('registroIdVisualizar').textContent = `ID: ${sanitize(registro.id) || '--'}`;
-      document.getElementById('placaView').textContent = sanitize(registro.placa) || '--';
-      document.getElementById('modeloView').textContent = sanitize(registro.modelo) || '--';
-      document.getElementById('idInternaView').textContent = sanitize(registro.idInterna) || '--';
-      document.getElementById('dataView').textContent = registro.dataCriacao ? formatDateTime(registro.dataCriacao) : '--';
-      document.getElementById('responsavelView').textContent = sanitize(registro.responsavel) || '--';
-      document.getElementById('categoriaView').textContent = sanitize(registro.categoriaProblema) || '--';
-      document.getElementById('urgenciaView').textContent = sanitize(registro.urgencia) || '--';
-      document.getElementById('descricaoProblemaView').textContent = sanitize(registro.descricaoProblema) || 'Nenhuma descrição fornecida.';
+      // Preenche campos simples
+      const fields = {
+         'registroIdVisualizar': `ID: ${sanitize(registro?.id)}`, 'placaView': sanitize(registro?.placa),
+         'modeloView': sanitize(registro?.modelo), 'idInternaView': sanitize(registro?.idInterna),
+         'dataView': formatDateTime(registro?.dataCriacao), 'responsavelView': sanitize(registro?.responsavel),
+         'categoriaView': sanitize(registro?.categoriaProblema), 'urgenciaView': sanitize(registro?.urgencia),
+         'descricaoProblemaView': sanitize(registro?.descricaoProblema) || 'Nenhuma descrição.',
+         'quilometragemView': formatKm(registro?.quilometragem),
+         'observacoesPreView': sanitize(registro?.observacoesPre) || 'Nenhuma.',
+         'observacoesPosView': sanitize(registro?.observacoesPos) || 'Nenhuma.'
+      };
+      for (const id in fields) {
+         const el = document.getElementById(id);
+         if (el) el.textContent = fields[id] || '--'; // Usa textContent para segurança
+      }
+       // Caso especial para descrição que pode ser longa (usar innerHTML se precisar de <br>)
+       const descEl = document.getElementById('descricaoProblemaView');
+       if(descEl) descEl.innerHTML = sanitize(registro?.descricaoProblema).replace(/\n/g, '<br>') || '<span class="text-muted fst-italic">Nenhuma descrição.</span>';
 
-      // Quilometragem (se existir)
-       const kmView = document.getElementById('quilometragemView'); // Supondo que exista um span com este ID
-       if(kmView) kmView.textContent = registro.quilometragem ? `${registro.quilometragem} km` : '--';
 
       // Status
       const statusView = document.getElementById('statusView');
       if(statusView) {
-          let statusText = 'Pendente';
-          let statusClass = 'bg-secondary';
-          if (registro.dataFinalizacao) {
-              statusText = `Concluído (${formatDate(registro.dataFinalizacao)})`;
-              statusClass = 'bg-success';
-          } else if (registro.fotosPos?.length > 0 || registro.observacoesPos || Object.keys(registro).some(k => k.startsWith('checklist_') && k.endsWith('Pos') && registro[k])) {
-              statusText = 'Pós Iniciado';
-              statusClass = 'bg-info text-dark'; // Usar text-dark para contraste com bg-info
-          } else if (registro.fotosPre?.length > 0 || registro.descricaoProblema || Object.keys(registro).some(k => k.startsWith('checklist_') && k.endsWith('Pre') && registro[k])) {
-              statusText = 'Pré Iniciado';
-              statusClass = 'bg-warning text-dark'; // Usar text-dark para contraste com bg-warning
+          let statusText = 'Pendente'; let statusClass = 'bg-secondary';
+          if (registro?.dataFinalizacao) {
+              statusText = `Concluído (${formatDate(registro.dataFinalizacao)})`; statusClass = 'bg-success';
+          } else if (Object.keys(registro || {}).some(k => k.startsWith('checklist_') && k.endsWith('Pos') && registro[k])) { // Verifica se algum checklist PÓS foi preenchido
+              statusText = 'Pós Iniciado'; statusClass = 'bg-info text-dark';
+          } else if (registro?.descricaoProblema || (registro?.fotosPre?.length > 0)) { // Verifica se PRÉ foi iniciado
+              statusText = 'Pré Iniciado'; statusClass = 'bg-warning text-dark';
           }
-          statusView.textContent = statusText;
-          statusView.className = `badge ${statusClass}`; // Reseta classes anteriores
+          statusView.textContent = statusText; statusView.className = `badge ${statusClass}`;
       }
 
       // Checklists
       populateChecklistView('checklistPreView', registro, 'Pre');
       populateChecklistView('checklistPosView', registro, 'Pos');
 
-      // Observações
-      document.getElementById('observacoesPreView').textContent = sanitize(registro.observacoesPre) || 'Nenhuma.';
-      document.getElementById('observacoesPosView').textContent = sanitize(registro.observacoesPos) || 'Nenhuma.';
-
-      // Botão Editar (garante que o listener está atualizado para o ID correto)
+      // Botão Editar (recria para garantir listener único)
       const editBtn = document.getElementById('btnEditarVisualizacao');
-      if(editBtn) {
-         // Clona e substitui para remover listeners antigos e adicionar o novo
+      if(editBtn && registro?.id) {
          const newEditBtn = editBtn.cloneNode(true);
          editBtn.parentNode.replaceChild(newEditBtn, editBtn);
          newEditBtn.addEventListener('click', () => loadRegistro(registro.id));
+         newEditBtn.disabled = false; // Garante que está habilitado
+      } else if(editBtn) {
+         editBtn.disabled = true; // Desabilita se não houver ID
       }
    }
 
-   /**
-    * Preenche a tabela de checklist na tela de visualização.
-    * @param {string} tableBodyId - ID do tbody da tabela.
-    * @param {Object} registro - Dados do registro.
-    * @param {string} suffix - 'Pre' ou 'Pos'.
-    */
+    /** Preenche a tabela de checklist na visualização. */
     function populateChecklistView(tableBodyId, registro, suffix) {
         const tableBody = document.getElementById(tableBodyId);
         if (!tableBody) return;
-        tableBody.innerHTML = ''; // Limpa conteúdo anterior
+        tableBody.innerHTML = '';
         const items = Config?.CHECKLIST_ITEMS || [];
+        const sanitize = Utils?.sanitizeString || (str => str || '');
 
         if (items.length === 0) {
-            tableBody.innerHTML = '<tr><td colspan="2" class="text-muted small fst-italic">Checklist não configurado.</td></tr>';
+            tableBody.innerHTML = '<tr><td class="text-muted small fst-italic">Checklist não configurado.</td></tr>';
             return;
         }
 
         items.forEach(item => {
-            const key = `checklist_${item.id}${suffix}`; // Chave esperada nos dados do registro
-            const value = registro[key];
-            let badgeClass = 'bg-secondary';
-            let valueText = value || 'N/R'; // Não Registrado ou N/A?
-
-            if (value === 'OK') {
-                badgeClass = 'bg-success';
-                valueText = 'OK';
-            } else if (value === 'Danificado') {
-                badgeClass = 'bg-danger';
-                valueText = 'Danificado';
-            } else if (value === 'N/A') {
-                badgeClass = 'bg-secondary';
-                 valueText = 'N/A';
-            }
+            const key = `checklist_${item.id}${suffix}`;
+            const value = registro ? registro[key] : undefined; // Verifica se registro existe
+            let badgeClass = 'bg-secondary'; let valueText = 'N/R'; // Não Registrado
+            if (value === 'OK') { badgeClass = 'bg-success'; valueText = 'OK'; }
+            else if (value === 'Danificado') { badgeClass = 'bg-danger'; valueText = 'Danificado'; }
+            else if (value === 'N/A') { badgeClass = 'bg-secondary'; valueText = 'N/A'; }
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${Utils.sanitizeString(item.label)}</td>
+                <td>${sanitize(item.label)}</td>
                 <td class="text-end"><span class="badge ${badgeClass}">${valueText}</span></td>
             `;
             tableBody.appendChild(row);
         });
     }
 
-   /**
-    * Renderiza as miniaturas das fotos na tela de visualização.
-    * @param {string} registroId - ID do registro.
-    * @param {string} type - 'pre' ou 'pos'.
-    * @param {string} containerId - ID do container onde as fotos serão exibidas.
-    */
+    /** Renderiza fotos na tela de visualização. */
     function renderPhotosForView(registroId, type, containerId) {
         const container = document.getElementById(containerId);
-        if (!container) return;
-        container.innerHTML = '<p class="text-muted small fst-italic">Carregando fotos...</p>'; // Placeholder
+        if (!container || !PhotoHandler) return; // Precisa do PhotoHandler
+        container.innerHTML = '<p class="text-muted small fst-italic col-12">Carregando fotos...</p>';
 
-        // Usa a referência PhotoHandler obtida no init
-        const photos = PhotoHandler?.getPhotos(registroId, type) || [];
+        const photos = PhotoHandler.getPhotos(registroId, type);
 
         if (photos.length === 0) {
-            container.innerHTML = '<p class="text-muted small fst-italic">Nenhuma foto registrada.</p>';
+            container.innerHTML = '<p class="text-muted small fst-italic col-12">Nenhuma foto registrada.</p>';
             return;
         }
 
-        container.innerHTML = ''; // Limpa placeholder
+        container.innerHTML = ''; // Limpa
         photos.forEach(photo => {
-            if (!photo || !photo.dataUrl) return; // Pula fotos inválidas
+            if (!photo || !photo.dataUrl) return;
             const col = document.createElement('div');
-            col.className = 'col-6 col-md-4 col-lg-3 mb-2'; // Layout responsivo com margem
+            col.className = 'col-6 col-md-4 col-lg-3 mb-2';
             const safeName = Utils?.sanitizeString(photo.name) || 'foto';
             col.innerHTML = `
                 <img src="${photo.dataUrl}" class="img-thumbnail photo-thumbnail-view"
@@ -865,95 +827,56 @@ ModuleLoader.register('formHandler', function() {
                      style="cursor: pointer; width: 100%; height: 100px; object-fit: cover;">
             `;
             // Adiciona listener para abrir o modal usando PhotoHandler
-            col.querySelector('img')?.addEventListener('click', () => PhotoHandler?.showPhotoModal(photo));
+            col.querySelector('img')?.addEventListener('click', () => PhotoHandler.showPhotoModal(photo));
             container.appendChild(col);
         });
     }
 
 
-  // --- Funções de Navegação e Utilidade ---
+  // --- Navegação e Utilidade ---
 
-  /**
-   * Mostra uma tela específica e esconde as outras.
-   * @param {string} screenId - O ID da seção (tela) a ser exibida.
-   */
-  function showScreen(screenId) {
-    document.querySelectorAll('.tela-sistema').forEach(tela => {
-      tela.style.display = tela.id === screenId ? 'block' : 'none';
-    });
-     window.scrollTo(0, 0); // Rola a página para o topo ao trocar de tela
-     console.log(`Exibindo tela: ${screenId}`);
-  }
+  /** Mostra uma tela específica e esconde as outras. */
+  function showScreen(screenId) { Utils?.showScreen?.(screenId); }
 
-  /**
-   * Navega de volta para a tela de lista de registros.
-   */
+  /** Navega de volta para a tela de lista de registros. */
   function goToList() {
     showScreen('telaListaRegistros');
-    // Dispara um evento para App atualizar a lista, se necessário
+    // Delega a atualização da lista para o App, se existir
      if(typeof App !== 'undefined' && App.refreshRegistrosList) {
-        console.log("Atualizando lista de registros ao voltar...");
+        console.log("FormHandler->goToList: Solicitando atualização da lista ao App.");
         App.refreshRegistrosList();
      }
   }
 
-  /**
-   * Reseta os formulários, limpa fotos temporárias e navega para a lista.
-   */
+  /** Reseta os formulários, limpa fotos temporárias e navega para a lista. */
   function resetAndGoToList() {
      console.log("Resetando formulários e voltando para a lista...");
      resetForm(formPre);
      resetForm(formPos);
-     // Limpa fotos do ID atual ou 'new'
      PhotoHandler?.clearPhotosForRegistro(currentRegistroId || 'new');
-     currentRegistroId = null; // Limpa ID atual
+     currentRegistroId = null;
      goToList();
   }
 
-  /**
-   * Exibe ou esconde o spinner de loading global.
-   * @param {boolean} show - True para mostrar, False para esconder.
-   * @param {string} [message='Carregando...'] - Mensagem opcional a ser exibida.
-   */
-   function showLoadingSpinner(show, message = 'Carregando...') {
-       const spinner = document.getElementById('loadingSpinner');
-       if (!spinner) return;
-       const spinnerMessage = spinner.querySelector('.loading-message'); // Supondo que haja um span/p para msg
-
-       if (show) {
-           if (spinnerMessage) spinnerMessage.textContent = message;
-           spinner.style.display = 'flex';
-       } else {
-           spinner.style.display = 'none';
-       }
-   }
-
-   /**
-    * Função utilitária para notificações.
-    * @param {'success'|'error'|'warning'|'info'} type - Tipo da notificação.
-    * @param {string} message - Mensagem a ser exibida.
-    */
-   function notify(type, message) {
-      // Usa a função global melhorada por main.js se existir
-      const showNotificationFunc = window[`show${type.charAt(0).toUpperCase() + type.slice(1)}Message`] || window.showNotification;
-      if (showNotificationFunc) {
-         showNotificationFunc(message);
+  /** Função utilitária para notificações. */
+  function notify(type, message) {
+      // Tenta usar as funções globais melhoradas por main.js
+      const funcName = `show${type.charAt(0).toUpperCase() + type.slice(1)}Message`;
+      const notificationFunc = window[funcName] || window.showNotification;
+      if (notificationFunc) {
+         notificationFunc(message, type); // Passa o tipo para a função genérica
       } else {
-         console.log(`[${type.toUpperCase()}] FormHandler: ${message}`); // Fallback
-         if (type === 'error' || type === 'warning') alert(message);
+         console.warn("Sistema de notificação global não encontrado.");
+         alert(`[${type.toUpperCase()}] ${message}`); // Fallback
       }
-   }
+  }
 
 
   // --- Exportação do Módulo ---
-
-  // Retorna as funções públicas que precisam ser acessadas de fora (principalmente pelo App.js)
   return {
     init,
     newRegistro,
     loadRegistro,
     viewRegistro
-    // As funções de handle (submit, edit click) são internas e chamadas por listeners
-    // As funções auxiliares (populate, collect, fill, validate, etc.) também são internas
   };
 });
