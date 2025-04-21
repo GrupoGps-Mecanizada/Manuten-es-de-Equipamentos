@@ -1,0 +1,95 @@
+/* responsive.css */
+
+/* Extra small devices (phones, less than 576px) */
+@media (max-width: 575.98px) {
+  .card-header {
+    padding: 0.5rem 0.75rem;
+  }
+  
+  .card-body {
+    padding: 1rem;
+  }
+  
+  h1.h4 {
+    font-size: 1.2rem;
+  }
+  
+  .btn-sm {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+  }
+  
+  .foto-item img {
+    height: 120px;
+  }
+}
+
+/* Small devices (landscape phones, 576px and up) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  .foto-item img {
+    height: 130px;
+  }
+}
+
+/* Medium devices (tablets, 768px and up) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  .foto-item img {
+    height: 140px;
+  }
+}
+
+/* Photo grid responsive */
+.foto-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+@media (min-width: 576px) {
+  .foto-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 992px) {
+  .foto-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Button group responsive */
+@media (max-width: 767.98px) {
+  .btn-group {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .btn-group > .btn {
+    border-radius: 0.25rem !important;
+    margin-bottom: 0.25rem;
+  }
+}
+
+/* Camera modal responsive */
+@media (max-width: 767.98px) {
+  .modal-dialog {
+    margin: 0.5rem;
+  }
+  
+  #cameraPreview {
+    max-height: 40vh;
+  }
+}
+
+/* Form layout responsive */
+@media (max-width: 575.98px) {
+  .form-label {
+    margin-bottom: 0.25rem;
+  }
+  
+  .row.g-3 > .col,
+  .row.g-3 > [class*="col-"] {
+    padding-right: calc(var(--bs-gutter-x) * .25);
+    padding-left: calc(var(--bs-gutter-x) * .25);
+  }
+}
