@@ -14,37 +14,55 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-      /* Estilo para feedback de validação de checklist */
+      /* Feedback de validação visual para checklists */
       .checklist-item-wrapper .btn-group label.is-invalid {
-         border-color: var(--bs-danger); /* Destaca a borda dos botões */
+         border-color: var(--bs-danger);
          color: var(--bs-danger);
+         box-shadow: 0 0 0 .25rem rgba(var(--bs-danger-rgb),.25) !important; /* Adiciona sombra como inputs inválidos */
       }
-       .checklist-item-wrapper .btn-group label.is-invalid:hover {
+      .checklist-item-wrapper .btn-group label.is-invalid:hover {
           background-color: var(--bs-danger-bg-subtle);
-       }
-      /* Garante que a mensagem de erro do checklist seja visível */
-      .was-validated .checklist-item-wrapper .checklist-feedback:has(~ .btn-group input:required:invalid) {
-          display: block !important; /* Força exibição se o radio required for inválido */
       }
-      /* Oculta por padrão */
-       .checklist-feedback {
-           display: none;
+      /* Mostra a mensagem de erro do checklist apenas se um radio required não foi marcado */
+      .was-validated .checklist-item-wrapper .checklist-feedback {
+          display: none; /* Esconde por padrão */
+      }
+      .was-validated .checklist-item-wrapper:has(input[type="radio"]:required:invalid) .checklist-feedback {
+          display: block; /* Mostra se o grupo tem um required inválido */
+      }
+      .checklist-feedback {
            width: 100%;
            margin-top: .25rem;
            font-size: .875em;
            color: var(--bs-form-invalid-color);
        }
-        /* Ajuste para thumbnail na visualização */
-        .photo-thumbnail-view {
+       /* Ajuste para thumbnail na visualização */
+       .photo-thumbnail-view {
            border: 1px solid #dee2e6;
            padding: 0.25rem;
-        }
+           background-color: #f8f9fa; /* Fundo leve */
+           transition: transform 0.2s ease-in-out;
+       }
+       .photo-thumbnail-view:hover {
+           transform: scale(1.05); /* Efeito de zoom leve */
+       }
+       /* Garante que o conteúdo principal ocupe o espaço restante */
+       body, .container-fluid {
+           min-height: 100vh;
+       }
+       .container-fluid {
+            display: flex;
+            flex-direction: column;
+       }
+       main {
+            flex-grow: 1;
+       }
   </style>
 </head>
 <body>
-  <div class="container-fluid p-0 d-flex flex-column min-vh-100">
+  <div class="container-fluid p-0">
 
-    <header class="bg-primary text-white py-3 px-4 shadow-sm">
+    <header class="bg-primary text-white py-3 px-4 shadow-sm sticky-top">
       <div class="d-flex justify-content-between align-items-center flex-wrap">
         <h1 class="h4 mb-0 me-3"><i class="bi bi-tools me-2"></i> Sistema de Registro</h1>
         <div class="d-flex align-items-center mt-2 mt-sm-0">
@@ -54,14 +72,19 @@
           <button class="btn btn-outline-light btn-sm me-2" id="btnNovoRegistro" title="Criar Novo Registro">
             <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">Novo</span>
           </button>
-          <div id="auth-container" class="d-flex align-items-center"></div>
+          <div id="auth-container" class="d-flex align-items-center">
+             <div class="spinner-border spinner-border-sm text-light ms-2" role="status">
+                <span class="visually-hidden">Carregando autenticação...</span>
+             </div>
+          </div>
         </div>
       </div>
     </header>
 
-    <main class="container py-4 flex-grow-1">
+    <main class="container py-4">
 
-      <section id="dashboardSection" class="mb-4 tela-sistema" style="display: none;"> <div class="card shadow-sm">
+      <section id="dashboardSection" class="mb-4 tela-sistema" style="display: none;">
+          <div class="card shadow-sm">
              <div class="card-header">
                  <h2 class="h5 mb-0"><i class="bi bi-bar-chart-line me-2"></i> Dashboard</h2>
              </div>
@@ -179,14 +202,15 @@
               <fieldset class="mb-4 p-3 border rounded">
                    <legend class="fs-6 fw-bold mb-3">Checklist de Condições PRÉ <span class="text-danger">*</span></legend>
                    <div id="checklistPreContainer" class="row g-3">
-                       <p class="text-muted small fst-italic">Carregando checklist...</p>
+                       <p class="text-muted small fst-italic col-12">Carregando checklist...</p>
                        </div>
                </fieldset>
 
               <fieldset class="mb-4 p-3 border rounded" id="photo-section-pre">
                  <legend class="fs-6 fw-bold mb-3">Registro Fotográfico PRÉ</legend>
                  <div id="photo-container-pre">
-                    </div>
+                    <p class="text-muted small fst-italic">Carregando gerenciador de fotos...</p>
+                 </div>
                </fieldset>
 
               <fieldset class="mb-4 p-3 border rounded">
@@ -208,7 +232,7 @@
 
               <div class="text-end mt-4">
                 <button type="button" class="btn btn-outline-secondary me-2" id="btnCancelarPre">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar e Avançar para PÓS <i class="bi bi-arrow-right"></i></button>
+                <button type="submit" class="btn btn-primary">Salvar e Avançar para PÓS <i class="bi bi-arrow-right ms-1"></i></button>
               </div>
             </form>
           </div>
@@ -237,14 +261,15 @@
               <fieldset class="mb-4 p-3 border rounded">
                 <legend class="fs-6 fw-bold mb-3">Checklist de Condições PÓS <span class="text-danger">*</span></legend>
                  <div id="checklistPosContainer" class="row g-3">
-                    <p class="text-muted small fst-italic">Carregando checklist...</p>
+                    <p class="text-muted small fst-italic col-12">Carregando checklist...</p>
                     </div>
               </fieldset>
 
               <fieldset class="mb-4 p-3 border rounded" id="photo-section-pos">
                  <legend class="fs-6 fw-bold mb-3">Registro Fotográfico PÓS</legend>
                   <div id="photo-container-pos">
-                     </div>
+                     <p class="text-muted small fst-italic">Carregando gerenciador de fotos...</p>
+                  </div>
                </fieldset>
 
               <fieldset class="mb-4 p-3 border rounded">
@@ -254,8 +279,8 @@
               </fieldset>
 
               <div class="text-end mt-4">
-                <button type="button" class="btn btn-outline-secondary me-2" id="btnVoltarPre"><i class="bi bi-arrow-left"></i> Voltar para PRÉ</button>
-                <button type="submit" class="btn btn-success"> <i class="bi bi-check-lg"></i> Finalizar e Salvar Registro</button>
+                <button type="button" class="btn btn-outline-secondary me-2" id="btnVoltarPre"><i class="bi bi-arrow-left me-1"></i> Voltar para PRÉ</button>
+                <button type="submit" class="btn btn-success"> <i class="bi bi-check-lg me-1"></i> Finalizar e Salvar Registro</button>
               </div>
             </form>
           </div>
@@ -280,16 +305,16 @@
                  <fieldset class="mb-4 p-3 border rounded">
                      <legend class="fs-6 fw-bold mb-3">Informações Gerais</legend>
                      <div class="row g-3">
-                         <div class="col-md-4"><strong>Placa:</strong> <span id="placaView">--</span></div>
-                         <div class="col-md-4"><strong>Modelo:</strong> <span id="modeloView">--</span></div>
-                         <div class="col-md-4"><strong>ID Interna:</strong> <span id="idInternaView">--</span></div>
-                         <div class="col-md-4"><strong>Data Criação:</strong> <span id="dataView">--</span></div>
-                         <div class="col-md-4"><strong>Responsável:</strong> <span id="responsavelView">--</span></div>
-                         <div class="col-md-4"><strong>Status:</strong> <span id="statusView" class="badge">--</span></div>
-                          <div class="col-md-4"><strong>Quilometragem:</strong> <span id="quilometragemView">--</span></div>
-                         <div class="col-md-4"><strong>Categoria:</strong> <span id="categoriaView">--</span></div>
-                         <div class="col-md-4"><strong>Urgência:</strong> <span id="urgenciaView">--</span></div>
-                         <div class="col-12"><strong>Descrição do Problema:</strong> <p id="descricaoProblemaView" class="bg-light p-2 rounded mb-0">--</p></div>
+                         <div class="col-md-4 col-sm-6"><strong>Placa:</strong> <span id="placaView">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>Modelo:</strong> <span id="modeloView">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>ID Interna:</strong> <span id="idInternaView">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>Data Criação:</strong> <span id="dataView">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>Responsável:</strong> <span id="responsavelView">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>Status:</strong> <span id="statusView" class="badge">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>Quilometragem:</strong> <span id="quilometragemView">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>Categoria:</strong> <span id="categoriaView">--</span></div>
+                         <div class="col-md-4 col-sm-6"><strong>Urgência:</strong> <span id="urgenciaView">--</span></div>
+                         <div class="col-12"><strong>Descrição do Problema:</strong> <p id="descricaoProblemaView" class="bg-light p-2 rounded mb-0 text-break">--</p></div>
                      </div>
                  </fieldset>
 
@@ -297,42 +322,46 @@
                      <div class="col-lg-6">
                          <div class="card h-100">
                              <div class="card-header bg-primary text-white">
-                                 <h6 class="mb-0">Detalhes PRÉ-Manutenção</h6>
+                                 <h6 class="mb-0"><i class="bi bi-clipboard-plus me-1"></i> Detalhes PRÉ-Manutenção</h6>
                              </div>
                              <div class="card-body">
                                  <h6 class="mb-2 fw-bold">Checklist PRÉ:</h6>
-                                 <table class="table table-sm table-bordered mb-3">
-                                     <tbody id="checklistPreView">
-                                         <tr><td class="text-muted small">Carregando...</td></tr>
-                                     </tbody>
-                                 </table>
+                                 <div class="table-responsive mb-3">
+                                     <table class="table table-sm table-bordered mb-0">
+                                         <tbody id="checklistPreView">
+                                             <tr><td class="text-muted small fst-italic">Carregando...</td></tr>
+                                         </tbody>
+                                     </table>
+                                 </div>
                                  <h6 class="mb-2 fw-bold">Fotos PRÉ:</h6>
                                  <div id="fotosPreView" class="row g-2 mb-3">
-                                      <p class="text-muted small">Carregando...</p>
+                                      <p class="text-muted small fst-italic col-12">Carregando...</p>
                                  </div>
                                  <h6 class="mb-1 fw-bold">Observações PRÉ:</h6>
-                                 <p id="observacoesPreView" class="text-muted bg-light p-2 rounded">--</p>
+                                 <p id="observacoesPreView" class="text-muted bg-light p-2 rounded text-break mb-0">--</p>
                              </div>
                          </div>
                      </div>
                      <div class="col-lg-6">
                          <div class="card h-100">
                              <div class="card-header bg-success text-white">
-                                 <h6 class="mb-0">Detalhes PÓS-Manutenção</h6>
+                                 <h6 class="mb-0"><i class="bi bi-check2-circle me-1"></i> Detalhes PÓS-Manutenção</h6>
                              </div>
                              <div class="card-body">
                                  <h6 class="mb-2 fw-bold">Checklist PÓS:</h6>
-                                 <table class="table table-sm table-bordered mb-3">
-                                     <tbody id="checklistPosView">
-                                         <tr><td class="text-muted small">Carregando...</td></tr>
-                                     </tbody>
-                                 </table>
+                                  <div class="table-responsive mb-3">
+                                     <table class="table table-sm table-bordered mb-0">
+                                         <tbody id="checklistPosView">
+                                             <tr><td class="text-muted small fst-italic">Carregando...</td></tr>
+                                         </tbody>
+                                     </table>
+                                 </div>
                                  <h6 class="mb-2 fw-bold">Fotos PÓS:</h6>
                                  <div id="fotosPosView" class="row g-2 mb-3">
-                                      <p class="text-muted small">Carregando...</p>
+                                      <p class="text-muted small fst-italic col-12">Carregando...</p>
                                  </div>
                                  <h6 class="mb-1 fw-bold">Observações PÓS:</h6>
-                                 <p id="observacoesPosView" class="text-muted bg-light p-2 rounded">--</p>
+                                 <p id="observacoesPosView" class="text-muted bg-light p-2 rounded text-break mb-0">--</p>
                              </div>
                          </div>
                      </div>
@@ -345,22 +374,25 @@
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
        </div>
 
-    <div id="loadingSpinner" class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark bg-opacity-50" style="display: none; z-index: 9999;">
+    <div id="loadingSpinner" class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark bg-opacity-75" style="display: none; z-index: 9999; backdrop-filter: blur(2px);">
       <div class="spinner-border text-primary mb-2" style="width: 3rem; height: 3rem;" role="status">
         <span class="visually-hidden">Carregando...</span>
       </div>
-      <p class="text-white loading-message">Carregando...</p>
+      <p class="text-white loading-message mb-0">Carregando...</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
 
-    <script src="js/config.js"></script> <script src="js/utils.js"></script>   <script src="js/core/module-loader.js"></script>
+    <script src="js/core/module-loader.js"></script>
+
     <script src="js/core/state.js"></script>
     <script src="js/core/cache-manager.js"></script>
     <script src="js/core/security.js"></script>
     <script src="js/core/performance-monitor.js"></script>
 
-    <script src="js/api-client.js"></script> <script src="js/ui/theme-manager.js"></script>    <script src="js/features/notifications.js"></script> <script src="js/auth/google-auth.js"></script>     <script src="js/photo-handler.js"></script>         <script src="js/form-handler.js"></script>          <script src="js/features/dashboard.js"></script>   <script src="js/main.js"></script>
+    <script src="js/api-client.js"></script> <script src="js/ui/theme-manager.js"></script> <script src="js/features/notifications.js"></script> <script src="js/auth/google-auth.js"></script> <script src="js/photo-handler.js"></script> <script src="js/form-handler.js"></script> <script src="js/features/dashboard.js"></script> <script src="js/main.js"></script>
 
     <script src="js/app.js"></script>
     </div> </body>
