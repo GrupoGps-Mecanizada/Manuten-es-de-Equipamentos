@@ -17,7 +17,7 @@ const CONFIG = {
 
   // Forçar login? (true = sim, false = não)
   // Se true, main.js tentará inicializar o googleAuth
-  AUTH_REQUIRED: true,
+  AUTH_REQUIRED: false,
 
   // ==========================================
   // == CONFIGURAÇÕES GERAIS DA APLICAÇÃO ==
