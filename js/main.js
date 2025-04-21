@@ -60,6 +60,7 @@ async function initCoreModules() {
      ModuleLoader.initialize('cacheManager'); // Pode depender de state
      ModuleLoader.initialize('performanceMonitor');
      ModuleLoader.initialize('security'); // Pode depender de Utils
+     ModuleLoader.initialize('apiClient'); // Inicializa o ApiClient como parte dos módulos core
   } catch (e) {
      console.error("Erro ao inicializar módulo core:", e);
      throw e; // Propaga o erro para o catch principal
