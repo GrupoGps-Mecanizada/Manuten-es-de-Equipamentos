@@ -1,339 +1,356 @@
 /**
- * Manipulador de Fotos
- * Implementa funcionalidades de captura, upload e manipulação de imagens
+ * Manipulador de Fotos para Sistema de Manutenção
+ * Gerencia captura, processamento e armazenamento de imagens
  */
-ModuleLoader.register('photoHandler', function() {
+(function() {
   // Configurações
   const CONFIG = {
     maxFileSize: 5 * 1024 * 1024, // 5MB
-    maxWidth: 1920,
-    maxHeight: 1080,
-    quality: 0.85,
-    thumbnailWidth: 200,
-    thumbnailHeight: 200,
-    allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-    photoStorage: 'maintenance_photos', // Chave para localStorage
-    photoStorageLimit: 50 // Máximo de fotos armazenadas localmente
+    maxWidth: 1600,
+    maxHeight: 1200,
+    quality: 0.7,
+    allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    storagePrefix: 'manutencao_foto_',
+    maxPhotos: 50 // Máximo de fotos em cache local
   };
   
-  // Estado do módulo
-  const state = {
-    photoCache: new Map(),
-    currentUpload: null,
-    photoContainers: new Map() // Mapear IDs de container para gerenciar múltiplas instâncias
-  };
-  
-  // Inicialização
-  function init() {
-    console.log('Inicializando PhotoHandler...');
-    
-    // Verificar suporte à API File e canvas
-    const hasFileSupport = window.File && window.FileReader && window.FileList && window.Blob;
-    const hasCanvasSupport = !!document.createElement('canvas').getContext;
-    
-    if (!hasFileSupport || !hasCanvasSupport) {
-      console.warn('PhotoHandler: Navegador não suporta todas as APIs necessárias');
-    }
-    
-    // Carregar fotos do armazenamento local (se houver)
-    loadPhotosFromStorage();
-    
-    console.log('PhotoHandler inicializado com sucesso');
-  }
+  // Estado 
+  let photoContainers = new Map();
+  let currentUpload = null;
+  let photoCache = new Map();
   
   /**
-   * Funções principais
+   * Inicializar container para manipulação de fotos
+   * @param {string} containerId - ID do elemento container
+   * @param {Object} options - Opções de configuração
    */
-  
-  // Criar uma instância do manipulador de fotos em um container específico
-  function createPhotoUploader(containerId, options = {}) {
-    if (!containerId) {
-      console.error('PhotoHandler: ID do container é obrigatório');
-      return false;
-    }
-    
+  function initPhotoContainer(containerId, options = {}) {
+    // Verificar se existe o container
     const container = document.getElementById(containerId);
     if (!container) {
       console.error(`PhotoHandler: Container #${containerId} não encontrado`);
       return false;
     }
     
-    // Mesclar opções do usuário com os padrões
+    // Mesclar opções com padrões
     const config = Object.assign({}, CONFIG, options);
     
     // Verificar se já existe um manipulador para este container
-    if (state.photoContainers.has(containerId)) {
+    if (photoContainers.has(containerId)) {
       // Limpar manipulador existente
-      removePhotoUploader(containerId);
+      removePhotoContainer(containerId);
     }
     
     // Criar estrutura HTML
     container.innerHTML = `
-      <div class="photo-uploader-container">
-        <div class="photo-preview-area" id="${containerId}-preview">
+      <div class="photo-upload-container">
+        <div class="photo-preview" id="${containerId}-preview">
           <div class="photo-placeholder">
             <i class="bi bi-camera"></i>
             <span>Adicionar Foto</span>
           </div>
         </div>
-        
         <div class="photo-actions">
-          <button type="button" class="btn btn-primary btn-sm photo-btn-camera" id="${containerId}-camera">
+          <button type="button" class="btn btn-sm btn-primary photo-btn-camera" id="${containerId}-camera">
             <i class="bi bi-camera-fill"></i> Câmera
           </button>
-          <button type="button" class="btn btn-info btn-sm text-white photo-btn-upload" id="${containerId}-upload">
+          <button type="button" class="btn btn-sm btn-info text-white photo-btn-upload" id="${containerId}-upload">
             <i class="bi bi-upload"></i> Upload
           </button>
-          <button type="button" class="btn btn-danger btn-sm photo-btn-remove" id="${containerId}-remove" style="display:none">
+          <button type="button" class="btn btn-sm btn-danger photo-btn-remove" id="${containerId}-remove" style="display:none">
             <i class="bi bi-trash"></i> Remover
           </button>
         </div>
-        
         <input type="file" class="photo-file-input" id="${containerId}-file" accept="image/*" style="display:none">
         <input type="hidden" class="photo-data-input" id="${containerId}-data" name="${options.inputName || 'photo_data'}">
       </div>
     `;
     
-    // Adicionar estilos se ainda não existirem
-    if (!document.getElementById('photo-uploader-styles')) {
-      const style = document.createElement('style');
-      style.id = 'photo-uploader-styles';
-      style.textContent = `
-        .photo-uploader-container {
-          width: 100%;
-          border-radius: 8px;
-          overflow: hidden;
-          background-color: #f8f9fa;
-          border: 1px solid #dee2e6;
-        }
-        
-        body.dark-mode .photo-uploader-container {
-          background-color: #343a40;
-          border-color: #495057;
-        }
-        
-        .photo-preview-area {
-          width: 100%;
-          height: 200px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          overflow: hidden;
-          position: relative;
-          background-color: #e9ecef;
-          cursor: pointer;
-        }
-        
-        body.dark-mode .photo-preview-area {
-          background-color: #212529;
-        }
-        
-        .photo-placeholder {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          color: #6c757d;
-        }
-        
-        .photo-placeholder i {
-          font-size: 2.5rem;
-          margin-bottom: 10px;
-        }
-        
-        .photo-actions {
-          padding: 10px;
-          display: flex;
-          gap: 8px;
-          justify-content: center;
-        }
-        
-        .photo-preview-area img {
-          width: 100%;
-          height: 100%;
-          object-fit: contain;
-        }
-        
-        .photo-preview-area .photo-caption {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          background-color: rgba(0, 0, 0, 0.5);
-          color: white;
-          padding: 5px 10px;
-          font-size: 0.8rem;
-          text-align: center;
-        }
-        
-        /* Animações */
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.7; }
-          100% { opacity: 1; }
-        }
-        
-        .photo-uploading {
-          animation: pulse 1.5s infinite;
-        }
-      `;
-      document.head.appendChild(style);
+    // Adicionar estilos CSS se ainda não existirem
+    addPhotoStyles();
+    
+    // Adicionar eventos
+    const previewArea = document.getElementById(`${containerId}-preview`);
+    const cameraBtn = document.getElementById(`${containerId}-camera`);
+    const uploadBtn = document.getElementById(`${containerId}-upload`);
+    const removeBtn = document.getElementById(`${containerId}-remove`);
+    const fileInput = document.getElementById(`${containerId}-file`);
+    
+    if (previewArea) {
+      previewArea.addEventListener('click', () => handlePreviewClick(containerId));
     }
     
-    // Armazenar configuração
-    state.photoContainers.set(containerId, {
+    if (cameraBtn) {
+      cameraBtn.addEventListener('click', () => openCamera(containerId));
+    }
+    
+    if (uploadBtn) {
+      uploadBtn.addEventListener('click', () => openFileInput(containerId));
+    }
+    
+    if (removeBtn) {
+      removeBtn.addEventListener('click', () => removePhoto(containerId));
+    }
+    
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => handleFileSelect(e, containerId));
+    }
+    
+    // Registrar container
+    photoContainers.set(containerId, {
       config: config,
       photoData: null
     });
     
-    // Adicionar listeners
-    setupEventListeners(containerId);
-    
     return true;
   }
   
-  // Remover manipulador de fotos
-  function removePhotoUploader(containerId) {
-    if (!state.photoContainers.has(containerId)) {
+  /**
+   * Remover container de foto
+   * @param {string} containerId - ID do container a remover
+   */
+  function removePhotoContainer(containerId) {
+    // Verificar se existe
+    if (!photoContainers.has(containerId)) {
       return false;
     }
     
-    const container = document.getElementById(containerId);
-    if (container) {
-      // Remover listeners
-      const fileInput = document.getElementById(`${containerId}-file`);
-      const cameraBtn = document.getElementById(`${containerId}-camera`);
-      const uploadBtn = document.getElementById(`${containerId}-upload`);
-      const removeBtn = document.getElementById(`${containerId}-remove`);
-      const previewArea = document.getElementById(`${containerId}-preview`);
-      
-      if (fileInput) fileInput.removeEventListener('change', handleFileSelect);
-      if (cameraBtn) cameraBtn.removeEventListener('click', openCamera);
-      if (uploadBtn) uploadBtn.removeEventListener('click', triggerFileInput);
-      if (removeBtn) removeBtn.removeEventListener('click', removePhoto);
-      if (previewArea) previewArea.removeEventListener('click', handlePreviewClick);
-      
-      // Limpar HTML
-      container.innerHTML = '';
+    // Limpar eventos
+    const previewArea = document.getElementById(`${containerId}-preview`);
+    const cameraBtn = document.getElementById(`${containerId}-camera`);
+    const uploadBtn = document.getElementById(`${containerId}-upload`);
+    const removeBtn = document.getElementById(`${containerId}-remove`);
+    const fileInput = document.getElementById(`${containerId}-file`);
+    
+    if (previewArea) {
+      previewArea.replaceWith(previewArea.cloneNode(true));
     }
     
-    // Remover da lista
-    state.photoContainers.delete(containerId);
+    if (cameraBtn) {
+      cameraBtn.replaceWith(cameraBtn.cloneNode(true));
+    }
+    
+    if (uploadBtn) {
+      uploadBtn.replaceWith(uploadBtn.cloneNode(true));
+    }
+    
+    if (removeBtn) {
+      removeBtn.replaceWith(removeBtn.cloneNode(true));
+    }
+    
+    if (fileInput) {
+      fileInput.replaceWith(fileInput.cloneNode(true));
+    }
+    
+    // Remover do registro
+    photoContainers.delete(containerId);
     
     return true;
   }
   
-  // Configurar listeners de eventos
-  function setupEventListeners(containerId) {
-    const fileInput = document.getElementById(`${containerId}-file`);
-    const cameraBtn = document.getElementById(`${containerId}-camera`);
-    const uploadBtn = document.getElementById(`${containerId}-upload`);
-    const removeBtn = document.getElementById(`${containerId}-remove`);
-    const previewArea = document.getElementById(`${containerId}-preview`);
-    
-    if (fileInput) {
-      fileInput.addEventListener('change', function(e) {
-        handleFileSelect(e, containerId);
-      });
+  /**
+   * Adicionar estilos CSS para os componentes de foto
+   */
+  function addPhotoStyles() {
+    if (document.getElementById('photo-handler-styles')) {
+      return; // Já existem
     }
     
-    if (cameraBtn) {
-      cameraBtn.addEventListener('click', function() {
-        openCamera(containerId);
-      });
-    }
+    const style = document.createElement('style');
+    style.id = 'photo-handler-styles';
+    style.textContent = `
+      .photo-upload-container {
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+        background-color: #f8f9fa;
+        overflow: hidden;
+        margin-bottom: 1rem;
+      }
+      
+      .photo-preview {
+        width: 100%;
+        height: 200px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+        cursor: pointer;
+        background-color: #e9ecef;
+      }
+      
+      .photo-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+      
+      .photo-placeholder {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        color: #6c757d;
+      }
+      
+      .photo-placeholder i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .photo-actions {
+        display: flex;
+        gap: 0.5rem;
+        padding: 0.75rem;
+        background-color: #fff;
+        border-top: 1px solid #ced4da;
+      }
+      
+      .photo-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+      }
+      
+      /* Loading animation */
+      .photo-loading {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        width: 100%;
+      }
+      
+      .photo-loading-spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        border-left-color: #0d6efd;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: photo-spinner 1s linear infinite;
+        margin-bottom: 0.5rem;
+      }
+      
+      @keyframes photo-spinner {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      /* Dark mode */
+      body.dark-mode .photo-upload-container {
+        border-color: #495057;
+        background-color: #343a40;
+      }
+      
+      body.dark-mode .photo-preview {
+        background-color: #212529;
+      }
+      
+      body.dark-mode .photo-actions {
+        background-color: #2c3034;
+        border-color: #495057;
+      }
+      
+      body.dark-mode .photo-placeholder {
+        color: #adb5bd;
+      }
+    `;
     
-    if (uploadBtn) {
-      uploadBtn.addEventListener('click', function() {
-        triggerFileInput(containerId);
-      });
-    }
-    
-    if (removeBtn) {
-      removeBtn.addEventListener('click', function() {
-        removePhoto(containerId);
-      });
-    }
-    
-    if (previewArea) {
-      previewArea.addEventListener('click', function() {
-        handlePreviewClick(containerId);
-      });
-    }
+    document.head.appendChild(style);
   }
   
-  // Abrir input de arquivo
-  function triggerFileInput(containerId) {
-    const fileInput = document.getElementById(`${containerId}-file`);
-    if (fileInput) fileInput.click();
-  }
-  
-  // Manipular clique na área de preview
+  /**
+   * Lidar com clique na área de preview
+   * @param {string} containerId - ID do container
+   */
   function handlePreviewClick(containerId) {
-    const containerData = state.photoContainers.get(containerId);
-    if (!containerData || !containerData.photoData) {
-      // Se não há foto, abrir input de arquivo
-      triggerFileInput(containerId);
-    } else {
-      // Se já tem foto, mostrar em tamanho maior
-      showPhotoInModal(containerData.photoData);
-    }
-  }
-  
-  // Manipular seleção de arquivo
-  function handleFileSelect(event, containerId) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
-    
-    const containerData = state.photoContainers.get(containerId);
+    const containerData = photoContainers.get(containerId);
     if (!containerData) return;
     
-    // Validar tipo
+    if (containerData.photoData) {
+      // Se já tem foto, mostra em tamanho maior
+      showPhotoModal(containerData.photoData);
+    } else {
+      // Se não tem foto, abre seletor de arquivo
+      openFileInput(containerId);
+    }
+  }
+  
+  /**
+   * Abrir input de arquivo
+   * @param {string} containerId - ID do container
+   */
+  function openFileInput(containerId) {
+    const fileInput = document.getElementById(`${containerId}-file`);
+    if (fileInput) {
+      fileInput.click();
+    }
+  }
+  
+  /**
+   * Manipular seleção de arquivo
+   * @param {Event} event - Evento change
+   * @param {string} containerId - ID do container
+   */
+  function handleFileSelect(event, containerId) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const containerData = photoContainers.get(containerId);
+    if (!containerData) return;
+    
+    // Verificar tipo de arquivo
     if (!CONFIG.allowedTypes.includes(file.type)) {
-      showErrorMessage('Tipo de arquivo não suportado. Use JPEG, PNG, GIF ou WebP.');
+      showErrorMessage('Tipo de arquivo não suportado. Use JPEG, PNG ou WebP.');
       return;
     }
     
-    // Validar tamanho
+    // Verificar tamanho
     if (file.size > CONFIG.maxFileSize) {
       showErrorMessage(`Arquivo muito grande. Tamanho máximo: ${CONFIG.maxFileSize / (1024 * 1024)}MB.`);
       return;
     }
     
-    // Processar arquivo
+    // Processar imagem
     processImage(file, containerId);
   }
   
-  // Abrir câmera (usar MediaDevices API)
+  /**
+   * Abrir câmera
+   * @param {string} containerId - ID do container
+   */
   function openCamera(containerId) {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      showErrorMessage('Seu navegador não suporta acesso à câmera');
+      showErrorMessage('Seu navegador não suporta acesso à câmera.');
       return;
     }
     
-    // Criar modal para a câmera
-    if (!document.getElementById('cameraModal')) {
+    // Criar modal da câmera se não existir
+    if (!document.getElementById('photo-camera-modal')) {
       const modal = document.createElement('div');
       modal.className = 'modal fade';
-      modal.id = 'cameraModal';
+      modal.id = 'photo-camera-modal';
       modal.setAttribute('tabindex', '-1');
       modal.setAttribute('aria-hidden', 'true');
-      
       modal.innerHTML = `
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title">Tirar Foto</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <h5 class="modal-title">Capturar Foto</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body">
-              <div class="camera-container">
-                <video id="cameraPreview" autoplay playsinline style="width: 100%;"></video>
-                <canvas id="cameraCanvas" style="display: none;"></canvas>
-              </div>
+            <div class="modal-body p-0">
+              <video id="camera-video" autoplay playsinline style="width: 100%; display: block;"></video>
+              <canvas id="camera-canvas" style="display: none;"></canvas>
             </div>
             <div class="modal-footer">
               <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-              <button type="button" class="btn btn-primary" id="takePictureBtn">
+              <button type="button" class="btn btn-primary" id="camera-capture-btn">
                 <i class="bi bi-camera"></i> Capturar
               </button>
             </div>
@@ -344,12 +361,12 @@ ModuleLoader.register('photoHandler', function() {
       document.body.appendChild(modal);
     }
     
-    // Referência ao modal
-    const cameraModal = document.getElementById('cameraModal');
-    const modalInstance = new bootstrap.Modal(cameraModal);
-    
-    // Guardar referência ao containerId atual
+    // Armazenar containerId atual
+    const cameraModal = document.getElementById('photo-camera-modal');
     cameraModal.dataset.containerId = containerId;
+    
+    // Inicializar Bootstrap modal
+    const modalInstance = new bootstrap.Modal(cameraModal);
     
     // Iniciar câmera quando o modal abrir
     cameraModal.addEventListener('shown.bs.modal', startCamera);
@@ -358,115 +375,296 @@ ModuleLoader.register('photoHandler', function() {
     cameraModal.addEventListener('hidden.bs.modal', stopCamera);
     
     // Configurar botão de captura
-    const takePictureBtn = document.getElementById('takePictureBtn');
-    if (takePictureBtn) {
+    const captureBtn = document.getElementById('camera-capture-btn');
+    if (captureBtn) {
       // Remover listeners anteriores
-      takePictureBtn.replaceWith(takePictureBtn.cloneNode(true));
+      const newBtn = captureBtn.cloneNode(true);
+      captureBtn.parentNode.replaceChild(newBtn, captureBtn);
       
       // Adicionar novo listener
-      document.getElementById('takePictureBtn').addEventListener('click', function() {
-        capturePicture();
+      newBtn.addEventListener('click', function() {
+        capturePhoto();
         modalInstance.hide();
       });
     }
     
-    // Exibir modal
+    // Mostrar modal
     modalInstance.show();
   }
   
-  // Iniciar câmera
+  // Stream de vídeo atual
   let videoStream = null;
   
+  /**
+   * Iniciar câmera
+   */
   function startCamera() {
-    const video = document.getElementById('cameraPreview');
+    const video = document.getElementById('camera-video');
     if (!video) return;
     
-    navigator.mediaDevices.getUserMedia({ 
-      video: { 
-        facingMode: 'environment', // Tentar usar câmera traseira
+    // Configurar preferências de câmera
+    const constraints = {
+      video: {
+        facingMode: 'environment', // Preferir câmera traseira
         width: { ideal: 1280 },
         height: { ideal: 720 }
       }
-    })
-    .then(function(stream) {
-      videoStream = stream;
-      video.srcObject = stream;
-      video.play();
-    })
-    .catch(function(error) {
-      console.error('Erro ao acessar câmera:', error);
-      showErrorMessage('Não foi possível acessar a câmera');
-      
-      // Fechar modal
-      const cameraModal = document.getElementById('cameraModal');
-      if (cameraModal) {
-        const modalInstance = bootstrap.Modal.getInstance(cameraModal);
-        if (modalInstance) modalInstance.hide();
-      }
-    });
+    };
+    
+    // Acessar câmera
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(function(stream) {
+        videoStream = stream;
+        video.srcObject = stream;
+        video.play();
+      })
+      .catch(function(error) {
+        console.error('Erro ao acessar câmera:', error);
+        showErrorMessage('Não foi possível acessar a câmera.');
+        
+        // Fechar modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('photo-camera-modal'));
+        if (modal) modal.hide();
+      });
   }
   
-  // Parar câmera
+  /**
+   * Parar câmera
+   */
   function stopCamera() {
     if (videoStream) {
       videoStream.getTracks().forEach(track => track.stop());
       videoStream = null;
     }
     
-    const video = document.getElementById('cameraPreview');
+    const video = document.getElementById('camera-video');
     if (video) {
       video.srcObject = null;
     }
   }
   
-  // Capturar foto da câmera
-  function capturePicture() {
-    const video = document.getElementById('cameraPreview');
-    const canvas = document.getElementById('cameraCanvas');
+  /**
+   * Capturar foto da câmera
+   */
+  function capturePhoto() {
+    const video = document.getElementById('camera-video');
+    const canvas = document.getElementById('camera-canvas');
     
     if (!video || !canvas) return;
     
-    // Definir dimensões do canvas
+    // Configurar canvas com dimensões do vídeo
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
-    // Desenhar frame do vídeo no canvas
+    // Capturar frame
     const context = canvas.getContext('2d');
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     
     // Converter para blob
     canvas.toBlob(function(blob) {
       if (!blob) {
-        showErrorMessage('Erro ao processar imagem');
+        showErrorMessage('Erro ao processar imagem.');
         return;
       }
       
-      // Obter containerId atual
-      const cameraModal = document.getElementById('cameraModal');
-      const containerId = cameraModal?.dataset?.containerId;
+      // Obter containerId
+      const modal = document.getElementById('photo-camera-modal');
+      const containerId = modal?.dataset?.containerId;
       
-      if (!containerId) {
-        showErrorMessage('Erro: Contêiner não identificado');
-        return;
-      }
+      if (!containerId) return;
       
-      // Criar um "arquivo" a partir do blob
-      const file = new File([blob], `camera_${new Date().getTime()}.jpg`, {
+      // Criar arquivo
+      const file = new File([blob], `camera_${Date.now()}.jpg`, {
         type: 'image/jpeg'
       });
       
-      // Processar como uma imagem normal
+      // Processar imagem
       processImage(file, containerId);
       
-    }, 'image/jpeg', 0.9);
+    }, 'image/jpeg', 0.8);
   }
   
-  // Remover foto
-  function removePhoto(containerId) {
-    const containerData = state.photoContainers.get(containerId);
+  /**
+   * Processar imagem
+   * @param {File} file - Arquivo de imagem
+   * @param {string} containerId - ID do container
+   */
+  function processImage(file, containerId) {
+    const containerData = photoContainers.get(containerId);
     if (!containerData) return;
     
-    // Limpar preview
+    // Mostrar indicador de carregamento
+    showLoadingState(containerId);
+    
+    // Ler arquivo
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+      const img = new Image();
+      
+      img.onload = function() {
+        // Redimensionar se necessário
+        const { width, height } = calculateDimensions(
+          img.width, 
+          img.height, 
+          containerData.config.maxWidth || CONFIG.maxWidth, 
+          containerData.config.maxHeight || CONFIG.maxHeight
+        );
+        
+        // Criar canvas para redimensionamento
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Desenhar imagem redimensionada
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Converter para data URL
+        const quality = containerData.config.quality || CONFIG.quality;
+        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+        
+        // Criar objeto de dados da foto
+        const photoData = {
+          id: generatePhotoId(),
+          fileName: file.name,
+          type: 'image/jpeg',
+          dataUrl: dataUrl,
+          width: width,
+          height: height,
+          size: Math.round(dataUrl.length * 0.75), // Estimativa do tamanho em bytes
+          timestamp: new Date().toISOString()
+        };
+        
+        // Salvar dados
+        containerData.photoData = photoData;
+        photoContainers.set(containerId, containerData);
+        
+        // Atualizar preview
+        updatePhotoPreview(containerId, photoData);
+        
+        // Salvar no cache
+        savePhotoToCache(photoData);
+        
+        // Notificar sucesso
+        showSuccessMessage('Imagem processada com sucesso.');
+      };
+      
+      img.onerror = function() {
+        showErrorMessage('Erro ao carregar imagem.');
+        resetPhotoContainer(containerId);
+      };
+      
+      img.src = e.target.result;
+    };
+    
+    reader.onerror = function() {
+      showErrorMessage('Erro ao ler arquivo.');
+      resetPhotoContainer(containerId);
+    };
+    
+    reader.readAsDataURL(file);
+  }
+  
+  /**
+   * Mostrar estado de carregamento
+   * @param {string} containerId - ID do container
+   */
+  function showLoadingState(containerId) {
+    const previewArea = document.getElementById(`${containerId}-preview`);
+    if (!previewArea) return;
+    
+    previewArea.innerHTML = `
+      <div class="photo-loading">
+        <div class="photo-loading-spinner"></div>
+        <span>Processando...</span>
+      </div>
+    `;
+  }
+  
+  /**
+   * Calcular dimensões mantendo proporção
+   * @param {number} width - Largura original
+   * @param {number} height - Altura original
+   * @param {number} maxWidth - Largura máxima
+   * @param {number} maxHeight - Altura máxima
+   * @returns {Object} Novas dimensões
+   */
+  function calculateDimensions(width, height, maxWidth, maxHeight) {
+    // Se já está dentro dos limites
+    if (width <= maxWidth && height <= maxHeight) {
+      return { width, height };
+    }
+    
+    let newWidth, newHeight;
+    
+    // Calcular baseado na restrição mais limitante
+    if (width / maxWidth > height / maxHeight) {
+      // Largura é a restrição
+      newWidth = maxWidth;
+      newHeight = Math.round(height * (maxWidth / width));
+    } else {
+      // Altura é a restrição
+      newHeight = maxHeight;
+      newWidth = Math.round(width * (maxHeight / height));
+    }
+    
+    return { width: newWidth, height: newHeight };
+  }
+  
+  /**
+   * Atualizar preview da foto
+   * @param {string} containerId - ID do container
+   * @param {Object} photoData - Dados da foto
+   */
+  function updatePhotoPreview(containerId, photoData) {
+    const previewArea = document.getElementById(`${containerId}-preview`);
+    const dataInput = document.getElementById(`${containerId}-data`);
+    const removeBtn = document.getElementById(`${containerId}-remove`);
+    
+    if (!previewArea || !dataInput || !removeBtn) return;
+    
+    // Atualizar preview
+    previewArea.innerHTML = `
+      <img src="${photoData.dataUrl}" alt="Preview">
+      <div class="photo-caption">
+        ${photoData.width} x ${photoData.height} - ${formatFileSize(photoData.size)}
+      </div>
+    `;
+    
+    // Atualizar input escondido
+    dataInput.value = JSON.stringify({
+      id: photoData.id,
+      timestamp: photoData.timestamp,
+      dataUrl: photoData.dataUrl
+    });
+    
+    // Mostrar botão de remover
+    removeBtn.style.display = 'inline-block';
+  }
+  
+  /**
+   * Remover foto
+   * @param {string} containerId - ID do container
+   */
+  function removePhoto(containerId) {
+    resetPhotoContainer(containerId);
+    showSuccessMessage('Foto removida.');
+  }
+  
+  /**
+   * Resetar container para estado inicial
+   * @param {string} containerId - ID do container
+   */
+  function resetPhotoContainer(containerId) {
+    const containerData = photoContainers.get(containerId);
+    if (!containerData) return;
+    
+    // Limpar dados
+    containerData.photoData = null;
+    photoContainers.set(containerId, containerData);
+    
+    // Resetar UI
     const previewArea = document.getElementById(`${containerId}-preview`);
     const dataInput = document.getElementById(`${containerId}-data`);
     const removeBtn = document.getElementById(`${containerId}-remove`);
@@ -480,240 +678,47 @@ ModuleLoader.register('photoHandler', function() {
       `;
     }
     
-    if (dataInput) dataInput.value = '';
-    if (removeBtn) removeBtn.style.display = 'none';
-    
-    // Limpar dados no estado
-    containerData.photoData = null;
-    state.photoContainers.set(containerId, containerData);
-    
-    // Mostrar notificação
-    showSuccessMessage('Foto removida');
-  }
-  
-  // Processar imagem (redimensionar e compactar)
-  function processImage(file, containerId) {
-    const containerData = state.photoContainers.get(containerId);
-    if (!containerData) return;
-    
-    const maxWidth = containerData.config.maxWidth || CONFIG.maxWidth;
-    const maxHeight = containerData.config.maxHeight || CONFIG.maxHeight;
-    const quality = containerData.config.quality || CONFIG.quality;
-    
-    // Mostrar indicador de carregamento
-    const previewArea = document.getElementById(`${containerId}-preview`);
-    if (previewArea) {
-      previewArea.innerHTML = `
-        <div class="photo-placeholder photo-uploading">
-          <i class="bi bi-arrow-repeat"></i>
-          <span>Processando imagem...</span>
-        </div>
-      `;
-    }
-    
-    // Ler arquivo como URL de dados
-    const reader = new FileReader();
-    
-    reader.onload = function(e) {
-      const img = new Image();
-      
-      img.onload = function() {
-        // Calcular novas dimensões mantendo proporção
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > maxWidth) {
-          height = Math.round(height * (maxWidth / width));
-          width = maxWidth;
-        }
-        
-        if (height > maxHeight) {
-          width = Math.round(width * (maxHeight / height));
-          height = maxHeight;
-        }
-        
-        // Criar canvas para redimensionar
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Desenhar imagem redimensionada
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Converter para base64
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        
-        // Gerar thumbnail
-        generateThumbnail(img, containerData.config.thumbnailWidth, containerData.config.thumbnailHeight)
-          .then(thumbnailUrl => {
-            // Criar objeto com dados da foto
-            const photoData = {
-              id: `photo_${new Date().getTime()}`,
-              name: file.name,
-              type: file.type,
-              size: Math.round(dataUrl.length * 0.75), // Estimativa do tamanho em bytes
-              dataUrl: dataUrl,
-              thumbnailUrl: thumbnailUrl,
-              width: width,
-              height: height,
-              timestamp: new Date().toISOString()
-            };
-            
-            // Atualizar estado
-            containerData.photoData = photoData;
-            state.photoContainers.set(containerId, containerData);
-            
-            // Atualizar preview
-            updatePhotoPreview(containerId, photoData);
-            
-            // Salvar na localStorage se configurado
-            if (containerData.config.saveToStorage) {
-              savePhotoToStorage(photoData);
-            }
-            
-            // Notificar
-            showSuccessMessage('Imagem processada com sucesso');
-          })
-          .catch(error => {
-            console.error('Erro ao gerar thumbnail:', error);
-            removePhoto(containerId);
-            showErrorMessage('Erro ao processar imagem');
-          });
-      };
-      
-      img.onerror = function() {
-        console.error('Erro ao carregar imagem');
-        removePhoto(containerId);
-        showErrorMessage('Erro ao carregar imagem');
-      };
-      
-      img.src = e.target.result;
-    };
-    
-    reader.onerror = function() {
-      console.error('Erro ao ler arquivo');
-      removePhoto(containerId);
-      showErrorMessage('Erro ao ler arquivo');
-    };
-    
-    reader.readAsDataURL(file);
-  }
-  
-  // Gerar thumbnail da imagem
-  function generateThumbnail(img, maxWidth, maxHeight) {
-    return new Promise((resolve, reject) => {
-      try {
-        // Calcular dimensões mantendo proporção
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > height) {
-          if (width > maxWidth) {
-            height = Math.round(height * (maxWidth / width));
-            width = maxWidth;
-          }
-        } else {
-          if (height > maxHeight) {
-            width = Math.round(width * (maxHeight / height));
-            height = maxHeight;
-          }
-        }
-        
-        // Criar canvas para thumbnail
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Desenhar imagem redimensionada
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Converter para base64 com baixa qualidade para thumbnail
-        const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.5);
-        resolve(thumbnailUrl);
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-  
-  // Atualizar preview da foto
-  function updatePhotoPreview(containerId, photoData) {
-    const previewArea = document.getElementById(`${containerId}-preview`);
-    const dataInput = document.getElementById(`${containerId}-data`);
-    const removeBtn = document.getElementById(`${containerId}-remove`);
-    
-    if (previewArea) {
-      // Limpar conteúdo atual
-      previewArea.innerHTML = '';
-      
-      // Adicionar imagem
-      const img = document.createElement('img');
-      img.src = photoData.thumbnailUrl || photoData.dataUrl;
-      img.alt = 'Preview da foto';
-      previewArea.appendChild(img);
-      
-      // Adicionar legenda opcional
-      const caption = document.createElement('div');
-      caption.className = 'photo-caption';
-      caption.textContent = `${photoData.width}x${photoData.height} - ${formatFileSize(photoData.size)}`;
-      previewArea.appendChild(caption);
-    }
-    
-    // Atualizar input com dados da foto
     if (dataInput) {
-      dataInput.value = JSON.stringify({
-        id: photoData.id,
-        dataUrl: photoData.dataUrl,
-        name: photoData.name,
-        type: photoData.type,
-        size: photoData.size,
-        width: photoData.width,
-        height: photoData.height,
-        timestamp: photoData.timestamp
-      });
+      dataInput.value = '';
     }
     
-    // Mostrar botão de remover
-    if (removeBtn) removeBtn.style.display = 'inline-block';
+    if (removeBtn) {
+      removeBtn.style.display = 'none';
+    }
   }
   
-  // Formatar tamanho de arquivo
-  function formatFileSize(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    else return (bytes / 1048576).toFixed(1) + ' MB';
-  }
-  
-  // Exibir foto em modal
-  function showPhotoInModal(photoData) {
+  /**
+   * Exibir foto em modal ampliado
+   * @param {Object} photoData - Dados da foto
+   */
+  function showPhotoModal(photoData) {
     if (!photoData || !photoData.dataUrl) return;
     
     // Criar modal se não existir
-    if (!document.getElementById('photoViewerModal')) {
+    if (!document.getElementById('photo-viewer-modal')) {
       const modal = document.createElement('div');
       modal.className = 'modal fade';
-      modal.id = 'photoViewerModal';
+      modal.id = 'photo-viewer-modal';
       modal.setAttribute('tabindex', '-1');
       modal.setAttribute('aria-hidden', 'true');
-      
       modal.innerHTML = `
         <div class="modal-dialog modal-dialog-centered modal-lg">
           <div class="modal-content">
             <div class="modal-header">
               <h5 class="modal-title">Visualizar Foto</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
-            <div class="modal-body text-center">
-              <img id="photoViewerImage" src="" alt="Foto em tamanho completo" style="max-width: 100%; max-height: 70vh;">
-              <div class="mt-2 text-muted small" id="photoViewerInfo"></div>
+            <div class="modal-body text-center p-0">
+              <img id="modal-photo" src="" alt="Foto" style="max-width: 100%; max-height: 70vh; object-fit: contain;">
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-              <a href="#" class="btn btn-primary" id="photoViewerDownload" download>
-                <i class="bi bi-download"></i> Download
-              </a>
+              <div class="photo-info small text-muted"></div>
+              <div class="ms-auto">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <a id="photo-download" href="#" download="foto.jpg" class="btn btn-primary">
+                  <i class="bi bi-download"></i> Download
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -722,158 +727,157 @@ ModuleLoader.register('photoHandler', function() {
       document.body.appendChild(modal);
     }
     
-    // Configurar modal
-    const photoImg = document.getElementById('photoViewerImage');
-    const photoInfo = document.getElementById('photoViewerInfo');
-    const downloadBtn = document.getElementById('photoViewerDownload');
+    // Atualizar conteúdo
+    const modalImg = document.getElementById('modal-photo');
+    const photoInfo = document.querySelector('#photo-viewer-modal .photo-info');
+    const downloadBtn = document.getElementById('photo-download');
     
-    if (photoImg) photoImg.src = photoData.dataUrl;
+    if (modalImg) modalImg.src = photoData.dataUrl;
     
     if (photoInfo) {
       const date = new Date(photoData.timestamp).toLocaleString();
-      photoInfo.textContent = `${photoData.width}x${photoData.height} - ${formatFileSize(photoData.size)} - ${date}`;
+      photoInfo.textContent = `${photoData.width} x ${photoData.height} - ${formatFileSize(photoData.size)} - ${date}`;
     }
     
     if (downloadBtn) {
       downloadBtn.href = photoData.dataUrl;
-      downloadBtn.download = photoData.name || `foto_${new Date().getTime()}.jpg`;
+      downloadBtn.download = photoData.fileName || `foto_${Date.now()}.jpg`;
     }
     
-    // Exibir modal
-    const modal = document.getElementById('photoViewerModal');
-    if (modal) {
-      const modalInstance = new bootstrap.Modal(modal);
-      modalInstance.show();
-    }
+    // Mostrar modal
+    const modal = new bootstrap.Modal(document.getElementById('photo-viewer-modal'));
+    modal.show();
   }
   
   /**
-   * Manipulação de armazenamento local
+   * Salvar foto no cache local
+   * @param {Object} photoData - Dados da foto
    */
-  
-  // Salvar foto no localStorage
-  function savePhotoToStorage(photoData) {
+  function savePhotoToCache(photoData) {
+    if (!photoData || !photoData.id) return;
+    
     try {
-      // Remover a URL de dados completa para economizar espaço, mantendo só a thumbnail
-      const storagePhoto = {
-        ...photoData,
-        dataUrl: null
+      // Armazenar no cache em memória
+      photoCache.set(photoData.id, photoData);
+      
+      // Armazenar no localStorage (sem a dataUrl completa para economizar espaço)
+      const storageData = {
+        id: photoData.id,
+        fileName: photoData.fileName,
+        type: photoData.type,
+        width: photoData.width,
+        height: photoData.height,
+        size: photoData.size,
+        timestamp: photoData.timestamp
       };
       
-      // Obter fotos existentes
-      let photos = getLocalStorageWithExpiry(CONFIG.photoStorage) || [];
+      // Obter lista atual
+      let cachedPhotos = [];
+      try {
+        const stored = localStorage.getItem('photo_handler_cache');
+        if (stored) {
+          cachedPhotos = JSON.parse(stored);
+          if (!Array.isArray(cachedPhotos)) cachedPhotos = [];
+        }
+      } catch (e) {
+        console.error('Erro ao ler cache de fotos:', e);
+        cachedPhotos = [];
+      }
       
       // Adicionar nova foto
-      photos.push(storagePhoto);
+      cachedPhotos.push(storageData);
       
-      // Limitar o número de fotos armazenadas
-      if (photos.length > CONFIG.photoStorageLimit) {
-        photos = photos.slice(-CONFIG.photoStorageLimit);
+      // Limitar número de fotos
+      if (cachedPhotos.length > CONFIG.maxPhotos) {
+        cachedPhotos = cachedPhotos.slice(-CONFIG.maxPhotos);
       }
       
-      // Salvar de volta no localStorage
-      setLocalStorageWithExpiry(CONFIG.photoStorage, photos);
-      
-      // Atualizar cache
-      state.photoCache.set(photoData.id, photoData);
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao salvar foto:', error);
-      return false;
-    }
-  }
-  
-  // Carregar fotos do localStorage
-  function loadPhotosFromStorage() {
-    try {
-      const photos = getLocalStorageWithExpiry(CONFIG.photoStorage) || [];
-      
-      // Atualizar cache
-      photos.forEach(photo => {
-        if (photo.id) {
-          state.photoCache.set(photo.id, photo);
-        }
-      });
-      
-      return photos;
-    } catch (error) {
-      console.error('Erro ao carregar fotos:', error);
-      return [];
-    }
-  }
-  
-  // Obter foto do cache por ID
-  function getPhotoById(photoId) {
-    return state.photoCache.get(photoId) || null;
-  }
-  
-  /**
-   * Helpers para localStorage
-   */
-  
-  // Salvar no localStorage com expiração
-  function setLocalStorageWithExpiry(key, value, expiryMinutes = 1440) { // 24 horas
-    const now = new Date();
-    const item = {
-      value: value,
-      expiry: expiryMinutes ? now.getTime() + (expiryMinutes * 60 * 1000) : null
-    };
-    localStorage.setItem(key, JSON.stringify(item));
-  }
-  
-  // Obter do localStorage, verificando expiração
-  function getLocalStorageWithExpiry(key) {
-    const itemStr = localStorage.getItem(key);
-    if (!itemStr) return null;
-    
-    try {
-      const item = JSON.parse(itemStr);
-      
-      // Verificar expiração
-      if (item.expiry && new Date().getTime() > item.expiry) {
-        localStorage.removeItem(key);
-        return null;
-      }
-      
-      return item.value;
+      // Salvar
+      localStorage.setItem('photo_handler_cache', JSON.stringify(cachedPhotos));
     } catch (e) {
-      console.error(`Erro ao recuperar "${key}" do localStorage:`, e);
-      return null;
+      console.error('Erro ao salvar foto no cache:', e);
     }
   }
   
   /**
-   * Funções de notificação
+   * Obter foto do cache por ID
+   * @param {string} photoId - ID da foto
+   * @returns {Object|null} Dados da foto ou null
    */
+  function getPhotoById(photoId) {
+    if (!photoId) return null;
+    
+    // Verificar cache em memória primeiro
+    if (photoCache.has(photoId)) {
+      return photoCache.get(photoId);
+    }
+    
+    return null;
+  }
   
-  // Mostrar mensagem de erro
+  /**
+   * Gerar ID único para foto
+   * @returns {string} ID único
+   */
+  function generatePhotoId() {
+    return 'photo_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+  }
+  
+  /**
+   * Formatar tamanho de arquivo para exibição
+   * @param {number} bytes - Tamanho em bytes
+   * @returns {string} Tamanho formatado
+   */
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+  
+  /**
+   * Mostrar mensagem de erro
+   * @param {string} message - Mensagem de erro
+   */
   function showErrorMessage(message) {
-    const Notifications = window.Notifications || ModuleLoader?.get('notifications');
-    if (Notifications && typeof Notifications.error === 'function') {
-      Notifications.error(message);
+    // Usar sistema de notificações se disponível
+    if (typeof window.showNotification === 'function') {
+      window.showNotification(message, 'error');
     } else {
       alert(message);
     }
   }
   
-  // Mostrar mensagem de sucesso
+  /**
+   * Mostrar mensagem de sucesso
+   * @param {string} message - Mensagem de sucesso
+   */
   function showSuccessMessage(message) {
-    const Notifications = window.Notifications || ModuleLoader?.get('notifications');
-    if (Notifications && typeof Notifications.success === 'function') {
-      Notifications.success(message);
+    // Usar sistema de notificações se disponível
+    if (typeof window.showNotification === 'function') {
+      window.showNotification(message, 'success');
     } else {
       console.log(message);
     }
   }
   
-  // Exportar funções públicas
-  return {
-    init,
-    createPhotoUploader,
-    removePhotoUploader,
-    getPhotoById,
-    showPhotoInModal,
-    CONFIG
+  /**
+   * Exportar funções e API pública
+   */
+  window.PhotoHandler = {
+    init: function() {
+      // Nada a fazer aqui por enquanto
+      console.log('PhotoHandler inicializado');
+    },
+    initContainer: initPhotoContainer,
+    removeContainer: removePhotoContainer,
+    getPhotoById: getPhotoById,
+    showPhotoModal: showPhotoModal
   };
+})();
+
+// Auto-inicialização
+document.addEventListener('DOMContentLoaded', function() {
+  if (window.PhotoHandler && typeof window.PhotoHandler.init === 'function') {
+    window.PhotoHandler.init();
+  }
 });
