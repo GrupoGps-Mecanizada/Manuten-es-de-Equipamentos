@@ -12,7 +12,7 @@ const CONFIG = {
   API_KEY: 'AIzaSyAKitI_QG3Qd5v1DNXbAj_KwlNQSTUPRdY',
 
   // URL do Google Apps Script Web App
-  API_URL: 'https://script.google.com/macros/s/AKfycbzTVz8O5meWyVxp88hTYUCuKxvPCl3FSAje2tD0R6_Mg8idqKLPvPYVhU5OS6Fj7E9E/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbxUllTdRVbjthjffBsOlTCHMgQrSW08PSAdD3eQlYxIkx5aacsLNGjCvkLDYKRZCHfo/exec',
 
   // Forçar login?
   AUTH_REQUIRED: false,
