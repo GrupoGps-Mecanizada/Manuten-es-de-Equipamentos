@@ -10,59 +10,105 @@
 
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/responsive.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+      /* Estilo para feedback de validação de checklist */
+      .checklist-item-wrapper .btn-group label.is-invalid {
+         border-color: var(--bs-danger); /* Destaca a borda dos botões */
+         color: var(--bs-danger);
+      }
+       .checklist-item-wrapper .btn-group label.is-invalid:hover {
+          background-color: var(--bs-danger-bg-subtle);
+       }
+      /* Garante que a mensagem de erro do checklist seja visível */
+      .was-validated .checklist-item-wrapper .checklist-feedback:has(~ .btn-group input:required:invalid) {
+          display: block !important; /* Força exibição se o radio required for inválido */
+      }
+      /* Oculta por padrão */
+       .checklist-feedback {
+           display: none;
+           width: 100%;
+           margin-top: .25rem;
+           font-size: .875em;
+           color: var(--bs-form-invalid-color);
+       }
+        /* Ajuste para thumbnail na visualização */
+        .photo-thumbnail-view {
+           border: 1px solid #dee2e6;
+           padding: 0.25rem;
+        }
+  </style>
 </head>
 <body>
-  <div class="container-fluid p-0">
-    <header class="bg-primary text-white py-3 px-4 shadow">
-      <div class="d-flex justify-content-between align-items-center">
-        <h1 class="h4 mb-0"><i class="bi bi-tools me-2"></i> Sistema de Registro de Manutenções</h1>
-        <div>
-          <button class="btn btn-outline-light btn-sm me-2" id="btnListaRegistros">
-            <i class="bi bi-list-ul"></i> Registros
+  <div class="container-fluid p-0 d-flex flex-column min-vh-100">
+
+    <header class="bg-primary text-white py-3 px-4 shadow-sm">
+      <div class="d-flex justify-content-between align-items-center flex-wrap">
+        <h1 class="h4 mb-0 me-3"><i class="bi bi-tools me-2"></i> Sistema de Registro</h1>
+        <div class="d-flex align-items-center mt-2 mt-sm-0">
+          <button class="btn btn-outline-light btn-sm me-2" id="btnListaRegistros" title="Ver Lista de Registros">
+            <i class="bi bi-list-ul"></i> <span class="d-none d-md-inline">Registros</span>
           </button>
-          <button class="btn btn-outline-light btn-sm" id="btnNovoRegistro">
-            <i class="bi bi-plus-circle"></i> Novo
+          <button class="btn btn-outline-light btn-sm me-2" id="btnNovoRegistro" title="Criar Novo Registro">
+            <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">Novo</span>
           </button>
-          </div>
+          <div id="auth-container" class="d-flex align-items-center"></div>
+        </div>
       </div>
     </header>
 
-    <main class="container py-4">
+    <main class="container py-4 flex-grow-1">
+
+      <section id="dashboardSection" class="mb-4 tela-sistema" style="display: none;"> <div class="card shadow-sm">
+             <div class="card-header">
+                 <h2 class="h5 mb-0"><i class="bi bi-bar-chart-line me-2"></i> Dashboard</h2>
+             </div>
+              <div class="card-body">
+                  <div id="dashboard-container">
+                      <p class="text-muted text-center py-3">Carregando dados do dashboard...</p>
+                  </div>
+              </div>
+          </div>
+      </section>
+
       <section id="telaListaRegistros" class="tela-sistema">
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
               <h2 class="h5 mb-0">Registros de Manutenção</h2>
               <div class="input-group" style="max-width: 300px;">
-                <input type="text" class="form-control form-control-sm" placeholder="Buscar..." id="buscaRegistro">
-                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnBuscar">
+                <input type="text" class="form-control form-control-sm" placeholder="Buscar por ID, Placa, Modelo..." id="buscaRegistro" aria-label="Campo de busca">
+                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnBuscar" title="Buscar">
                   <i class="bi bi-search"></i>
                 </button>
               </div>
             </div>
           </div>
-          <div class="card-body">
+          <div class="card-body p-0 p-md-3">
             <div class="table-responsive">
-              <table class="table table-hover">
-                <thead>
+              <table class="table table-hover table-striped mb-0">
+                <thead class="table-light">
                   <tr>
-                    <th>ID</th>
-                    <th>Placa</th>
-                    <th>Modelo</th>
-                    <th>Data</th>
-                    <th>Status</th>
-                    <th>Ações</th>
+                    <th scope="col"><small>ID</small></th>
+                    <th scope="col">Placa</th>
+                    <th scope="col">Modelo</th>
+                    <th scope="col">Data Criação</th>
+                    <th scope="col">Status</th>
+                    <th scope="col" class="text-center">Ações</th>
                   </tr>
                 </thead>
                 <tbody id="listaRegistrosBody">
                   <tr>
                     <td colspan="6" class="text-center py-4">
-                      <div class="spinner-border text-primary" role="status">
+                      <div class="spinner-border spinner-border-sm text-primary" role="status">
                         <span class="visually-hidden">Carregando...</span>
                       </div>
+                      <span class="ms-2">Carregando registros...</span>
                     </td>
                   </tr>
-                </tbody>
+                  </tbody>
               </table>
             </div>
           </div>
@@ -73,98 +119,96 @@
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-primary text-white">
             <div class="d-flex justify-content-between align-items-center">
-              <h2 class="h5 mb-0"><i class="bi bi-wrench-adjustable-circle me-2"></i> Registro PRÉ-manutenção</h2>
-              <div id="registroIdDisplay" class="badge bg-light text-primary"></div>
+              <h2 class="h5 mb-0"><i class="bi bi-clipboard-plus me-2"></i> Registro PRÉ-Manutenção</h2>
+              <div id="registroIdDisplay" class="badge bg-light text-primary fs-6">Novo Registro</div>
             </div>
           </div>
           <div class="card-body">
             <form id="formPreManutencao" class="needs-validation" novalidate>
-              <input type="hidden" id="registroId">
-
-              <div class="mb-4">
-                <h5 class="form-section-title border-bottom pb-2">Informações do Veículo</h5>
+              <input type="hidden" id="registroId" name="registroId"> <fieldset class="mb-4 p-3 border rounded">
+                <legend class="fs-6 fw-bold mb-3">Informações do Veículo</legend>
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label for="placa" class="form-label">Placa <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="placa" required data-validate="placa">
-                    <div class="invalid-feedback">Informe uma placa válida (AAA-1234 ou AAA1A34)</div>
+                    <input type="text" class="form-control enhanced-input" id="placa" name="placa" required pattern="[A-Za-z]{3}-?[0-9][A-Za-z0-9]{3}" title="Formato AAA-1234 ou AAA1B34">
+                    <div class="invalid-feedback">Informe uma placa válida (ex: AAA-1234 ou ABC1D23).</div>
                   </div>
                   <div class="col-md-6">
                     <label for="modelo" class="form-label">Modelo <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="modelo" required data-validate="text" data-max-length="100">
-                    <div class="invalid-feedback">Informe o modelo do veículo</div>
+                    <input type="text" class="form-control enhanced-input" id="modelo" name="modelo" required maxlength="100">
+                    <div class="invalid-feedback">Informe o modelo do veículo (máx. 100 caracteres).</div>
                   </div>
                   <div class="col-md-6">
                     <label for="idInterna" class="form-label">ID Interna <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="idInterna" required data-validate="text" data-max-length="50">
-                    <div class="invalid-feedback">Informe a ID interna do equipamento</div>
+                    <input type="text" class="form-control enhanced-input" id="idInterna" name="idInterna" required maxlength="50">
+                    <div class="invalid-feedback">Informe a ID interna do equipamento (máx. 50 caracteres).</div>
                   </div>
                   <div class="col-md-6">
                     <label for="quilometragem" class="form-label">Quilometragem</label>
-                    <input type="number" class="form-control enhanced-input" id="quilometragem" data-validate="km" data-required="false">
-                     <div class="invalid-feedback">Informe uma quilometragem válida</div>
+                    <input type="number" class="form-control enhanced-input" id="quilometragem" name="quilometragem" min="0" step="1">
+                     <div class="invalid-feedback">Informe uma quilometragem válida (número positivo).</div>
                   </div>
                 </div>
-              </div>
+              </fieldset>
 
-              <div class="mb-4">
-                <h5 class="form-section-title border-bottom pb-2">Detalhes do Problema</h5>
+              <fieldset class="mb-4 p-3 border rounded">
+                <legend class="fs-6 fw-bold mb-3">Detalhes do Problema</legend>
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label for="categoriaProblema" class="form-label">Categoria <span class="text-danger">*</span></label>
-                    <select class="form-select enhanced-input" id="categoriaProblema" required>
+                    <select class="form-select enhanced-input" id="categoriaProblema" name="categoriaProblema" required>
                       <option value="" selected disabled>Selecione...</option>
                       </select>
-                    <div class="invalid-feedback">Selecione a categoria do problema</div>
+                    <div class="invalid-feedback">Selecione a categoria do problema.</div>
                   </div>
                   <div class="col-md-6">
                     <label for="urgencia" class="form-label">Urgência <span class="text-danger">*</span></label>
-                    <select class="form-select enhanced-input" id="urgencia" required>
+                    <select class="form-select enhanced-input" id="urgencia" name="urgencia" required>
                        <option value="" selected disabled>Selecione...</option>
                        </select>
-                    <div class="invalid-feedback">Selecione o nível de urgência</div>
+                    <div class="invalid-feedback">Selecione o nível de urgência.</div>
                   </div>
                   <div class="col-12">
                     <label for="descricaoProblema" class="form-label">Descrição do Problema <span class="text-danger">*</span></label>
-                    <textarea class="form-control enhanced-input" id="descricaoProblema" rows="3" required data-validate="text" data-max-length="500"></textarea>
-                    <div class="invalid-feedback">Descreva o problema detalhadamente</div>
+                    <textarea class="form-control enhanced-input" id="descricaoProblema" name="descricaoProblema" rows="3" required maxlength="500"></textarea>
+                    <div class="invalid-feedback">Descreva o problema detalhadamente (máx. 500 caracteres).</div>
                   </div>
                 </div>
-              </div>
+              </fieldset>
 
-              <div class="mb-4">
-                <h5 class="form-section-title border-bottom pb-2">Checklist de Condições</h5>
-                <div id="checklistPreContainer" class="row g-3">
-                    <p class="text-muted">Carregando checklist...</p>
-                </div>
-              </div>
+              <fieldset class="mb-4 p-3 border rounded">
+                   <legend class="fs-6 fw-bold mb-3">Checklist de Condições PRÉ <span class="text-danger">*</span></legend>
+                   <div id="checklistPreContainer" class="row g-3">
+                       <p class="text-muted small fst-italic">Carregando checklist...</p>
+                       </div>
+               </fieldset>
 
-              <div class="mb-4" id="photo-section-pre">
-                 <h5 class="form-section-title border-bottom pb-2">Registro Fotográfico PRÉ</h5>
+              <fieldset class="mb-4 p-3 border rounded" id="photo-section-pre">
+                 <legend class="fs-6 fw-bold mb-3">Registro Fotográfico PRÉ</legend>
                  <div id="photo-container-pre">
                     </div>
-               </div>
+               </fieldset>
 
-              <div class="mb-4">
-                <label for="observacoesPre" class="form-label">Observações Adicionais</label>
-                <textarea class="form-control enhanced-input" id="observacoesPre" rows="2" data-validate="text" data-max-length="500" data-required="false"></textarea>
-                 <div class="invalid-feedback">Máximo de 500 caracteres</div>
-              </div>
+              <fieldset class="mb-4 p-3 border rounded">
+                <legend class="fs-6 fw-bold mb-3">Observações Adicionais PRÉ</legend>
+                <textarea class="form-control enhanced-input" id="observacoesPre" name="observacoesPre" rows="2" maxlength="500"></textarea>
+                 <div class="invalid-feedback">Máximo de 500 caracteres.</div>
+              </fieldset>
 
-              <div class="mb-4">
-                <h5 class="form-section-title border-bottom pb-2">Responsável</h5>
+              <fieldset class="mb-4 p-3 border rounded">
+                <legend class="fs-6 fw-bold mb-3">Responsável pelo Registro</legend>
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label for="responsavel" class="form-label">Nome <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="responsavel" required data-validate="text" data-max-length="100">
-                    <div class="invalid-feedback">Informe o nome do responsável</div>
+                    <input type="text" class="form-control enhanced-input" id="responsavel" name="responsavel" required maxlength="100">
+                    <div class="invalid-feedback">Informe o nome do responsável (máx. 100 caracteres).</div>
                   </div>
-                </div>
-              </div>
+                  </div>
+              </fieldset>
 
               <div class="text-end mt-4">
                 <button type="button" class="btn btn-outline-secondary me-2" id="btnCancelarPre">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar e Avançar</button>
+                <button type="submit" class="btn btn-primary">Salvar e Avançar para PÓS <i class="bi bi-arrow-right"></i></button>
               </div>
             </form>
           </div>
@@ -175,47 +219,43 @@
         <div class="card shadow-sm mb-4">
           <div class="card-header bg-success text-white">
             <div class="d-flex justify-content-between align-items-center">
-              <h2 class="h5 mb-0"><i class="bi bi-check2-circle me-2"></i> Registro PÓS-manutenção</h2>
-              <div id="registroIdPosDisplay" class="badge bg-light text-success"></div>
+              <h2 class="h5 mb-0"><i class="bi bi-check2-circle me-2"></i> Registro PÓS-Manutenção</h2>
+              <div id="registroIdPosDisplay" class="badge bg-light text-success fs-6">ID: --</div>
             </div>
           </div>
           <div class="card-body">
             <form id="formPosManutencao" class="needs-validation" novalidate>
-              <input type="hidden" id="registroIdPos">
-
-              <div class="mb-4">
-                 <h5 class="form-section-title border-bottom pb-2">Resumo do Veículo</h5>
-                 <div class="alert alert-secondary">
-                    <div class="row g-2">
-                       <div class="col-md-4"><strong>Placa:</strong> <span id="placaPos">--</span></div>
-                       <div class="col-md-4"><strong>Modelo:</strong> <span id="modeloPos">--</span></div>
-                       <div class="col-md-4"><strong>ID Interna:</strong> <span id="idInternaPos">--</span></div>
-                    </div>
+              <input type="hidden" id="registroIdPos" name="registroId"> <fieldset class="mb-4 p-3 border rounded bg-light">
+                 <legend class="fs-6 fw-bold mb-3">Resumo do Veículo</legend>
+                 <div class="row g-2">
+                    <div class="col-sm-4"><strong>Placa:</strong> <span id="placaPos">--</span></div>
+                    <div class="col-sm-4"><strong>Modelo:</strong> <span id="modeloPos">--</span></div>
+                    <div class="col-sm-4"><strong>ID Interna:</strong> <span id="idInternaPos">--</span></div>
                  </div>
-              </div>
+              </fieldset>
 
-              <div class="mb-4">
-                <h5 class="form-section-title border-bottom pb-2">Checklist Pós-Manutenção</h5>
+              <fieldset class="mb-4 p-3 border rounded">
+                <legend class="fs-6 fw-bold mb-3">Checklist de Condições PÓS <span class="text-danger">*</span></legend>
                  <div id="checklistPosContainer" class="row g-3">
-                    <p class="text-muted">Carregando checklist...</p>
-                 </div>
-              </div>
+                    <p class="text-muted small fst-italic">Carregando checklist...</p>
+                    </div>
+              </fieldset>
 
-               <div class="mb-4" id="photo-section-pos">
-                 <h5 class="form-section-title border-bottom pb-2">Registro Fotográfico PÓS</h5>
+              <fieldset class="mb-4 p-3 border rounded" id="photo-section-pos">
+                 <legend class="fs-6 fw-bold mb-3">Registro Fotográfico PÓS</legend>
                   <div id="photo-container-pos">
-                      </div>
-               </div>
+                     </div>
+               </fieldset>
 
-              <div class="mb-4">
-                <label for="observacoesPos" class="form-label">Observações Pós-Manutenção</label>
-                <textarea class="form-control enhanced-input" id="observacoesPos" rows="3" data-validate="text" data-max-length="500" data-required="false"></textarea>
-                 <div class="invalid-feedback">Máximo de 500 caracteres</div>
-              </div>
+              <fieldset class="mb-4 p-3 border rounded">
+                <legend class="fs-6 fw-bold mb-3">Observações Pós-Manutenção</legend>
+                <textarea class="form-control enhanced-input" id="observacoesPos" name="observacoesPos" rows="3" maxlength="500"></textarea>
+                 <div class="invalid-feedback">Máximo de 500 caracteres.</div>
+              </fieldset>
 
               <div class="text-end mt-4">
-                <button type="button" class="btn btn-outline-secondary me-2" id="btnVoltarPre">Voltar</button>
-                <button type="submit" class="btn btn-success"> <i class="bi bi-check-lg"></i> Finalizar Registro</button>
+                <button type="button" class="btn btn-outline-secondary me-2" id="btnVoltarPre"><i class="bi bi-arrow-left"></i> Voltar para PRÉ</button>
+                <button type="submit" class="btn btn-success"> <i class="bi bi-check-lg"></i> Finalizar e Salvar Registro</button>
               </div>
             </form>
           </div>
@@ -224,21 +264,21 @@
 
       <section id="telaVisualizacao" class="tela-sistema" style="display: none;">
          <div class="card shadow-sm mb-4">
-             <div class="card-header bg-light d-flex justify-content-between align-items-center">
+             <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
                  <h2 class="h5 mb-0"><i class="bi bi-eye me-2"></i> Visualização do Registro</h2>
-                 <div>
-                     <span id="registroIdVisualizar" class="badge bg-secondary me-2"></span>
-                     <button class="btn btn-sm btn-outline-secondary me-2" id="btnVoltarLista">
-                         <i class="bi bi-arrow-left"></i> Voltar à Lista
+                 <div class="d-flex align-items-center">
+                     <span id="registroIdVisualizar" class="badge bg-secondary me-3 fs-6">ID: --</span>
+                     <button class="btn btn-sm btn-outline-secondary me-2" id="btnVoltarLista" title="Voltar para a Lista">
+                         <i class="bi bi-arrow-left"></i> <span class="d-none d-md-inline">Voltar</span>
                      </button>
-                     <button class="btn btn-sm btn-warning" id="btnEditarVisualizacao">
-                         <i class="bi bi-pencil"></i> Editar
+                     <button class="btn btn-sm btn-warning" id="btnEditarVisualizacao" title="Editar este Registro">
+                         <i class="bi bi-pencil"></i> <span class="d-none d-md-inline">Editar</span>
                      </button>
-                 </div>
+                     </div>
              </div>
              <div class="card-body">
-                 <div class="mb-4">
-                     <h5 class="form-section-title border-bottom pb-2">Informações Gerais</h5>
+                 <fieldset class="mb-4 p-3 border rounded">
+                     <legend class="fs-6 fw-bold mb-3">Informações Gerais</legend>
                      <div class="row g-3">
                          <div class="col-md-4"><strong>Placa:</strong> <span id="placaView">--</span></div>
                          <div class="col-md-4"><strong>Modelo:</strong> <span id="modeloView">--</span></div>
@@ -246,44 +286,53 @@
                          <div class="col-md-4"><strong>Data Criação:</strong> <span id="dataView">--</span></div>
                          <div class="col-md-4"><strong>Responsável:</strong> <span id="responsavelView">--</span></div>
                          <div class="col-md-4"><strong>Status:</strong> <span id="statusView" class="badge">--</span></div>
-                         <div class="col-md-6"><strong>Categoria:</strong> <span id="categoriaView">--</span></div>
-                         <div class="col-md-6"><strong>Urgência:</strong> <span id="urgenciaView">--</span></div>
-                         <div class="col-12"><strong>Problema:</strong> <p id="descricaoProblemaView" class="bg-light p-2 rounded">--</p></div>
+                          <div class="col-md-4"><strong>Quilometragem:</strong> <span id="quilometragemView">--</span></div>
+                         <div class="col-md-4"><strong>Categoria:</strong> <span id="categoriaView">--</span></div>
+                         <div class="col-md-4"><strong>Urgência:</strong> <span id="urgenciaView">--</span></div>
+                         <div class="col-12"><strong>Descrição do Problema:</strong> <p id="descricaoProblemaView" class="bg-light p-2 rounded mb-0">--</p></div>
                      </div>
-                 </div>
+                 </fieldset>
 
                  <div class="row g-3">
-                     <div class="col-md-6">
+                     <div class="col-lg-6">
                          <div class="card h-100">
                              <div class="card-header bg-primary text-white">
-                                 <h6 class="mb-0">PRÉ-Manutenção</h6>
+                                 <h6 class="mb-0">Detalhes PRÉ-Manutenção</h6>
                              </div>
                              <div class="card-body">
-                                 <h6 class="mb-3">Checklist</h6>
+                                 <h6 class="mb-2 fw-bold">Checklist PRÉ:</h6>
                                  <table class="table table-sm table-bordered mb-3">
-                                     <tbody id="checklistPreView"></tbody>
+                                     <tbody id="checklistPreView">
+                                         <tr><td class="text-muted small">Carregando...</td></tr>
+                                     </tbody>
                                  </table>
-                                 <h6 class="mb-3">Fotos</h6>
-                                 <div id="fotosPreView" class="row g-2 mb-3"></div>
-                                 <h6 class="mb-1">Observações</h6>
-                                 <p id="observacoesPreView" class="text-muted">--</p>
+                                 <h6 class="mb-2 fw-bold">Fotos PRÉ:</h6>
+                                 <div id="fotosPreView" class="row g-2 mb-3">
+                                      <p class="text-muted small">Carregando...</p>
+                                 </div>
+                                 <h6 class="mb-1 fw-bold">Observações PRÉ:</h6>
+                                 <p id="observacoesPreView" class="text-muted bg-light p-2 rounded">--</p>
                              </div>
                          </div>
                      </div>
-                     <div class="col-md-6">
+                     <div class="col-lg-6">
                          <div class="card h-100">
                              <div class="card-header bg-success text-white">
-                                 <h6 class="mb-0">PÓS-Manutenção</h6>
+                                 <h6 class="mb-0">Detalhes PÓS-Manutenção</h6>
                              </div>
                              <div class="card-body">
-                                 <h6 class="mb-3">Checklist</h6>
+                                 <h6 class="mb-2 fw-bold">Checklist PÓS:</h6>
                                  <table class="table table-sm table-bordered mb-3">
-                                     <tbody id="checklistPosView"></tbody>
+                                     <tbody id="checklistPosView">
+                                         <tr><td class="text-muted small">Carregando...</td></tr>
+                                     </tbody>
                                  </table>
-                                 <h6 class="mb-3">Fotos</h6>
-                                 <div id="fotosPosView" class="row g-2 mb-3"></div>
-                                 <h6 class="mb-1">Observações</h6>
-                                 <p id="observacoesPosView" class="text-muted">--</p>
+                                 <h6 class="mb-2 fw-bold">Fotos PÓS:</h6>
+                                 <div id="fotosPosView" class="row g-2 mb-3">
+                                      <p class="text-muted small">Carregando...</p>
+                                 </div>
+                                 <h6 class="mb-1 fw-bold">Observações PÓS:</h6>
+                                 <p id="observacoesPosView" class="text-muted bg-light p-2 rounded">--</p>
                              </div>
                          </div>
                      </div>
@@ -294,30 +343,25 @@
     </main>
 
     <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-      </div>
+       </div>
 
-    <div id="loadingSpinner" class="position-fixed top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark bg-opacity-50" style="display: none; z-index: 9999;">
-      <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+    <div id="loadingSpinner" class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark bg-opacity-50" style="display: none; z-index: 9999;">
+      <div class="spinner-border text-primary mb-2" style="width: 3rem; height: 3rem;" role="status">
         <span class="visually-hidden">Carregando...</span>
       </div>
+      <p class="text-white loading-message">Carregando...</p>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
 
-    <script src="js/core/module-loader.js"></script> <script src="js/core/state.js"></script>
+    <script src="js/config.js"></script> <script src="js/utils.js"></script>   <script src="js/core/module-loader.js"></script>
+    <script src="js/core/state.js"></script>
     <script src="js/core/cache-manager.js"></script>
     <script src="js/core/security.js"></script>
     <script src="js/core/performance-monitor.js"></script>
 
-    <script src="js/api-client.js"></script>
+    <script src="js/api-client.js"></script> <script src="js/ui/theme-manager.js"></script>    <script src="js/features/notifications.js"></script> <script src="js/auth/google-auth.js"></script>     <script src="js/photo-handler.js"></script>         <script src="js/form-handler.js"></script>          <script src="js/features/dashboard.js"></script>   <script src="js/main.js"></script>
 
-    <script src="js/ui/theme-manager.js"></script>
-    <script src="js/features/notifications.js"></script>
-    <script src="js/auth/google-auth.js"></script>
-    <script src="js/photo-handler.js"></script> <script src="js/features/dashboard.js"></script>
     <script src="js/app.js"></script>
-    <script src="js/main.js"></script> </div>
-</body>
+    </div> </body>
 </html>
