@@ -2,7 +2,7 @@
 
 const CONFIG = {
   // URL do Google Apps Script Web App (preencha após criar)
-  API_URL: '',
+  API_URL: 'https://script.google.com/macros/s/AKfycbwRAFDZyRzDOuSXY_KggCAPwMJMDE8mMDyvFnKawfG3qO-3E4eSArFD2cEXxJb79AuB/exec',
   
   // Configurações gerais
   APP_NAME: 'Sistema de Registro de Manutenções',
