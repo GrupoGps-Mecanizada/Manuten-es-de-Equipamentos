@@ -1,417 +1,433 @@
 /**
- * Utilitários gerais para o Sistema de Manutenção de Equipamentos
- * Fornece funções reutilizáveis em todo o sistema
+ * Utilitários para o Sistema de Manutenção de Equipamentos
+ * Fornece funções úteis para todo o sistema
  */
-ModuleLoader.register('utils', function() {
+(function() {
   /**
-   * Formatações de data e hora
+   * Formatação de Data e Hora
    */
   
   // Formatar data como DD/MM/YYYY
-  function formatDate(date) {
-    if (!date) return 'N/A';
+  function formatarData(data) {
+    if (!data) return '';
     
-    try {
-      let dateObj;
-      // Se já for objeto Date
-      if (date instanceof Date) {
-        dateObj = date;
-      } else {
-        // Converter string para Date
-        const dataStr = String(date);
-        if (/^\d{4}-\d{2}-\d{2}/.test(dataStr)) {
-          // Formato ISO (YYYY-MM-DD)
-          const parts = dataStr.substring(0, 10).split('-');
-          dateObj = new Date(Date.UTC(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10)));
-        } else if (dataStr.includes('/')) {
-          // Formato DD/MM/YYYY
-          const parts = dataStr.split('/');
-          if (parts.length === 3) {
-            dateObj = new Date(Date.UTC(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10)));
-          } else {
-            dateObj = new Date(dataStr);
-          }
-        } else {
-          // Timestamp ou outro formato
-          dateObj = new Date(dataStr);
-        }
-      }
-      
-      // Verificar validade
-      if (isNaN(dateObj.getTime())) {
-        return String(date);
-      }
-      
-      // Formatar como DD/MM/YYYY
-      const dia = String(dateObj.getUTCDate()).padStart(2, '0');
-      const mes = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-      const ano = dateObj.getUTCFullYear();
-      
+    // Se já for uma data, converter para string
+    if (data instanceof Date) {
+      const dia = String(data.getDate()).padStart(2, '0');
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const ano = data.getFullYear();
       return `${dia}/${mes}/${ano}`;
-    } catch (e) {
-      console.error("Erro ao formatar data:", e);
-      return String(date);
     }
+    
+    // Se for uma string em formato ISO (YYYY-MM-DD)
+    if (typeof data === 'string' && /^\d{4}-\d{2}-\d{2}/.test(data)) {
+      const partes = data.substring(0, 10).split('-');
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    
+    return data;
   }
   
   // Formatar data e hora como DD/MM/YYYY HH:MM
-  function formatDateTime(datetime) {
-    if (!datetime) return 'N/A';
+  function formatarDataHora(dataHora) {
+    if (!dataHora) return '';
     
-    try {
-      let dateObj;
-      
-      if (datetime instanceof Date) {
-        dateObj = datetime;
-      } else {
-        dateObj = new Date(datetime);
-      }
-      
-      if (isNaN(dateObj.getTime())) {
-        return String(datetime);
-      }
-      
-      // Formatar data
-      const dia = String(dateObj.getDate()).padStart(2, '0');
-      const mes = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const ano = dateObj.getFullYear();
-      
-      // Formatar hora
-      const hora = String(dateObj.getHours()).padStart(2, '0');
-      const minutos = String(dateObj.getMinutes()).padStart(2, '0');
-      
-      return `${dia}/${mes}/${ano} ${hora}:${minutos}`;
-    } catch (e) {
-      console.error("Erro ao formatar data/hora:", e);
-      return String(datetime);
+    let data;
+    
+    // Converter para objeto Date se for string
+    if (typeof dataHora === 'string') {
+      data = new Date(dataHora);
+    } else if (dataHora instanceof Date) {
+      data = dataHora;
+    } else {
+      return dataHora;
     }
+    
+    // Verificar se é data válida
+    if (isNaN(data.getTime())) {
+      return dataHora;
+    }
+    
+    const dia = String(data.getDate()).padStart(2, '0');
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const ano = data.getFullYear();
+    const hora = String(data.getHours()).padStart(2, '0');
+    const minutos = String(data.getMinutes()).padStart(2, '0');
+    
+    return `${dia}/${mes}/${ano} ${hora}:${minutos}`;
   }
   
-  // Converter formato local DD/MM/YYYY para ISO YYYY-MM-DD
-  function convertToISODate(localDate) {
-    if (!localDate) return '';
+  // Converter data DD/MM/YYYY para YYYY-MM-DD (formato ISO)
+  function converterParaISO(data) {
+    if (!data) return '';
     
-    // Se já for formato ISO, retornar
-    if (/^\d{4}-\d{2}-\d{2}$/.test(localDate)) {
-      return localDate;
+    // Se já estiver em formato ISO, retornar
+    if (/^\d{4}-\d{2}-\d{2}/.test(data)) {
+      return data.substring(0, 10);
     }
     
     // Converter DD/MM/YYYY para YYYY-MM-DD
-    const parts = localDate.split('/');
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    const partes = data.split('/');
+    if (partes.length === 3) {
+      return `${partes[2]}-${partes[1]}-${partes[0]}`;
     }
     
-    return '';
+    return data;
+  }
+  
+  // Obter data atual em formato ISO
+  function dataAtualISO() {
+    const agora = new Date();
+    const ano = agora.getFullYear();
+    const mes = String(agora.getMonth() + 1).padStart(2, '0');
+    const dia = String(agora.getDate()).padStart(2, '0');
+    
+    return `${ano}-${mes}-${dia}`;
+  }
+  
+  // Obter data atual formatada como DD/MM/YYYY
+  function dataAtualFormatada() {
+    return formatarData(new Date());
+  }
+  
+  // Calcular diferença entre datas em dias
+  function diferencaDias(dataInicio, dataFim) {
+    // Converter para objetos Date
+    const inicio = typeof dataInicio === 'string' ? new Date(converterParaISO(dataInicio)) : dataInicio;
+    const fim = dataFim ? (typeof dataFim === 'string' ? new Date(converterParaISO(dataFim)) : dataFim) : new Date();
+    
+    // Verificar se são datas válidas
+    if (isNaN(inicio.getTime()) || isNaN(fim.getTime())) {
+      return 0;
+    }
+    
+    // Calcular diferença em dias
+    const diffTempo = Math.abs(fim.getTime() - inicio.getTime());
+    const diffDias = Math.ceil(diffTempo / (1000 * 60 * 60 * 24));
+    
+    return diffDias;
+  }
+  
+  /**
+   * Formatação de Números e Valores
+   */
+  
+  // Formatar número com separadores
+  function formatarNumero(numero, casasDecimais = 0) {
+    if (numero === null || numero === undefined) return '';
+    
+    // Converter para número
+    const num = parseFloat(numero);
+    if (isNaN(num)) return '';
+    
+    return num.toLocaleString('pt-BR', {
+      minimumFractionDigits: casasDecimais,
+      maximumFractionDigits: casasDecimais
+    });
+  }
+  
+  // Formatar valor monetário
+  function formatarMoeda(valor) {
+    if (valor === null || valor === undefined) return 'R$ 0,00';
+    
+    const numero = parseFloat(valor);
+    if (isNaN(numero)) return 'R$ 0,00';
+    
+    return numero.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  }
+  
+  // Formatar quilometragem
+  function formatarKm(km) {
+    if (km === null || km === undefined) return '';
+    
+    const numero = parseFloat(km);
+    if (isNaN(numero)) return '';
+    
+    return numero.toLocaleString('pt-BR') + ' km';
   }
   
   /**
    * Validações
    */
   
-  // Validar placa de veículo (formatos antigo e Mercosul)
-  function validateLicensePlate(plate) {
-    if (!plate) return false;
+  // Validar placa de veículo
+  function validarPlaca(placa) {
+    if (!placa) return false;
     
-    const cleanPlate = plate.trim().toUpperCase();
+    // Remover espaços e traços
+    const placaLimpa = placa.trim().replace(/-/g, '').toUpperCase();
     
-    // Formato antigo: AAA-1234 ou AAA1234
-    const oldFormat = /^[A-Z]{3}[-]?\d{4}$/;
+    // Verificar formato antigo (AAA1234)
+    const padraoAntigo = /^[A-Z]{3}[0-9]{4}$/;
     
-    // Formato Mercosul: AAA0A00
-    const mercosulFormat = /^[A-Z]{3}\d[A-Z]\d{2}$/;
+    // Verificar formato Mercosul (AAA1A34)
+    const padraoMercosul = /^[A-Z]{3}[0-9][A-Z][0-9]{2}$/;
     
-    return oldFormat.test(cleanPlate) || mercosulFormat.test(cleanPlate);
-  }
-  
-  // Validar email
-  function validateEmail(email) {
-    if (!email) return false;
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email.trim());
+    return padraoAntigo.test(placaLimpa) || padraoMercosul.test(placaLimpa);
   }
   
   // Validar CPF
-  function validateCPF(cpf) {
+  function validarCPF(cpf) {
     if (!cpf) return false;
     
     // Remover caracteres não numéricos
     cpf = cpf.replace(/[^\d]/g, '');
     
-    // Verificar se tem 11 dígitos
+    // Verificar tamanho
     if (cpf.length !== 11) return false;
     
     // Verificar se todos os dígitos são iguais
     if (/^(\d)\1+$/.test(cpf)) return false;
     
     // Validar dígitos verificadores
-    let sum = 0;
-    let remainder;
+    let soma = 0;
+    let resto;
     
-    // Primeiro dígito verificador
     for (let i = 1; i <= 9; i++) {
-      sum += parseInt(cpf.substring(i - 1, i)) * (11 - i);
+      soma += parseInt(cpf.substring(i - 1, i)) * (11 - i);
     }
     
-    remainder = (sum * 10) % 11;
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cpf.substring(9, 10))) return false;
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(9, 10))) return false;
     
-    // Segundo dígito verificador
-    sum = 0;
+    soma = 0;
     for (let i = 1; i <= 10; i++) {
-      sum += parseInt(cpf.substring(i - 1, i)) * (12 - i);
+      soma += parseInt(cpf.substring(i - 1, i)) * (12 - i);
     }
     
-    remainder = (sum * 10) % 11;
-    if (remainder === 10 || remainder === 11) remainder = 0;
-    if (remainder !== parseInt(cpf.substring(10, 11))) return false;
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.substring(10, 11))) return false;
     
     return true;
+  }
+  
+  // Validar e-mail
+  function validarEmail(email) {
+    if (!email) return false;
+    
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
   }
   
   /**
    * Manipulação de Strings
    */
   
-  // Truncar texto com reticências
-  function truncateText(text, maxLength) {
-    if (!text) return '';
-    if (text.length <= maxLength) return text;
-    
-    return text.substring(0, maxLength) + '...';
+  // Formatar texto em maiúsculas
+  function maiusculas(texto) {
+    return texto ? texto.toUpperCase() : '';
   }
   
-  // Normalizar texto (remover acentos e caracteres especiais)
-  function normalizeText(text) {
-    if (!text) return '';
-    
-    return text.normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '') // Remover acentos
-      .replace(/[^\w\s]/g, '') // Remover caracteres especiais
-      .trim();
+  // Formatar texto em minúsculas
+  function minusculas(texto) {
+    return texto ? texto.toLowerCase() : '';
   }
   
-  // Formatar número como moeda (R$)
-  function formatCurrency(value) {
-    if (value === null || value === undefined) return 'R$ 0,00';
+  // Formatar primeira letra em maiúscula
+  function capitalizar(texto) {
+    if (!texto) return '';
+    return texto.charAt(0).toUpperCase() + texto.slice(1).toLowerCase();
+  }
+  
+  // Formatar cada palavra com inicial maiúscula
+  function capitalizarPalavras(texto) {
+    if (!texto) return '';
     
-    const numValue = typeof value === 'string' ? parseFloat(value.replace(',', '.')) : value;
-    
-    if (isNaN(numValue)) return 'R$ 0,00';
-    
-    return numValue.toLocaleString('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
+    return texto.toLowerCase().replace(/(?:^|\s)\S/g, function(a) {
+      return a.toUpperCase();
     });
   }
   
-  /**
-   * Geradores
-   */
-  
-  // Gerar ID único baseado em tempo + random
-  function generateUniqueId(prefix = 'id') {
-    const timestamp = new Date().getTime();
-    const random = Math.floor(Math.random() * 10000);
-    return `${prefix}_${timestamp}_${random}`;
+  // Remover acentos
+  function removerAcentos(texto) {
+    if (!texto) return '';
+    
+    return texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
   
-  // Gerar cor aleatória em formato hexadecimal
-  function generateRandomColor() {
-    return '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+  // Gerar ID único
+  function gerarId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
   }
   
   /**
-   * Manipulação de Objetos/Arrays
+   * Manipulação de Arrays e Objetos
    */
   
-  // Ordenar array de objetos por uma propriedade
-  function sortObjectsByProperty(array, property, ascending = true) {
+  // Ordenar array de objetos por propriedade
+  function ordenarPor(array, propriedade, crescente = true) {
     if (!Array.isArray(array)) return [];
     
-    return [...array].sort((a, b) => {
-      if (!a.hasOwnProperty(property) || !b.hasOwnProperty(property)) return 0;
+    // Criar cópia para não modificar o original
+    const copia = [...array];
+    
+    return copia.sort((a, b) => {
+      // Tratar valores nulos ou undefined
+      if (a[propriedade] === undefined || a[propriedade] === null) return crescente ? -1 : 1;
+      if (b[propriedade] === undefined || b[propriedade] === null) return crescente ? 1 : -1;
       
-      const valueA = a[property];
-      const valueB = b[property];
-      
-      // Comparar datas se parecerem datas
-      if ((typeof valueA === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(valueA)) ||
-          (typeof valueB === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(valueB))) {
-        // Converter para formato comparável (YYYYMMDD)
-        const dateA = typeof valueA === 'string' ? valueA.split('/').reverse().join('') : '';
-        const dateB = typeof valueB === 'string' ? valueB.split('/').reverse().join('') : '';
-        return ascending ? dateA.localeCompare(dateB) : dateB.localeCompare(dateA);
+      // Comparar datas se forem strings de data
+      if (typeof a[propriedade] === 'string' && typeof b[propriedade] === 'string') {
+        // Verificar se são datas no formato DD/MM/YYYY
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(a[propriedade]) && /^\d{2}\/\d{2}\/\d{4}$/.test(b[propriedade])) {
+          // Converter para formato comparável (YYYYMMDD)
+          const dataA = a[propriedade].split('/').reverse().join('');
+          const dataB = b[propriedade].split('/').reverse().join('');
+          return crescente ? dataA.localeCompare(dataB) : dataB.localeCompare(dataA);
+        }
+        
+        // Comparar strings normalmente
+        return crescente ? a[propriedade].localeCompare(b[propriedade]) : b[propriedade].localeCompare(a[propriedade]);
       }
       
-      // Comparação normal
-      if (valueA < valueB) return ascending ? -1 : 1;
-      if (valueA > valueB) return ascending ? 1 : -1;
-      return 0;
+      // Comparação numérica
+      return crescente ? a[propriedade] - b[propriedade] : b[propriedade] - a[propriedade];
     });
   }
   
-  // Filtrar array de objetos por texto
-  function filterObjectsByText(array, searchText, properties) {
-    if (!Array.isArray(array) || !searchText) return array;
+  // Filtrar array por texto
+  function filtrarPorTexto(array, texto, propriedades) {
+    if (!Array.isArray(array) || !texto || !Array.isArray(propriedades)) {
+      return array;
+    }
     
-    const normalizedSearchText = normalizeText(searchText).toLowerCase();
+    const textoLimpo = removerAcentos(texto.toLowerCase());
     
     return array.filter(item => {
-      return properties.some(prop => {
-        if (!item.hasOwnProperty(prop)) return false;
+      return propriedades.some(prop => {
+        const valor = item[prop];
+        if (valor === undefined || valor === null) return false;
         
-        const value = item[prop];
-        if (!value) return false;
-        
-        const normalizedValue = normalizeText(String(value)).toLowerCase();
-        return normalizedValue.includes(normalizedSearchText);
+        const valorTexto = removerAcentos(String(valor).toLowerCase());
+        return valorTexto.includes(textoLimpo);
       });
     });
   }
   
-  // Agrupar array de objetos por propriedade
-  function groupObjectsByProperty(array, property) {
+  // Agrupar array por propriedade
+  function agruparPor(array, propriedade) {
     if (!Array.isArray(array)) return {};
     
     return array.reduce((acc, item) => {
-      const key = item[property] || 'Outros';
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(item);
+      const chave = item[propriedade] || 'Outros';
+      if (!acc[chave]) {
+        acc[chave] = [];
+      }
+      acc[chave].push(item);
       return acc;
     }, {});
   }
   
-  /**
-   * Funções de Debug
-   */
-  
-  // Registrar tempo de operação (para debug)
-  function timeOperation(operationName, callback) {
-    console.time(`⏱️ ${operationName}`);
-    try {
-      return callback();
-    } finally {
-      console.timeEnd(`⏱️ ${operationName}`);
-    }
-  }
-  
-  // Verificar propriedades existentes em um objeto
-  function checkObjectProperties(obj, requiredProps) {
-    if (!obj || typeof obj !== 'object') {
-      return {
-        valid: false,
-        missingProps: requiredProps,
-        message: 'Objeto não fornecido ou inválido'
-      };
-    }
+  // Obter valores únicos de uma propriedade
+  function valoresUnicos(array, propriedade) {
+    if (!Array.isArray(array)) return [];
     
-    const missingProps = requiredProps.filter(prop => !obj.hasOwnProperty(prop));
-    
-    return {
-      valid: missingProps.length === 0,
-      missingProps: missingProps,
-      message: missingProps.length > 0
-        ? `Propriedades ausentes: ${missingProps.join(', ')}`
-        : 'Todas as propriedades estão presentes'
-    };
+    const valores = array.map(item => item[propriedade]);
+    return [...new Set(valores)].filter(valor => valor !== undefined && valor !== null);
   }
   
   /**
-   * Funções de localStorage
+   * Funcionalidades de Armazenamento
    */
   
-  // Salvar objeto no localStorage com expiração
-  function setLocalStorageWithExpiry(key, value, expiryMinutes) {
-    const now = new Date();
+  // Salvar no localStorage com expiração
+  function salvarLocalStorage(chave, valor, minutosExpiracao = 0) {
+    if (!chave) return false;
+    
     const item = {
-      value: value,
-      expiry: expiryMinutes ? now.getTime() + (expiryMinutes * 60 * 1000) : null
+      valor: valor,
+      expiracao: minutosExpiracao > 0 ? new Date().getTime() + (minutosExpiracao * 60 * 1000) : 0
     };
-    localStorage.setItem(key, JSON.stringify(item));
-  }
-  
-  // Obter objeto do localStorage, considerando expiração
-  function getLocalStorageWithExpiry(key) {
-    const itemStr = localStorage.getItem(key);
-    if (!itemStr) return null;
     
     try {
+      localStorage.setItem(chave, JSON.stringify(item));
+      return true;
+    } catch (e) {
+      console.error('Erro ao salvar no localStorage:', e);
+      return false;
+    }
+  }
+  
+  // Obter do localStorage, considerando expiração
+  function obterLocalStorage(chave) {
+    if (!chave) return null;
+    
+    try {
+      const itemStr = localStorage.getItem(chave);
+      if (!itemStr) return null;
+      
       const item = JSON.parse(itemStr);
       
       // Verificar expiração
-      if (item.expiry && new Date().getTime() > item.expiry) {
-        localStorage.removeItem(key);
+      if (item.expiracao > 0 && new Date().getTime() > item.expiracao) {
+        localStorage.removeItem(chave);
         return null;
       }
       
-      return item.value;
+      return item.valor;
     } catch (e) {
-      console.error(`Erro ao recuperar "${key}" do localStorage:`, e);
+      console.error('Erro ao obter do localStorage:', e);
       return null;
     }
   }
   
-  /**
-   * Funções de URL e navegação
-   */
-  
-  // Obter parâmetros da URL
-  function getURLParameters() {
-    const params = new URLSearchParams(window.location.search);
-    const result = {};
+  // Remover do localStorage
+  function removerLocalStorage(chave) {
+    if (!chave) return false;
     
-    for (const [key, value] of params.entries()) {
-      result[key] = value;
+    try {
+      localStorage.removeItem(chave);
+      return true;
+    } catch (e) {
+      console.error('Erro ao remover do localStorage:', e);
+      return false;
     }
-    
-    return result;
   }
   
-  // Obter parâmetro específico da URL
-  function getURLParameter(name) {
-    const params = new URLSearchParams(window.location.search);
-    return params.get(name);
-  }
-  
-  // Exportar funções públicas
-  return {
-    // Formatação
-    formatDate,
-    formatDateTime,
-    convertToISODate,
-    formatCurrency,
+  /**
+   * Exportar funções para uso global
+   */
+  window.Utils = {
+    // Data e Hora
+    formatarData,
+    formatarDataHora,
+    converterParaISO,
+    dataAtualISO,
+    dataAtualFormatada,
+    diferencaDias,
     
-    // Validação
-    validateLicensePlate,
-    validateEmail,
-    validateCPF,
+    // Números e Valores
+    formatarNumero,
+    formatarMoeda,
+    formatarKm,
     
-    // Manipulação de texto
-    truncateText,
-    normalizeText,
+    // Validações
+    validarPlaca,
+    validarCPF,
+    validarEmail,
     
-    // Geradores
-    generateUniqueId,
-    generateRandomColor,
+    // Strings
+    maiusculas,
+    minusculas,
+    capitalizar,
+    capitalizarPalavras,
+    removerAcentos,
+    gerarId,
     
-    // Manipulação de objetos/arrays
-    sortObjectsByProperty,
-    filterObjectsByText,
-    groupObjectsByProperty,
+    // Arrays e Objetos
+    ordenarPor,
+    filtrarPorTexto,
+    agruparPor,
+    valoresUnicos,
     
-    // Debug
-    timeOperation,
-    checkObjectProperties,
-    
-    // LocalStorage
-    setLocalStorageWithExpiry,
-    getLocalStorageWithExpiry,
-    
-    // URL
-    getURLParameters,
-    getURLParameter
+    // Armazenamento
+    salvarLocalStorage,
+    obterLocalStorage,
+    removerLocalStorage
   };
-});
+})();
