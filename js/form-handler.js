@@ -1,553 +1,519 @@
-// form-handler.js
-
 /**
- * Manipulador de formulários do sistema
+ * Manipulador de Fotos para o Sistema de Manutenção
+ * Gerencia upload, armazenamento e visualização de imagens
+ * Versão 1.0
  */
-const FormHandler = {
-  // Estado do formulário atual
-  currentFormData: {
-    id: null,
-    etapa: 'pre', // 'pre' ou 'pos'
-    dadosPre: null,
-    dadosPos: null
-  },
+ModuleLoader.register('photoHandler', function() {
+  // Configurações
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+  const THUMBNAIL_SIZE = 200; // Pixels para miniatura
+  
+  // Armazenamento para fotos em memória (quando não estiver usando Google Drive)
+  let memoryStorage = {
+    pre: {},  // Fotos "pré" manutenção
+    pos: {}   // Fotos "pós" manutenção
+  };
+  
+  // Estado de upload
+  let currentUploads = {
+    total: 0,
+    completed: 0,
+    failed: 0
+  };
   
   /**
-   * Inicializar manipulador de formulários
+   * Inicializar módulo
    */
-  init: function() {
-    // Configurar eventos dos formulários
-    this.setupFormEvents();
-  },
+  function init() {
+    console.log('Inicializando módulo PhotoHandler...');
+    
+    // Verificar suporte a FileReader
+    if (!window.FileReader) {
+      console.warn('FileReader não é suportado neste navegador. Funcionalidade de fotos limitada.');
+      const Notifications = window.Notifications || ModuleLoader.get('notifications');
+      if (Notifications) {
+        Notifications.warning('Seu navegador não suporta upload de imagens. Algumas funcionalidades estarão limitadas.');
+      }
+    }
+    
+    // Configurar listeners para campos de arquivo dinâmicos
+    setupDynamicFileInputListeners();
+    
+    console.log('PhotoHandler inicializado com sucesso.');
+  }
   
   /**
-   * Configurar eventos dos formulários
+   * Configura listeners para campos de arquivo que são adicionados dinamicamente
    */
-  setupFormEvents: function() {
-    // Formulário PRÉ-manutenção
-    const formPre = document.getElementById('formPreManutencao');
-    if (formPre) {
-      formPre.addEventListener('submit', (e) => {
-        e.preventDefault();
-        this.handlePreFormSubmit();
-      });
-    }
-    
-    // Formulário PÓS-manutenção
-    const formPos = document.getElementById('formPosManutencao');
-    if (formPos) {
-      formPos.addEventListener('submit', (e) => {
-        e.preventDefault();
-        this.handlePosFormSubmit();
-      });
-    }
-    
-    // Botão cancelar
-    document.getElementById('btnCancelarPre').addEventListener('click', () => {
-      if (confirm('Deseja cancelar o registro? Os dados não salvos serão perdidos.')) {
-        this.resetForm();
-        Utils.showScreen('telaListaRegistros');
+  function setupDynamicFileInputListeners() {
+    // Usar delegação de eventos para capturar campos de arquivo adicionados dinamicamente
+    document.addEventListener('change', function(event) {
+      const target = event.target;
+      
+      // Verificar se é um input de arquivo relacionado ao sistema
+      if (target.type === 'file' && 
+         (target.id.includes('foto') || target.classList.contains('maintenance-photo'))) {
+        handleFileInputChange(target);
       }
     });
-    
-    // Botão voltar para pré
-    document.getElementById('btnVoltarPre').addEventListener('click', () => {
-      Utils.showScreen('telaPreManutencao');
-    });
-  },
+  }
   
   /**
-   * Tratar envio do formulário PRÉ-manutenção
+   * Processa alteração em campo de arquivo
+   * @param {HTMLInputElement} input - Campo de arquivo alterado
    */
-  handlePreFormSubmit: function() {
-    const form = document.getElementById('formPreManutencao');
+  function handleFileInputChange(input) {
+    if (!input || !input.files || input.files.length === 0) return;
     
-    // Validar formulário
-    if (!Utils.validateForm(form)) {
-      return;
-    }
+    const files = Array.from(input.files);
+    const uploadType = input.id.includes('pre') ? 'pre' : 'pos';
+    const registroId = input.getAttribute('data-registro-id') || 'temp';
     
-    // Criar ou atualizar ID do registro
-    if (!this.currentFormData.id) {
-      this.currentFormData.id = Utils.generateId();
-    }
+    // Resetar contadores para novo conjunto de uploads
+    resetUploadCounters(files.length);
     
-    // Atualizar elemento hidden com ID
-    document.getElementById('registroId').value = this.currentFormData.id;
-    document.getElementById('registroIdPos').value = this.currentFormData.id;
-    
-    // Mostrar ID nos displays
-    document.getElementById('registroIdDisplay').textContent = this.currentFormData.id;
-    document.getElementById('registroIdPosDisplay').textContent = this.currentFormData.id;
-    
-    // Coletar dados do formulário
-    this.currentFormData.dadosPre = {
-      placa: document.getElementById('placa').value,
-      modelo: document.getElementById('modelo').value,
-      idInterna: document.getElementById('idInterna').value,
-      quilometragem: document.getElementById('quilometragem').value,
-      categoriaProblema: document.getElementById('categoriaProblema').value,
-      urgencia: document.getElementById('urgencia').value,
-      descricaoProblema: document.getElementById('descricaoProblema').value,
-      observacoes: document.getElementById('observacoesPre').value,
-      responsavel: document.getElementById('responsavel').value,
-      timestamp: new Date().toISOString(),
-      checklist: {
-        hidraulico: document.querySelector('input[name="hidraulico"]:checked')?.value || 'N/A',
-        eletrico: document.querySelector('input[name="eletrico"]:checked')?.value || 'N/A',
-        bomba: document.querySelector('input[name="bomba"]:checked')?.value || 'N/A'
+    // Preview container
+    let previewContainer = document.getElementById(`${uploadType}-photos-preview`);
+    if (!previewContainer) {
+      // Tentar criar container de preview
+      previewContainer = createPreviewContainer(uploadType);
+      if (!previewContainer) {
+        // Se não conseguiu criar, pode não ter os elementos necessários na página atual
+        console.warn(`Container de preview para fotos '${uploadType}' não encontrado e não pôde ser criado.`);
       }
+    }
+    
+    // Processar cada arquivo
+    files.forEach(file => processFile(file, uploadType, registroId, previewContainer));
+  }
+  
+  /**
+   * Reseta contadores de upload
+   * @param {number} totalFiles - Total de arquivos a processar
+   */
+  function resetUploadCounters(totalFiles) {
+    currentUploads = {
+      total: totalFiles,
+      completed: 0,
+      failed: 0
     };
     
-    // Salvar temporariamente
-    this.saveCurrentFormData();
-    
-    // Preencher campos na tela PÓS
-    document.getElementById('placaPos').textContent = this.currentFormData.dadosPre.placa;
-    document.getElementById('modeloPos').textContent = this.currentFormData.dadosPre.modelo;
-    document.getElementById('idInternaPos').textContent = this.currentFormData.dadosPre.idInterna;
-    
-    // Avançar para o formulário PÓS-manutenção
-    Utils.showScreen('telaPosManutencao');
-    
-    Utils.showNotification('Dados iniciais salvos com sucesso!', 'success');
-  },
+    // Atualizar UI de progresso se existir
+    updateProgressUI();
+  }
   
   /**
-   * Tratar envio do formulário PÓS-manutenção
+   * Atualiza interface de progresso de upload
    */
-  handlePosFormSubmit: async function() {
-    const form = document.getElementById('formPosManutencao');
+  function updateProgressUI() {
+    const progressBar = document.getElementById('upload-progress-bar');
+    const progressText = document.getElementById('upload-progress-text');
     
-    // Validar formulário
-    if (!Utils.validateForm(form)) {
-      return;
+    if (progressBar) {
+      const percentage = currentUploads.total > 0 
+        ? Math.round((currentUploads.completed / currentUploads.total) * 100) 
+        : 0;
+      
+      progressBar.style.width = `${percentage}%`;
+      progressBar.setAttribute('aria-valuenow', percentage);
     }
     
-    // Coletar dados do formulário
-    this.currentFormData.dadosPos = {
-      observacoes: document.getElementById('observacoesPos').value,
-      timestamp: new Date().toISOString(),
-      checklist: {
-        hidraulico: document.querySelector('input[name="hidraulicoPos"]:checked')?.value || 'N/A',
-        eletrico: document.querySelector('input[name="eletricoPos"]:checked')?.value || 'N/A',
-        bomba: document.querySelector('input[name="bombaPos"]:checked')?.value || 'N/A'
-      }
-    };
-    
-    // Obter dados de fotos
-    const photoData = PhotoHandler.getPhotoData();
-    
-    // Montar objeto completo do registro
-    const registroCompleto = {
-      id: this.currentFormData.id,
-      dataCriacao: this.currentFormData.dadosPre.timestamp,
-      dataAtualizacao: new Date().toISOString(),
-      placa: this.currentFormData.dadosPre.placa,
-      modelo: this.currentFormData.dadosPre.modelo,
-      idInterna: this.currentFormData.dadosPre.idInterna,
-      responsavel: this.currentFormData.dadosPre.responsavel,
-      status: 'Concluído',
-      quilometragem: this.currentFormData.dadosPre.quilometragem,
-      categoriaProblema: this.currentFormData.dadosPre.categoriaProblema,
-      urgencia: this.currentFormData.dadosPre.urgencia,
-      descricaoProblema: this.currentFormData.dadosPre.descricaoProblema,
-      observacoesPre: this.currentFormData.dadosPre.observacoes,
-      checklistPre: this.currentFormData.dadosPre.checklist,
-      fotosPre: photoData.pre,
-      dataManutencao: this.currentFormData.dadosPos.timestamp,
-      observacoesPos: this.currentFormData.dadosPos.observacoes,
-      checklistPos: this.currentFormData.dadosPos.checklist,
-      fotosPos: photoData.pos
-    };
-    
-    try {
-      Utils.showLoading();
-      
-      // Tentar salvar no servidor
-      const result = await ApiClient.salvarRegistro(registroCompleto);
-      
-      if (result.success) {
-        Utils.showNotification('Registro salvo com sucesso!', 'success');
-        
-        // Limpar formulário e voltar para lista
-        this.resetForm();
-        await App.refreshRegistrosList();
-        Utils.showScreen('telaListaRegistros');
-      } else {
-        throw new Error('Erro ao salvar registro');
-      }
-    } catch (error) {
-      console.error('Erro ao finalizar registro:', error);
-      
-      // Tentar salvar localmente
-      const localSave = this.saveRegistroLocally(registroCompleto);
-      
-      if (localSave) {
-        Utils.showNotification('Registro salvo localmente. Será sincronizado quando houver conexão.', 'warning');
-        
-        // Limpar formulário e voltar para lista
-        this.resetForm();
-        await App.refreshRegistrosList();
-        Utils.showScreen('telaListaRegistros');
-      } else {
-        Utils.showNotification('Erro ao salvar registro.', 'error');
-      }
-    } finally {
-      Utils.hideLoading();
-    }
-  },
-  
-  /**
-   * Salvar registro localmente
-   * @param {object} registro - Dados do registro
-   * @returns {boolean} - Sucesso da operação
-   */
-  saveRegistroLocally: function(registro) {
-    try {
-      // Obter registros existentes
-      const registros = Utils.retrieveData('registros') || [];
-      
-      // Verificar se já existe para atualizar
-      const index = registros.findIndex(r => r.id === registro.id);
-      
-      if (index !== -1) {
-        registros[index] = registro;
-      } else {
-        registros.push(registro);
-      }
-      
-      // Salvar no localStorage
-      Utils.storeData('registros', registros);
-      
-      // Adicionar à fila de sincronização
-      const syncQueue = Utils.retrieveData('syncQueue') || [];
-      
-      if (!syncQueue.some(r => r.id === registro.id)) {
-        syncQueue.push({
-          id: registro.id,
-          timestamp: new Date().toISOString()
-        });
-        
-        Utils.storeData('syncQueue', syncQueue);
-      }
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao salvar localmente:', error);
-      return false;
-    }
-  },
-  
-  /**
-   * Salvar dados do formulário atual no localStorage
-   */
-  saveCurrentFormData: function() {
-    Utils.storeData('currentFormData', this.currentFormData);
-  },
-  
-  /**
-   * Carregar dados do formulário do localStorage
-   */
-  loadCurrentFormData: function() {
-    const data = Utils.retrieveData('currentFormData');
-    
-    if (data) {
-      this.currentFormData = data;
-      return true;
+    if (progressText) {
+      progressText.textContent = `${currentUploads.completed} de ${currentUploads.total} fotos processadas`;
     }
     
-    return false;
-  },
-  
-  /**
-   * Resetar formulário e dados
-   */
-  resetForm: function() {
-    // Limpar formulários
-    document.getElementById('formPreManutencao').reset();
-    document.getElementById('formPosManutencao').reset();
-    
-    // Remover validação
-    document.getElementById('formPreManutencao').classList.remove('was-validated');
-    document.getElementById('formPosManutencao').classList.remove('was-validated');
-    
-    // Resetar dados
-    this.currentFormData = {
-      id: null,
-      etapa: 'pre',
-      dadosPre: null,
-      dadosPos: null
-    };
-    
-    // Limpar foto handler
-    PhotoHandler.photoData = { pre: [], pos: [] };
-    PhotoHandler.renderPhotos('pre');
-    PhotoHandler.renderPhotos('pos');
-    
-    // Limpar localStorage
-    localStorage.removeItem('currentFormData');
-    localStorage.removeItem('photoData');
-  },
-  
-  /**
-   * Iniciar novo registro
-   */
-  newRegistro: function() {
-    // Resetar formulário
-    this.resetForm();
-    
-    // Definir novo ID
-    this.currentFormData.id = Utils.generateId();
-    document.getElementById('registroId').value = this.currentFormData.id;
-    document.getElementById('registroIdDisplay').textContent = this.currentFormData.id;
-    
-    // Mostrar tela de registro inicial
-    Utils.showScreen('telaPreManutencao');
-  },
-  
-  /**
-   * Carregar registro para edição
-   * @param {string} id - ID do registro
-   */
-  loadRegistro: async function(id) {
-    try {
-      Utils.showLoading();
+    // Mostrar notificação ao finalizar todos os uploads
+    if (currentUploads.completed + currentUploads.failed === currentUploads.total && currentUploads.total > 0) {
+      const Notifications = window.Notifications || ModuleLoader.get('notifications');
       
-      // Buscar registro
-      const registro = await ApiClient.obterRegistro(id);
-      
-      if (!registro) {
-        throw new Error('Registro não encontrado');
-      }
-      
-      // Configurar dados atuais
-      this.currentFormData = {
-        id: registro.id,
-        etapa: 'pre',
-        dadosPre: {
-          placa: registro.placa,
-          modelo: registro.modelo,
-          idInterna: registro.idInterna,
-          quilometragem: registro.quilometragem,
-          categoriaProblema: registro.categoriaProblema,
-          urgencia: registro.urgencia,
-          descricaoProblema: registro.descricaoProblema,
-          observacoes: registro.observacoesPre,
-          responsavel: registro.responsavel,
-          timestamp: registro.dataCriacao,
-          checklist: registro.checklistPre || {}
-        },
-        dadosPos: registro.observacoesPos ? {
-          observacoes: registro.observacoesPos,
-          timestamp: registro.dataManutencao,
-          checklist: registro.checklistPos || {}
-        } : null
-      };
-      
-      // Preencher formulário PRÉ
-      document.getElementById('registroId').value = registro.id;
-      document.getElementById('registroIdDisplay').textContent = registro.id;
-      document.getElementById('placa').value = registro.placa || '';
-      document.getElementById('modelo').value = registro.modelo || '';
-      document.getElementById('idInterna').value = registro.idInterna || '';
-      document.getElementById('quilometragem').value = registro.quilometragem || '';
-      document.getElementById('categoriaProblema').value = registro.categoriaProblema || '';
-      document.getElementById('urgencia').value = registro.urgencia || '';
-      document.getElementById('descricaoProblema').value = registro.descricaoProblema || '';
-      document.getElementById('observacoesPre').value = registro.observacoesPre || '';
-      document.getElementById('responsavel').value = registro.responsavel || '';
-      
-      // Preencher checklist PRÉ
-      if (registro.checklistPre) {
-        if (registro.checklistPre.hidraulico) {
-          document.querySelector(`input[name="hidraulico"][value="${registro.checklistPre.hidraulico}"]`).checked = true;
+      if (currentUploads.failed > 0) {
+        if (Notifications) {
+          Notifications.warning(`Upload concluído com ${currentUploads.failed} erros.`);
         }
-        if (registro.checklistPre.eletrico) {
-          document.querySelector(`input[name="eletrico"][value="${registro.checklistPre.eletrico}"]`).checked = true;
-        }
-        if (registro.checklistPre.bomba) {
-          document.querySelector(`input[name="bomba"][value="${registro.checklistPre.bomba}"]`).checked = true;
-        }
-      }
-      
-      // Carregar fotos
-      if (registro.fotosPre || registro.fotosPos) {
-        PhotoHandler.setPhotoData({
-          pre: registro.fotosPre || [],
-          pos: registro.fotosPos || []
-        });
-      }
-      
-      // Se já tiver dados PÓS, preencher também
-      if (registro.observacoesPos) {
-        // Preencher campos na tela PÓS
-        document.getElementById('registroIdPos').value = registro.id;
-        document.getElementById('registroIdPosDisplay').textContent = registro.id;
-        document.getElementById('placaPos').textContent = registro.placa;
-        document.getElementById('modeloPos').textContent = registro.modelo;
-        document.getElementById('idInternaPos').textContent = registro.idInterna;
-        document.getElementById('observacoesPos').value = registro.observacoesPos || '';
-        
-        // Preencher checklist PÓS
-        if (registro.checklistPos) {
-          if (registro.checklistPos.hidraulico) {
-            document.querySelector(`input[name="hidraulicoPos"][value="${registro.checklistPos.hidraulico}"]`).checked = true;
-          }
-          if (registro.checklistPos.eletrico) {
-            document.querySelector(`input[name="eletricoPos"][value="${registro.checklistPos.eletrico}"]`).checked = true;
-          }
-          if (registro.checklistPos.bomba) {
-            document.querySelector(`input[name="bombaPos"][value="${registro.checklistPos.bomba}"]`).checked = true;
-          }
-        }
-      }
-      
-      // Mostrar tela de edição
-      Utils.showScreen('telaPreManutencao');
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao carregar registro:', error);
-      Utils.showNotification('Erro ao carregar registro.', 'error');
-      return false;
-    } finally {
-      Utils.hideLoading();
-    }
-  },
-  
-  /**
-   * Carregar registro para visualização
-   * @param {string} id - ID do registro
-   */
-  viewRegistro: async function(id) {
-    try {
-      Utils.showLoading();
-      
-      // Buscar registro
-      const registro = await ApiClient.obterRegistro(id);
-      
-      if (!registro) {
-        throw new Error('Registro não encontrado');
-      }
-      
-      // Preencher dados na tela de visualização
-      document.getElementById('registroIdVisualizar').textContent = registro.id;
-      document.getElementById('placaView').textContent = registro.placa || '-';
-      document.getElementById('modeloView').textContent = registro.modelo || '-';
-      document.getElementById('idInternaView').textContent = registro.idInterna || '-';
-      document.getElementById('dataView').textContent = Utils.formatDate(registro.dataCriacao) || '-';
-      document.getElementById('responsavelView').textContent = registro.responsavel || '-';
-      document.getElementById('statusView').textContent = registro.status || '-';
-      document.getElementById('descricaoProblemaView').textContent = registro.descricaoProblema || '-';
-      document.getElementById('observacoesPreView').textContent = registro.observacoesPre || '-';
-      document.getElementById('observacoesPosView').textContent = registro.observacoesPos || '-';
-      
-      // Preencher checklist PRÉ
-      const checklistPreContainer = document.getElementById('checklistPreView');
-      checklistPreContainer.innerHTML = '';
-      
-      if (registro.checklistPre) {
-        for (const item of CONFIG.CHECKLIST_ITEMS) {
-          const valor = registro.checklistPre[item.id] || 'N/A';
-          const row = document.createElement('tr');
-          
-          let statusClass = '';
-          if (valor === 'OK') statusClass = 'text-success';
-          else if (valor === 'Danificado') statusClass = 'text-danger';
-          
-          row.innerHTML = `
-            <td>${item.label}</td>
-            <td class="${statusClass}">${valor}</td>
-          `;
-          
-          checklistPreContainer.appendChild(row);
-        }
-      }
-      
-      // Preencher checklist PÓS
-      const checklistPosContainer = document.getElementById('checklistPosView');
-      checklistPosContainer.innerHTML = '';
-      
-      if (registro.checklistPos) {
-        for (const item of CONFIG.CHECKLIST_ITEMS) {
-          const valor = registro.checklistPos[item.id] || 'N/A';
-          const row = document.createElement('tr');
-          
-          let statusClass = '';
-          if (valor === 'OK') statusClass = 'text-success';
-          else if (valor === 'Danificado') statusClass = 'text-danger';
-          
-          row.innerHTML = `
-            <td>${item.label}</td>
-            <td class="${statusClass}">${valor}</td>
-          `;
-          
-          checklistPosContainer.appendChild(row);
-        }
-      }
-      
-      // Preencher fotos PRÉ
-      const fotosPreContainer = document.getElementById('fotosPreView');
-      fotosPreContainer.innerHTML = '';
-      
-      if (registro.fotosPre && registro.fotosPre.length > 0) {
-        registro.fotosPre.forEach(foto => {
-          const colDiv = document.createElement('div');
-          colDiv.className = 'col-md-6 mb-2';
-          
-          colDiv.innerHTML = `
-            <a href="${foto.url || foto.dataURL}" target="_blank" class="d-block">
-              <img src="${foto.url || foto.dataURL}" class="img-fluid img-thumbnail" alt="${foto.descricao}" 
-                   style="height: 150px; width: 100%; object-fit: cover;">
-              <div class="small text-muted mt-1">${foto.descricao}</div>
-            </a>
-          `;
-          
-          fotosPreContainer.appendChild(colDiv);
-        });
       } else {
-        fotosPreContainer.innerHTML = '<div class="col-12"><p class="text-muted">Nenhuma foto registrada</p></div>';
+        if (Notifications) {
+          Notifications.success(`${currentUploads.completed} foto(s) carregada(s) com sucesso!`);
+        }
       }
-      
-      // Preencher fotos PÓS
-      const fotosPosContainer = document.getElementById('fotosPosView');
-      fotosPosContainer.innerHTML = '';
-      
-      if (registro.fotosPos && registro.fotosPos.length > 0) {
-        registro.fotosPos.forEach(foto => {
-          const colDiv = document.createElement('div');
-          colDiv.className = 'col-md-6 mb-2';
-          
-          colDiv.innerHTML = `
-            <a href="${foto.url || foto.dataURL}" target="_blank" class="d-block">
-              <img src="${foto.url || foto.dataURL}" class="img-fluid img-thumbnail" alt="${foto.descricao}" 
-                   style="height: 150px; width: 100%; object-fit: cover;">
-              <div class="small text-muted mt-1">${foto.descricao}</div>
-            </a>
-          `;
-          
-          fotosPosContainer.appendChild(colDiv);
-        });
-      } else {
-        fotosPosContainer.innerHTML = '<div class="col-12"><p class="text-muted">Nenhuma foto registrada</p></div>';
-      }
-      
-      // Configurar botão de edição
-      document.getElementById('btnEditar').onclick = () => {
-        this.loadRegistro(id);
-      };
-      
-      // Mostrar tela de visualização
-      Utils.showScreen('telaVisualizacao');
-      
-      return true;
-    } catch (error) {
-      console.error('Erro ao visualizar registro:', error);
-      Utils.showNotification('Erro ao carregar dados do registro.', 'error');
-      return false;
-    } finally {
-      Utils.hideLoading();
     }
   }
-};
+  
+  /**
+   * Cria container para preview de imagens
+   * @param {string} type - Tipo de preview (pre ou pos)
+   * @returns {HTMLElement|null} Container criado ou null se não for possível
+   */
+  function createPreviewContainer(type) {
+    // Procurar por um elemento pai adequado
+    const possibleParents = [
+      document.querySelector(`.${type}-photos-section`),
+      document.getElementById(`${type}PhotosContainer`),
+      document.querySelector('.photos-container'),
+      document.querySelector('.form-photos')
+    ];
+    
+    const parent = possibleParents.find(el => el !== null);
+    
+    if (!parent) return null;
+    
+    const container = document.createElement('div');
+    container.id = `${type}-photos-preview`;
+    container.className = 'photos-preview row g-2 mt-2';
+    
+    parent.appendChild(container);
+    return container;
+  }
+  
+  /**
+   * Processa um arquivo de imagem
+   * @param {File} file - Arquivo a ser processado
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @param {string} registroId - ID do registro relacionado 
+   * @param {HTMLElement} previewContainer - Container para preview
+   */
+  function processFile(file, type, registroId, previewContainer) {
+    // Validar arquivo
+    if (!validateFile(file)) {
+      currentUploads.failed++;
+      updateProgressUI();
+      return;
+    }
+    
+    // Gerar ID para imagem
+    const imageId = Utils.generateUniqueId('img');
+    
+    // Processar arquivo localmente (sem upload)
+    processLocalFile(file, imageId, type, registroId, previewContainer);
+  }
+  
+  /**
+   * Valida arquivo de imagem
+   * @param {File} file - Arquivo a validar
+   * @returns {boolean} Se o arquivo é válido
+   */
+  function validateFile(file) {
+    // Verificar tipo
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      showError(`Tipo de arquivo não permitido: ${file.type}`);
+      return false;
+    }
+    
+    // Verificar tamanho
+    if (file.size > MAX_FILE_SIZE) {
+      showError(`Arquivo muito grande (máximo: ${Utils.formatFileSize(MAX_FILE_SIZE)}): ${file.name}`);
+      return false;
+    }
+    
+    return true;
+  }
+  
+  /**
+   * Processa arquivo localmente (sem upload para servidor)
+   * @param {File} file - Arquivo a processar
+   * @param {string} imageId - ID da imagem
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @param {string} registroId - ID do registro relacionado
+   * @param {HTMLElement} previewContainer - Container para preview
+   */
+  function processLocalFile(file, imageId, type, registroId, previewContainer) {
+    const reader = new FileReader();
+    
+    reader.onload = function(e) {
+      // Criar objeto de imagem com metadados
+      const imageObj = {
+        id: imageId,
+        registroId: registroId,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        dataUrl: e.target.result,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Armazenar na memória
+      if (!memoryStorage[type][registroId]) {
+        memoryStorage[type][registroId] = [];
+      }
+      memoryStorage[type][registroId].push(imageObj);
+      
+      // Adicionar ao AppState para persistência entre telas
+      updateAppState(type, registroId, imageObj);
+      
+      // Gerar preview se container existir
+      if (previewContainer) {
+        addImagePreview(imageObj, type, previewContainer);
+      }
+      
+      // Atualizar contadores
+      currentUploads.completed++;
+      updateProgressUI();
+    };
+    
+    reader.onerror = function() {
+      console.error('Erro ao ler arquivo:', file.name);
+      currentUploads.failed++;
+      updateProgressUI();
+    };
+    
+    // Ler arquivo como Data URL
+    reader.readAsDataURL(file);
+  }
+  
+  /**
+   * Atualiza o AppState com a nova imagem
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @param {string} registroId - ID do registro
+   * @param {Object} imageObj - Objeto da imagem
+   */
+  function updateAppState(type, registroId, imageObj) {
+    const AppState = window.AppState || ModuleLoader.get('state');
+    if (!AppState) return;
+    
+    const stateKey = `photos_${type}_${registroId}`;
+    const currentPhotos = AppState.get(stateKey) || [];
+    
+    // Adicionar nova foto
+    const updatedPhotos = [...currentPhotos, imageObj];
+    
+    // Atualizar estado
+    AppState.update(stateKey, updatedPhotos);
+  }
+  
+  /**
+   * Adiciona preview de imagem ao container
+   * @param {Object} imageObj - Objeto da imagem
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @param {HTMLElement} container - Container para preview
+   */
+  function addImagePreview(imageObj, type, container) {
+    // Criar coluna para o card
+    const col = document.createElement('div');
+    col.className = 'col-6 col-md-4 col-lg-3';
+    col.setAttribute('data-image-id', imageObj.id);
+    
+    // Criar card de imagem
+    col.innerHTML = `
+      <div class="card h-100">
+        <div class="position-relative">
+          <img src="${imageObj.dataUrl}" class="card-img-top" alt="${Utils.sanitizeString(imageObj.name)}" style="height: 160px; object-fit: cover;">
+          <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 remove-photo" 
+                  data-image-id="${imageObj.id}" data-type="${type}" title="Remover">
+            <i class="bi bi-trash"></i>
+          </button>
+        </div>
+        <div class="card-body p-2">
+          <p class="card-text small text-truncate">${Utils.sanitizeString(imageObj.name)}</p>
+          <p class="card-text small text-muted">${Utils.formatFileSize(imageObj.size)}</p>
+        </div>
+      </div>
+    `;
+    
+    // Adicionar ao container
+    container.appendChild(col);
+    
+    // Adicionar listener para botão de remover
+    const removeBtn = col.querySelector('.remove-photo');
+    if (removeBtn) {
+      removeBtn.addEventListener('click', function() {
+        removeImage(imageObj.id, type, imageObj.registroId);
+        col.remove();
+      });
+    }
+  }
+  
+  /**
+   * Remove uma imagem
+   * @param {string} imageId - ID da imagem
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @param {string} registroId - ID do registro
+   */
+  function removeImage(imageId, type, registroId) {
+    // Remover da memória
+    if (memoryStorage[type][registroId]) {
+      memoryStorage[type][registroId] = memoryStorage[type][registroId].filter(img => img.id !== imageId);
+    }
+    
+    // Remover do AppState
+    const AppState = window.AppState || ModuleLoader.get('state');
+    if (AppState) {
+      const stateKey = `photos_${type}_${registroId}`;
+      const currentPhotos = AppState.get(stateKey) || [];
+      const updatedPhotos = currentPhotos.filter(img => img.id !== imageId);
+      AppState.update(stateKey, updatedPhotos);
+    }
+    
+    // Mostrar notificação
+    const Notifications = window.Notifications || ModuleLoader.get('notifications');
+    if (Notifications) {
+      Notifications.info('Foto removida.');
+    }
+  }
+  
+  /**
+   * Exibe mensagem de erro
+   * @param {string} message - Mensagem de erro
+   */
+  function showError(message) {
+    console.error('Erro PhotoHandler:', message);
+    
+    const Notifications = window.Notifications || ModuleLoader.get('notifications');
+    if (Notifications) {
+      Notifications.error(message);
+    } else {
+      alert(message);
+    }
+  }
+  
+  /**
+   * Obtém todas as fotos de um registro
+   * @param {string} registroId - ID do registro
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @returns {Array} Lista de objetos de imagem
+   */
+  function getPhotos(registroId, type = 'pre') {
+    // Tentar obter do AppState primeiro (persistente entre telas)
+    const AppState = window.AppState || ModuleLoader.get('state');
+    if (AppState) {
+      const stateKey = `photos_${type}_${registroId}`;
+      const statePhotos = AppState.get(stateKey);
+      if (statePhotos && statePhotos.length > 0) {
+        return statePhotos;
+      }
+    }
+    
+    // Fallback para armazenamento em memória
+    return memoryStorage[type][registroId] || [];
+  }
+  
+  /**
+   * Carrega fotos salvas para um registro
+   * @param {string} registroId - ID do registro
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @param {Array} photos - Array de objetos de foto
+   */
+  function loadSavedPhotos(registroId, type, photos) {
+    if (!Array.isArray(photos) || photos.length === 0) return;
+    
+    // Atualizar armazenamento em memória
+    memoryStorage[type][registroId] = photos;
+    
+    // Atualizar AppState
+    const AppState = window.AppState || ModuleLoader.get('state');
+    if (AppState) {
+      const stateKey = `photos_${type}_${registroId}`;
+      AppState.update(stateKey, photos);
+    }
+    
+    // Atualizar UI se container de preview existir
+    const previewContainer = document.getElementById(`${type}-photos-preview`);
+    if (previewContainer) {
+      // Limpar container
+      previewContainer.innerHTML = '';
+      
+      // Adicionar previews
+      photos.forEach(photo => {
+        addImagePreview(photo, type, previewContainer);
+      });
+    }
+  }
+  
+  /**
+   * Prepara dados de fotos para envio ao servidor
+   * @param {string} registroId - ID do registro
+   * @returns {Object} Dados formatados para envio
+   */
+  function preparePhotosForSubmission(registroId) {
+    // Obter fotos pré e pós
+    const prePhotos = getPhotos(registroId, 'pre');
+    const posPhotos = getPhotos(registroId, 'pos');
+    
+    // Remover dados desnecessários (data URLs grandes) para economizar banda
+    const prepareForSubmission = (photos) => {
+      return photos.map(photo => {
+        // Criar cópia sem a dataUrl completa
+        const { dataUrl, ...photoData } = photo;
+        return {
+          ...photoData,
+          // Incluir apenas o início da dataUrl para identificação do formato (opcional)
+          dataUrlType: dataUrl.substring(0, 30) + '...'
+        };
+      });
+    };
+    
+    return {
+      pre: prepareForSubmission(prePhotos),
+      pos: prepareForSubmission(posPhotos),
+      totalPhotos: prePhotos.length + posPhotos.length
+    };
+  }
+  
+  /**
+   * Limpa fotos temporárias ao finalizar operação
+   * @param {string} registroId - ID do registro
+   */
+  function clearTemporaryPhotos(registroId) {
+    // Limpar memória
+    delete memoryStorage.pre[registroId];
+    delete memoryStorage.pos[registroId];
+    
+    // Limpar AppState
+    const AppState = window.AppState || ModuleLoader.get('state');
+    if (AppState) {
+      AppState.update(`photos_pre_${registroId}`, null);
+      AppState.update(`photos_pos_${registroId}`, null);
+    }
+  }
+  
+  /**
+   * Exporta fotos para Drive (simulado)
+   * @param {string} registroId - ID do registro
+   * @returns {Promise<Object>} Resultado do processo
+   */
+  async function exportPhotosToDrive(registroId) {
+    // Simulação de exportação para Google Drive
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const prePhotos = getPhotos(registroId, 'pre');
+        const posPhotos = getPhotos(registroId, 'pos');
+        
+        const folderUrl = `https://drive.google.com/drive/folders/example-${registroId}`;
+        
+        resolve({
+          success: true,
+          message: `${prePhotos.length + posPhotos.length} fotos exportadas com sucesso`,
+          folderUrl: folderUrl,
+          prePhotosCount: prePhotos.length,
+          posPhotosCount: posPhotos.length
+        });
+      }, 1500);
+    });
+  }
+  
+  /**
+   * Obtém URL de visualização para uma foto
+   * @param {string} imageId - ID da imagem
+   * @param {string} registroId - ID do registro
+   * @param {string} type - Tipo de foto (pre ou pos)
+   * @returns {string|null} URL da imagem ou null se não encontrada
+   */
+  function getPhotoUrl(imageId, registroId, type = 'pre') {
+    const photos = getPhotos(registroId, type);
+    const photo = photos.find(p => p.id === imageId);
+    return photo ? photo.dataUrl : null;
+  }
+  
+  // Exportar funções públicas
+  return {
+    init,
+    getPhotos,
+    loadSavedPhotos,
+    preparePhotosForSubmission,
+    clearTemporaryPhotos,
+    exportPhotosToDrive,
+    getPhotoUrl
+  };
+});
+
+// Alias global para compatibilidade com código existente
+window.PhotoHandler = ModuleLoader.get('photoHandler') || ModuleLoader.initialize('photoHandler');
