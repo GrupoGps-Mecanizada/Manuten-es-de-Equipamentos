@@ -14,90 +14,119 @@ const App = {
   Config: null,
 
   /**
-   * Inicializa a aplicação. Obtém módulos, configura UI e carrega dados iniciais.
+   * Inicializa a aplicação
    */
   init: async function() {
     console.log("App.init() iniciado...");
 
-    // Obter referências (essenciais primeiro)
+    // Obter referências
     this.AppState = ModuleLoader.get('state');
     this.PhotoHandler = ModuleLoader.get('photoHandler');
     this.FormHandler = ModuleLoader.get('formHandler');
     this.Utils = window.Utils;
     this.Config = window.CONFIG;
-    // Tenta obter ApiClient (pode ser opcional para modo offline)
     this.ApiClient = ModuleLoader.get('apiClient');
 
-    // --- VERIFICAÇÃO DE DEPENDÊNCIAS CRÍTICAS ---
+    // Verificação de dependências críticas
     let missingEssentialDeps = [];
     if (!this.AppState) missingEssentialDeps.push('AppState');
     if (!this.PhotoHandler) missingEssentialDeps.push('PhotoHandler');
-    if (!this.FormHandler) missingEssentialDeps.push('FormHandler'); // Precisa do FormHandler para operar
+    if (!this.FormHandler) missingEssentialDeps.push('FormHandler');
     if (!this.Utils) missingEssentialDeps.push('Utils');
     if (!this.Config) missingEssentialDeps.push('Config');
 
     if (missingEssentialDeps.length > 0) {
        const errorMsg = `App.init: Falha ao carregar módulos essenciais: ${missingEssentialDeps.join(', ')}. A aplicação não pode iniciar.`;
        console.error(errorMsg);
-       // Tenta notificar antes de parar
        this.Utils?.showNotification?.(errorMsg, 'error');
-       // Interrompe a execução mostrando erro na tela
        document.body.innerHTML = `<div class="alert alert-danger m-5" role="alert"><strong>Erro Crítico:</strong> ${errorMsg} Verifique o console e recarregue a página.</div>`;
-       return; // Para init()
+       return;
     }
 
-    // Avisa se ApiClient não foi encontrado, mas continua
+    // Avisa se ApiClient não foi encontrado
     if (!this.ApiClient) {
        console.warn("App.init: ApiClient não encontrado. Operando em modo offline/cache.");
-       this.AppState?.update('forceOffline', true); // Sinaliza modo offline
-       // Poderia desabilitar botões que dependem da API aqui
+       this.AppState?.update('forceOffline', true);
     } else {
-        // Configura URL da API se não estiver no Config (fallback menos ideal)
         if (!this.Config.API_URL && this.ApiClient?.apiUrl) {
-           console.warn("API_URL não definida no Config, usando a interna do ApiClient (se houver).");
+           console.warn("API_URL não definida no Config, usando a interna do ApiClient.");
            this.Config.API_URL = this.ApiClient.apiUrl;
         } else if (!this.Config.API_URL) {
             console.error("API_URL não definida no Config nem no ApiClient!");
              this.Utils?.showNotification?.("Configuração da API não encontrada!", 'error');
         }
     }
-    // --- FIM DA VERIFICAÇÃO ---
 
     console.log("Módulos essenciais do App obtidos com sucesso.");
 
-    // Configurar eventos da UI (agora usando this.FormHandler, this.Utils)
+    // Configurar eventos da UI
     this.setupUIEvents();
 
-    // Verificar conectividade e tentar sincronizar (usa this.ApiClient)
+    // CORREÇÃO: Testar a API antes de tentar sincronizar
+    await this.testAPIConnection();
+
+    // Verificar conectividade e tentar sincronizar
     await this.checkConnectivityAndSync();
 
-    // Carregar lista de registros inicial (usa this.ApiClient e this.AppState)
+    // Carregar lista de registros inicial
     await this.refreshRegistrosList();
 
-    // Detectar modo (novo, edição, visualização) pela URL (usa this.FormHandler)
+    // Detectar modo pela URL
     this.handleUrlParams();
 
     console.log("App.init() concluído com sucesso.");
   },
 
   /**
-   * Configura os listeners de eventos para os botões principais e busca.
+   * Testa a conexão com a API
+   */
+  testAPIConnection: async function() {
+    if (!this.Config?.API_URL || !navigator.onLine) {
+      return false;
+    }
+    
+    try {
+      console.log("Testando conexão com a API...");
+      const response = await fetch(this.Config.API_URL, {
+        method: 'GET',
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        console.log("Conexão com a API estabelecida com sucesso!");
+        return true;
+      } else {
+        console.warn(`Teste de API falhou: ${response.status} ${response.statusText}`);
+        this.Utils?.showNotification?.(`Problema de comunicação com o servidor: ${response.status}`, 'warning');
+        return false;
+      }
+    } catch (error) {
+      console.error("Erro ao testar conexão com a API:", error);
+      this.Utils?.showNotification?.("Não foi possível conectar ao servidor. Verificando conexão local...", 'warning');
+      return false;
+    }
+  },
+
+  /**
+   * Configura os listeners de eventos para os botões principais e busca
    */
   setupUIEvents: function() {
     console.log("Configurando eventos da UI...");
     // Botão Novo Registro
     document.getElementById('btnNovoRegistro')?.addEventListener('click', () => {
-      // Usa a referência do FormHandler armazenada em 'this'
       this.FormHandler?.newRegistro();
     });
 
     // Botão Lista de Registros
     document.getElementById('btnListaRegistros')?.addEventListener('click', () => {
-       this.Utils?.showScreen?.('telaListaRegistros'); // Usa Utils para mostrar tela
-       this.refreshRegistrosList(); // Atualiza a lista ao voltar para ela
+       this.Utils?.showScreen?.('telaListaRegistros');
+       this.refreshRegistrosList();
     });
 
-    // Botão Voltar à Lista (da visualização) - pode ser redundante se o formHandler já tem
+    // Botão Voltar à Lista
     document.getElementById('btnVoltarLista')?.addEventListener('click', () => {
       this.Utils?.showScreen?.('telaListaRegistros');
        this.refreshRegistrosList();
@@ -116,21 +145,23 @@ const App = {
         this.filterRegistros(campoBusca.value);
       }
     });
-     // Listener para limpar busca quando campo fica vazio
-     campoBusca?.addEventListener('input', () => {
-        if (campoBusca.value.trim() === '') {
-           this.filterRegistros(''); // Chama filtro com termo vazio para resetar
-        }
-     });
+    
+    campoBusca?.addEventListener('input', () => {
+      if (campoBusca.value.trim() === '') {
+         this.filterRegistros('');
+      }
+    });
 
+    // Botão de sincronização manual
+    document.getElementById('btnSincronizar')?.addEventListener('click', () => {
+      this.checkConnectivityAndSync(true); // true = forçar sincronização
+    });
 
-     // Eventos internos dos formulários são gerenciados pelo FormHandler.
-     // Eventos dos botões de view/edit/delete na lista são adicionados em refreshRegistrosList.
-     console.log("Eventos da UI configurados.");
+    console.log("Eventos da UI configurados.");
   },
 
   /**
-   * Trata parâmetros de URL (?view=ID, ?edit=ID, ?new=1) para abrir a tela correta.
+   * Trata parâmetros de URL
    */
   handleUrlParams: function() {
     const params = new URLSearchParams(window.location.search);
@@ -152,15 +183,12 @@ const App = {
       actionTaken = true;
     }
 
-    // Se nenhuma ação foi tomada pelos parâmetros, mostra a lista
     if (!actionTaken) {
-       console.log("Nenhum parâmetro de URL relevante, exibindo lista.");
+       console.log("Nenhum parâmetro URL, exibindo lista.");
        this.Utils?.showScreen?.('telaListaRegistros');
-       // Garante que a lista seja atualizada se nenhuma outra tela foi carregada
        this.refreshRegistrosList();
     }
 
-    // Limpa parâmetros da URL após processar para evitar reprocessamento
     if (params.toString() && window.history.replaceState) {
        console.log("Limpando parâmetros da URL.");
        window.history.replaceState({}, document.title, window.location.pathname);
@@ -168,7 +196,7 @@ const App = {
   },
 
   /**
-   * Atualiza a lista de registros na tela, buscando da API ou do cache/estado.
+   * Atualiza a lista de registros na tela
    */
   refreshRegistrosList: async function() {
     console.log("Atualizando lista de registros...");
@@ -193,81 +221,71 @@ const App = {
     let errorMessage = '';
 
     try {
-       // Tenta buscar online se ApiClient existe e estamos online
-       if (this.ApiClient && navigator.onLine) {
+       // CORREÇÃO: Melhor verificação de estado online
+       const isOnline = navigator.onLine && this.AppState?.get('online') !== false;
+       
+       if (this.ApiClient && isOnline) {
           console.log("Tentando buscar registros via API...");
-          registros = await this.ApiClient.listarRegistros(); // Espera a Promise resolver
+          registros = await this.ApiClient.listarRegistros();
           console.log(`Recebidos ${registros?.length ?? 0} registros da API.`);
-          // Atualiza o cache/estado local com os dados frescos da API
           this.AppState?.update('registros', registros || []);
        } else {
-          // Busca do estado/cache local se offline ou sem ApiClient
           const offlineMsg = this.ApiClient ? "Modo offline." : "ApiClient indisponível.";
           console.log(`Buscando registros do estado local. ${offlineMsg}`);
           registros = this.AppState?.get('registros') || [];
-          if (registros.length > 0 && navigator.onLine && this.ApiClient) {
-             // Avisa que está mostrando dados locais apesar de estar online (API pode ter falhado antes)
-             this.Utils?.showNotification?.("Exibindo dados locais. Pode haver dados mais recentes online.", "info", 4000);
-          } else if (!navigator.onLine) {
-             this.Utils?.showNotification?.("Exibindo dados locais (offline).", "info", 4000);
+          if (registros.length > 0) {
+             const msg = isOnline ? "Exibindo dados locais." : "Exibindo dados locais (offline).";
+             this.Utils?.showNotification?.(msg, "info", 4000);
           }
        }
     } catch (error) {
        errorOccurred = true;
        errorMessage = error.message;
        console.error('Erro ao buscar registros:', errorMessage);
-       console.log("Falha na API. Tentando usar estado local como fallback...");
-       registros = this.AppState?.get('registros') || []; // Usa o que tiver no estado
+       registros = this.AppState?.get('registros') || [];
        this.Utils?.showNotification?.(`Erro ao buscar dados (${errorMessage}). Exibindo dados locais.`, 'warning');
     }
 
     // Limpar tabela (loading)
     tableBody.innerHTML = '';
 
-    // Exibir registros ou mensagem de erro/nenhum registro
+    // Exibir registros ou mensagem
     if (!registros || registros.length === 0) {
-        let colspan = 6; // Número de colunas na tabela
-        let message = errorOccurred
-             ? `<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle me-2"></i> Erro ao carregar: ${this.Utils?.sanitizeString(errorMessage) || 'Erro desconhecido'}</div>`
+        const colspan = 6;
+        const message = errorOccurred
+             ? `<div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle me-2"></i> Erro: ${this.Utils?.sanitizeString(errorMessage) || 'Erro desconhecido'}</div>`
              : `<div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i> Nenhum registro encontrado. <button class="btn btn-sm btn-primary ms-3" id="btnNovoRegistroFromEmpty">Criar Novo Registro</button></div>`;
          tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-4">${message}</td></tr>`;
          document.getElementById('btnNovoRegistroFromEmpty')?.addEventListener('click', () => this.FormHandler?.newRegistro());
     } else {
-        // Ordenar registros (usa Utils.ordenarPor)
-        const registrosOrdenados = this.Utils?.ordenarPor(registros, 'dataCriacao', false) || registros; // false = decrescente
-
-        // Adicionar linhas à tabela
+        // Ordenar e exibir registros
+        const registrosOrdenados = this.Utils?.ordenarPor(registros, 'dataCriacao', false) || registros;
         registrosOrdenados.forEach(registro => {
            if (!registro || !registro.id) {
               console.warn("Registro inválido encontrado:", registro);
-              return; // Pula registro inválido
+              return;
            }
-           this.addRegistroRow(tableBody, registro); // Chama função auxiliar para adicionar linha
+           this.addRegistroRow(tableBody, registro);
         });
     }
-     console.log("Lista de registros atualizada na tela.");
+    console.log("Lista de registros atualizada na tela.");
   },
 
   /**
-   * Adiciona uma linha de registro à tabela.
-   * @param {HTMLElement} tableBody - O elemento tbody da tabela.
-   * @param {Object} registro - O objeto do registro.
+   * Adiciona uma linha de registro à tabela
    */
   addRegistroRow: function(tableBody, registro) {
-      const row = tableBody.insertRow(); // Cria nova linha
+      const row = tableBody.insertRow();
       row.setAttribute('data-registro-id', registro.id);
 
-      // Funções auxiliares para sanitizar e formatar
       const sanitize = this.Utils?.sanitizeString || (s => s || '');
       const formatDT = this.Utils?.formatarDataHora || (d => d ? new Date(d).toLocaleString() : '--');
 
-      // Status Badge Logic
       let statusBadge = '<span class="badge bg-secondary">Pendente</span>';
       if (registro.dataFinalizacao) { statusBadge = `<span class="badge bg-success">Concluído</span>`; }
       else if (Object.keys(registro).some(k => k.startsWith('checklist_') && k.endsWith('Pos') && registro[k])) { statusBadge = `<span class="badge bg-info text-dark">Pós Iniciado</span>`; }
       else if (registro.descricaoProblema || registro.fotosPre?.length > 0) { statusBadge = `<span class="badge bg-warning text-dark">Pré Iniciado</span>`; }
 
-      // Células da Tabela
       row.innerHTML = `
         <td><small>${sanitize(registro.id)}</small></td>
         <td>${sanitize(registro.placa)}</td>
@@ -287,7 +305,6 @@ const App = {
         </td>
       `;
 
-      // Adicionar Event Listeners aos Botões da Linha
       row.querySelector('.btn-view')?.addEventListener('click', (e) => {
           const id = e.currentTarget.getAttribute('data-id');
           if(id) this.FormHandler?.viewRegistro(id);
@@ -298,7 +315,7 @@ const App = {
       });
       row.querySelector('.btn-delete')?.addEventListener('click', async (e) => {
           const id = e.currentTarget.getAttribute('data-id');
-          const placa = sanitize(registro.placa); // Pega a placa para mensagem
+          const placa = sanitize(registro.placa);
           if(id && confirm(`Tem certeza que deseja excluir o registro da placa ${placa} (ID: ${id})? Esta ação não pode ser desfeita.`)) {
              if (!this.ApiClient) {
                  this.Utils?.showNotification?.("Exclusão offline não implementada ou API indisponível.", "error");
@@ -309,9 +326,7 @@ const App = {
                  const result = await this.ApiClient.excluirRegistro(id);
                  if(result && result.success !== false) {
                     this.Utils?.showNotification?.(`Registro ${id} (${placa}) excluído com sucesso.`, 'success');
-                    // Remove a linha da tabela visualmente ou atualiza a lista inteira
-                    row.remove(); // Remove a linha específica
-                    // Ou this.refreshRegistrosList(); // Atualiza tudo
+                    row.remove();
                  } else {
                     throw new Error(result?.message || "Falha ao excluir na API.");
                  }
@@ -326,36 +341,29 @@ const App = {
   },
 
   /**
-   * Filtra os registros exibidos na tabela localmente (sem recarregar da API).
-   * @param {string} termo - O termo de busca.
+   * Filtra os registros exibidos na tabela localmente
    */
   filterRegistros: function(termo) {
     const tableBody = document.getElementById('listaRegistrosBody');
     if (!tableBody) return;
-    const rows = tableBody.querySelectorAll('tr[data-registro-id]'); // Pega apenas linhas de dados
+    const rows = tableBody.querySelectorAll('tr[data-registro-id]');
     const termoLimpo = this.Utils?.removerAcentos(termo.toLowerCase().trim()) || '';
 
     let found = false;
     rows.forEach(row => {
-        // Pega o conteúdo de texto de células específicas para busca
         const id = row.cells[0]?.textContent?.toLowerCase() || '';
         const placa = row.cells[1]?.textContent?.toLowerCase() || '';
         const modelo = row.cells[2]?.textContent?.toLowerCase() || '';
-        // Adicione mais campos se necessário (ex: data, status, responsável...)
-        // const data = row.cells[3]?.textContent?.toLowerCase() || '';
-        // const status = row.cells[4]?.textContent?.toLowerCase() || '';
 
-        // Verifica se alguma célula contém o termo
-        const match = termoLimpo === '' || // Mostra tudo se termo vazio
+        const match = termoLimpo === '' || 
                       id.includes(termoLimpo) ||
                       placa.includes(termoLimpo) ||
                       modelo.includes(termoLimpo);
 
-        row.style.display = match ? '' : 'none'; // Mostra ou esconde a linha
+        row.style.display = match ? '' : 'none';
         if (match) found = true;
     });
 
-    // Adiciona ou remove mensagem "Nenhum resultado"
     let noResultsRow = tableBody.querySelector('.no-results-message');
     if (!found && termoLimpo !== '') {
         if (!noResultsRow) {
@@ -364,49 +372,73 @@ const App = {
             noResultsRow.innerHTML = `<td colspan="6" class="text-center text-muted py-3 fst-italic">Nenhum registro encontrado para "${this.Utils?.sanitizeString(termo)}".</td>`;
         }
     } else if (noResultsRow) {
-        noResultsRow.remove(); // Remove a mensagem se encontrou algo ou busca vazia
+        noResultsRow.remove();
     }
   },
 
   /**
-   * Verifica a conectividade e tenta sincronizar requisições offline pendentes.
+   * Verifica a conectividade e tenta sincronizar requisições offline pendentes
+   * @param {boolean} forceSync Forçar sincronização mesmo se parecer offline
    */
-  checkConnectivityAndSync: async function() {
-    const isOnline = navigator.onLine;
+  checkConnectivityAndSync: async function(forceSync = false) {
+    const wasOnline = this.AppState?.get('online') === true;
+    const isOnline = navigator.onLine || forceSync;
     this.AppState?.update('online', isOnline);
 
-    if (!isOnline) {
+    if (!isOnline && !forceSync) {
       console.log('App: Sistema em modo offline. Sincronização adiada.');
-      return;
-    }
-
-    // Só tenta sincronizar se ApiClient e a função existirem
-    if (this.ApiClient && typeof this.ApiClient.syncOfflineRequests === 'function') {
-      if (!this.Config?.API_URL) {
-         console.warn('App: API URL não configurada. Não é possível sincronizar.');
-         return;
+      if (wasOnline) {
+        this.Utils?.showNotification?.('Dispositivo está offline. Dados serão salvos localmente.', 'warning');
       }
-       try {
-         console.log('App: Verificando e tentando sincronizar requisições offline...');
-         const syncResult = await this.ApiClient.syncOfflineRequests();
-
-         if (syncResult && syncResult.syncedCount > 0) {
-            this.Utils?.showNotification?.(`Sincronização: ${syncResult.syncedCount} ação(ões) enviada(s) com sucesso.`, 'success', 5000);
-            // Atualiza a lista após sincronizar com sucesso
-            await this.refreshRegistrosList();
-         } else if (syncResult && syncResult.errorCount > 0) {
-             this.Utils?.showNotification?.(`Sincronização: ${syncResult.errorCount} ação(ões) falharam ao sincronizar. Verifique o console.`, 'warning', 7000);
-         } else if (syncResult?.pendingCount === 0) {
-             console.log("App: Nenhuma requisição offline pendente para sincronizar.");
-         }
-
-       } catch (error) {
-         console.error('App: Erro geral durante a sincronização:', error);
-         this.Utils?.showNotification?.('Falha crítica ao tentar sincronizar dados offline.', 'error');
-       }
-    } else {
-       console.warn("App: ApiClient ou syncOfflineRequests não disponíveis para sincronização.");
+      return false;
     }
-  }
 
-}; // Fim do objeto App
+    // CORREÇÃO: Verificação mais robusta antes de sincronizar
+    if (!this.ApiClient || typeof this.ApiClient.syncOfflineRequests !== 'function') {
+      console.warn("App: ApiClient ou syncOfflineRequests indisponível.");
+      return false;
+    }
+    
+    if (!this.Config?.API_URL) {
+      console.warn('App: API URL não configurada. Não é possível sincronizar.');
+      return false;
+    }
+    
+    // CORREÇÃO: Limitar o número de tentativas de sincronização
+    const maxAttempts = this.Config?.SYNC?.MAX_RETRIES || 1;
+    let attempt = 0;
+    let success = false;
+    
+    while (attempt < maxAttempts && !success) {
+      attempt++;
+      try {
+        console.log(`App: Tentativa ${attempt}/${maxAttempts} de sincronização...`);
+        const syncResult = await this.ApiClient.syncOfflineRequests();
+        
+        if (syncResult) {
+          if (syncResult.syncedCount > 0) {
+            this.Utils?.showNotification?.(`Sincronização: ${syncResult.syncedCount} ação(ões) enviada(s) com sucesso.`, 'success', 5000);
+            await this.refreshRegistrosList();
+            success = true;
+          } else if (syncResult.errorCount > 0 && syncResult.pendingCount > 0) {
+            console.warn(`Sincronização: ${syncResult.errorCount} erros. Restam ${syncResult.pendingCount} ações pendentes.`);
+            if (attempt < maxAttempts) {
+              const delay = this.Config?.SYNC?.RETRY_DELAY || 5000;
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          } else if (syncResult.pendingCount === 0) {
+            console.log("App: Nenhuma requisição offline pendente para sincronizar.");
+            success = true;
+          }
+        }
+      } catch (error) {
+        console.error(`App: Erro na tentativa ${attempt} de sincronização:`, error);
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+    }
+    
+    return success;
+  }
+};
