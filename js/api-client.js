@@ -11,7 +11,6 @@ ModuleLoader.register('apiClient', function() {
    * Inicializar cliente da API (Verificação inicial)
    */
   function init() {
-    // Apenas loga, a URL será verificada em cada request.
     console.log('ApiClient inicializado (pronto para fazer requisições).');
   }
 
@@ -23,15 +22,13 @@ ModuleLoader.register('apiClient', function() {
       let url = window.CONFIG?.API_URL;
       if (!url) {
           console.warn("API_URL não encontrada no CONFIG global, tentando localStorage...");
-          // Assume que Utils está disponível globalmente ou via ModuleLoader se necessário
           url = window.Utils?.obterLocalStorage?.('API_URL');
       }
        if (!url) {
            console.error("API_URL não configurada no CONFIG nem no localStorage! Verifique config.js e o localStorage.");
-           // Tenta notificar o usuário se possível
            window.Utils?.showNotification?.("Erro crítico: URL da API não encontrada.", "error");
        }
-      return url || null; // Retorna a URL ou null
+      return url || null;
   }
 
   /**
@@ -42,58 +39,55 @@ ModuleLoader.register('apiClient', function() {
    * @throws {Error} - Lança erro em caso de falha na rede, erro HTTP ou falha no parse da resposta.
    */
   async function request(action, data = {}) {
-    const effectiveApiUrl = getApiUrl(); // Obtém a URL no momento da requisição
+    const effectiveApiUrl = getApiUrl();
 
-    // Se não há URL, tenta salvar offline imediatamente e lança erro claro.
     if (!effectiveApiUrl) {
       console.error(`ApiClient.request: Tentativa de requisição para '${action}' sem API_URL configurada.`);
-      saveOfflineRequest(action, data); // Tenta salvar offline
+      saveOfflineRequest(action, data);
       throw new Error('URL da API não configurada. Verifique as configurações.');
     }
 
-    // Usa Utils se disponível para feedback visual
     const utils = window.Utils;
-    utils?.showLoading?.(); // Mostra loading
+    utils?.showLoading?.();
 
-    // ---- Configuração da Requisição Fetch ----
+    // CORREÇÃO: Configuração melhorada da requisição Fetch
     const fetchOptions = {
-        method: 'POST',     // Usar POST para todas as ações para enviar 'action' e 'data' no corpo
-        credentials: 'omit', // Necessário para evitar problemas com cookies de terceiros
-        // mode: 'cors', // 'cors' é o padrão, não precisa definir explicitamente geralmente
+        method: 'POST',
+        credentials: 'omit',
+        mode: 'cors', // Explicitamente define o modo CORS
+        cache: 'no-cache', // Evita problemas de cache
         headers: {
-          // >>> CORREÇÃO CRUCIAL APLICADA AQUI <<<
-          // Apps Script precisa de 'application/json' para entender o corpo como JSON e popular e.postData
-          'Content-Type': 'application/json',
-          // Poderia adicionar outros cabeçalhos aqui se necessário (ex: Autenticação)
-          // 'Authorization': 'Bearer SEU_TOKEN_SE_USAR'
+          'Content-Type': 'application/json', // Crucial para o Google Apps Script
+          'Accept': 'application/json', // Adiciona Accept header
+          'X-Requested-With': 'XMLHttpRequest' // Ajuda em algumas configurações de servidor
         },
-        // O corpo SEMPRE contém a ação e os dados, mesmo que 'data' esteja vazio
         body: JSON.stringify({ action: action, data: data })
     };
-    // -----------------------------------------
 
     try {
-      console.debug(`ApiClient: Enviando ação '${action}' para ${effectiveApiUrl}`, fetchOptions.body); // Loga o corpo enviado
+      // CORREÇÃO: Log detalhado para debug
+      console.debug(`ApiClient: Enviando ação '${action}' para ${effectiveApiUrl}`);
+      console.debug("Headers:", JSON.stringify(fetchOptions.headers));
+      console.debug("Body:", fetchOptions.body);
+      
       const response = await fetch(effectiveApiUrl, fetchOptions);
 
       // Processa a resposta
-      let responseBodyText = await response.text(); // Lê como texto primeiro para debug
+      let responseBodyText = await response.text();
+      console.debug(`ApiClient: Resposta recebida (${response.status}): ${responseBodyText.substring(0, 200)}...`);
+      
       let result = null;
 
       // Verifica se a resposta HTTP foi OK (status 200-299)
       if (!response.ok) {
         let errorMsg = `Erro na API: ${response.status} ${response.statusText}`;
         try {
-            // Tenta parsear como JSON para mensagens de erro estruturadas do GAS
             result = JSON.parse(responseBodyText);
-            // Usa a mensagem do GAS se disponível, senão o status HTTP
             errorMsg = result?.message || result?.error || errorMsg;
         } catch (e) {
-           // Se falhou o parse do corpo do erro, usa o texto bruto
-           console.warn(`ApiClient: Não foi possível parsear corpo da resposta de erro (${response.status}). Corpo: ${responseBodyText}`);
+           console.warn(`ApiClient: Não foi possível parsear corpo da resposta de erro. Corpo: ${responseBodyText}`);
         }
         console.error(`ApiClient: Erro na resposta da API (${response.status}). Mensagem: ${errorMsg}`);
-        // Lança um erro que pode ser capturado pela camada superior (App/UI)
         throw new Error(errorMsg);
       }
 
@@ -101,54 +95,39 @@ ModuleLoader.register('apiClient', function() {
       try {
          result = JSON.parse(responseBodyText);
       } catch (e) {
-         console.error(`ApiClient: Falha GRAVE ao parsear resposta JSON de SUCESSO da API para ação '${action}'. Corpo:`, responseBodyText, e);
-         // Se a resposta de sucesso não é JSON, algo está muito errado no GAS
+         console.error(`ApiClient: Falha GRAVE ao parsear resposta JSON. Corpo:`, responseBodyText, e);
          throw new Error(`Resposta inválida da API (não é JSON): ${responseBodyText.substring(0, 100)}...`);
       }
 
-       // Verifica se a resposta da API indica sucesso lógico (propriedade 'success')
+       // Verifica se a resposta da API indica sucesso lógico
        if (result && result.success === false) {
            console.warn(`ApiClient: API retornou success:false para ação '${action}'. Mensagem: ${result.message}`);
-           // Lança um erro com a mensagem específica da API para ser tratado
            throw new Error(result.message || `API informou falha na ação ${action}`);
        }
 
-
       console.debug(`ApiClient: Resposta de sucesso recebida para ação '${action}'.`);
-      return result; // Retorna o objeto JSON parseado
+      return result;
 
     } catch (error) {
-      // Captura erros de rede (fetch falhou), erros HTTP (response.ok foi false),
-      // ou erros de parse da resposta JSON.
       console.error(`ApiClient: Erro GERAL durante a requisição para ação '${action}':`, error.message || error);
-      // Tenta salvar offline em qualquer caso de erro pego aqui
       saveOfflineRequest(action, data);
-      // Propaga o erro para que a função chamadora (ex: App.refreshRegistrosList) possa tratar
-      // (ex: mostrar notificação, usar dados de cache)
       throw error;
     } finally {
-      // Garante que o loading seja escondido, mesmo se ocorrer erro
       utils?.hideLoading?.();
     }
   }
 
-  // --- Funções de Ações Específicas ---
-  // Simplificadas para apenas chamar 'request' e retornar a promessa.
-  // O tratamento de erro específico (ex: usar cache) é feito na camada que chama estas funções.
-
+  // Funções de ações específicas permanecem inalteradas
   async function salvarRegistro(registro) {
      if (!registro || !registro.id) throw new Error("Dados ou ID do registro inválidos para salvar.");
-     return request('salvarRegistro', registro); // Retorna a promessa de request
+     return request('salvarRegistro', registro);
   }
 
   async function listarRegistros() {
-     // Retorna a promessa. A camada superior (App) tratará o resultado ou erro.
      const result = await request('listarRegistros');
-     // Validação mínima da estrutura esperada
      if (result && result.success && Array.isArray(result.registros)) {
         return result.registros;
      }
-     // Se chegou aqui, a resposta não foi o esperado
      console.error("Resposta inválida ao listar registros:", result);
      throw new Error(result?.message || 'Formato de resposta inválido ao listar registros');
   }
@@ -156,9 +135,8 @@ ModuleLoader.register('apiClient', function() {
   async function obterRegistro(id) {
      if (!id) throw new Error("ID do registro não fornecido.");
      const result = await request('obterRegistro', { id: id });
-     // Validação mínima
      if (result && result.success) {
-        return result.registro || null; // Retorna o registro ou null se não encontrado (success: true)
+        return result.registro || null;
      }
      console.error("Resposta inválida ao obter registro:", result);
      throw new Error(result?.message || `Falha ao obter registro ${id}`);
@@ -166,40 +144,34 @@ ModuleLoader.register('apiClient', function() {
 
   async function excluirRegistro(id) {
       if (!id) throw new Error("ID do registro não fornecido para exclusão.");
-      return request('excluirRegistro', { id: id }); // Retorna a promessa
+      return request('excluirRegistro', { id: id });
   }
 
   async function uploadImagem(photoObject) {
-     // Validação dos dados da imagem
      if (!photoObject?.dataUrl || !photoObject?.name || !photoObject?.type || !photoObject?.registroId || !photoObject?.id) {
         console.error("Dados incompletos para uploadImagem:", photoObject);
         throw new Error("Dados da imagem incompletos para upload.");
      }
-     // Prepara o payload para a API GAS
      const payload = {
-        fileName: `${photoObject.registroId}_${photoObject.id}_${photoObject.name}`, // Nome do arquivo no Drive
+        fileName: `${photoObject.registroId}_${photoObject.id}_${photoObject.name}`,
         mimeType: photoObject.type,
-        content: photoObject.dataUrl.split(',')[1], // Extrai apenas o conteúdo base64
-        registroId: photoObject.registroId,          // ID do registro associado
-        photoId: photoObject.id                      // ID único da foto no cliente
+        content: photoObject.dataUrl.split(',')[1],
+        registroId: photoObject.registroId,
+        photoId: photoObject.id
      };
-     // Upload não é salvo offline por padrão
-     return request('uploadImagem', payload); // Retorna a promessa
+     return request('uploadImagem', payload);
   }
 
-  // --- Funções Offline ---
-
+  // CORREÇÃO: Função para salvar requisições offline
   function saveOfflineRequest(action, data) {
      const utils = window.Utils;
-     // Não salva uploads de imagem offline devido ao tamanho
      if (action === 'uploadImagem') {
-        console.warn(`ApiClient: Upload da imagem (ação '${action}') falhou e NÃO será salvo offline.`);
+        console.warn(`ApiClient: Upload da imagem falhou e NÃO será salvo offline.`);
         utils?.showNotification?.(`Falha no upload da imagem. Tente novamente com conexão.`, 'error');
         return;
      }
-     // Verifica se as funções de utilidade necessárias estão disponíveis
      if (!utils?.salvarLocalStorage || !utils?.obterLocalStorage || !utils?.gerarId) {
-        console.error("ApiClient: Funções Utils (salvar/obterLocalStorage, gerarId) não disponíveis para salvar requisição offline.");
+        console.error("ApiClient: Funções Utils não disponíveis para salvar requisição offline.");
         return;
      }
      console.log(`ApiClient: Salvando requisição offline para ação '${action}'...`);
@@ -207,14 +179,13 @@ ModuleLoader.register('apiClient', function() {
          const offlineRequests = utils.obterLocalStorage('offlineRequests') || [];
          const requestId = utils.gerarId();
          offlineRequests.push({
-           id: requestId, // Adiciona ID único para rastreamento
+           id: requestId,
            action,
            data,
            timestamp: new Date().toISOString()
          });
          utils.salvarLocalStorage('offlineRequests', offlineRequests);
          console.log(`Requisição offline ID ${requestId} salva. Pendentes: ${offlineRequests.length}`);
-         // Notifica o usuário
          utils.showNotification?.(`Sem conexão. Ação (${action}) salva para tentar mais tarde.`, 'warning', 5000);
      } catch (e) {
         console.error("ApiClient: Erro CRÍTICO ao tentar salvar requisição offline:", e);
@@ -222,6 +193,7 @@ ModuleLoader.register('apiClient', function() {
      }
   }
 
+  // CORREÇÃO: Função de sincronização melhorada
   async function syncOfflineRequests() {
      const utils = window.Utils;
      if (!utils?.salvarLocalStorage || !utils?.obterLocalStorage) {
@@ -236,72 +208,65 @@ ModuleLoader.register('apiClient', function() {
        return { success: true, syncedCount: 0, errorCount: 0, pendingCount: 0, errors: [] };
      }
 
-     // Verifica conectividade GERAL antes de começar
      if (!navigator.onLine) {
          console.log("ApiClient.sync: Sem conexão de rede. Sincronização offline adiada.");
          return { success: false, message: "Sem conexão", syncedCount: 0, errorCount: 0, pendingCount: totalPending, errors: [] };
      }
 
+     // CORREÇÃO: Limitar o número de requisições por vez
+     const batchSize = 5; // Processa apenas 5 de cada vez para evitar sobrecarga
+     const requestsToProcess = offlineRequests.slice(0, batchSize);
+     const remainingForLater = offlineRequests.slice(batchSize);
 
-     console.log(`ApiClient.sync: Tentando sincronizar ${totalPending} requisições offline...`);
-     utils?.showNotification?.(`Sincronizando ${totalPending} ações pendentes...`, 'info', 3000);
+     console.log(`ApiClient.sync: Tentando sincronizar ${requestsToProcess.length} de ${totalPending} requisições offline...`);
+     utils?.showNotification?.(`Sincronizando ${requestsToProcess.length} de ${totalPending} ações pendentes...`, 'info', 3000);
 
      let successCount = 0;
-     const remainingRequests = []; // Guarda as que falharam para tentar depois
-     const errors = [];          // Guarda os detalhes dos erros
+     const failedRequests = [];
+     const errors = [];
 
-     // Processa UMA por UMA em sequência para evitar sobrecarregar a API
-     // e para garantir a ordem (se relevante para suas ações)
-     for (const req of offlineRequests) {
-        // Pode verificar navigator.onLine de novo aqui se quiser ser extra cuidadoso
-        // if (!navigator.onLine) { remainingRequests.push(req); continue; }
-
+     // Processa uma a uma para não sobrecarregar o servidor
+     for (const req of requestsToProcess) {
         try {
           console.log(`ApiClient.sync: Enviando req offline ID ${req.id} (Ação: ${req.action})...`);
-          // Chama a função 'request' central. Ela NÃO tentará salvar offline novamente
-          // se for chamada a partir daqui (pois já estamos no processo de sync).
-          // A função 'request' já trata erros de rede/http/parse internamente.
-          const result = await request(req.action, req.data); // Espera a conclusão
-          // Se chegou aqui sem erro, considera sucesso
-          console.log(`ApiClient.sync: Requisição offline ID ${req.id} (Ação: ${req.action}) sincronizada com sucesso.`);
+          const result = await request(req.action, req.data);
+          console.log(`ApiClient.sync: Requisição offline ID ${req.id} sincronizada com sucesso.`);
           successCount++;
         } catch (error) {
-          // Erro pode ser de rede, HTTP, parse ou lógico retornado pela API (result.success === false)
-          console.error(`ApiClient.sync: Erro ao sincronizar req offline ID ${req.id} (Ação: ${req.action}):`, error.message || error);
-          // Mantém a requisição na lista para tentar novamente mais tarde
-          remainingRequests.push(req);
+          console.error(`ApiClient.sync: Erro ao sincronizar req ID ${req.id}:`, error.message || error);
+          failedRequests.push(req);
           errors.push({ requestId: req.id, action: req.action, error: error.message || String(error) });
         }
      }
 
      // Atualiza a lista de requisições pendentes no localStorage
-     utils.salvarLocalStorage('offlineRequests', remainingRequests);
+     const updatedOfflineRequests = [...failedRequests, ...remainingForLater];
+     utils.salvarLocalStorage('offlineRequests', updatedOfflineRequests);
 
      const finalResult = {
-       success: errors.length === 0 && remainingRequests.length === 0, // Sucesso total apenas se tudo foi enviado sem erros
+       success: errors.length === 0,
        syncedCount: successCount,
        errorCount: errors.length,
-       pendingCount: remainingRequests.length,
-       errors: errors // Array com detalhes dos erros para possível exibição/log
+       pendingCount: updatedOfflineRequests.length,
+       errors: errors
      };
 
-     console.log(`ApiClient.sync: Sincronização concluída. ${successCount} sucesso(s), ${errors.length} erro(s). Pendentes: ${remainingRequests.length}.`);
+     console.log(`ApiClient.sync: Sincronização parcial concluída. ${successCount} sucesso(s), ${errors.length} erro(s). Pendentes: ${updatedOfflineRequests.length}.`);
 
-     // Notifica o usuário sobre o resultado da sincronização
-     if (finalResult.success) {
-         utils?.showNotification?.(`Sincronização concluída com sucesso!`, 'success', 3000);
+     if (finalResult.success && successCount > 0) {
+         utils?.showNotification?.(`${successCount} ações sincronizadas com sucesso!`, 'success', 3000);
      } else if (successCount > 0) {
-          utils?.showNotification?.(`${successCount} ações sincronizadas, ${errors.length} falharam e permanecem pendentes.`, 'warning', 5000);
+          utils?.showNotification?.(`${successCount} sincronizadas, ${errors.length} falharam. Restantes: ${updatedOfflineRequests.length}.`, 'warning', 5000);
      } else if (errors.length > 0) {
-          utils?.showNotification?.(`Falha ao sincronizar ${errors.length} ações pendentes. Tente novamente mais tarde.`, 'error', 5000);
+          utils?.showNotification?.(`Falha ao sincronizar ${errors.length} ações pendentes. Tentaremos novamente mais tarde.`, 'error', 5000);
      }
 
-     return finalResult; // Retorna o resultado detalhado da sincronização
+     return finalResult;
   }
 
   console.log("ApiClient: Retornando objeto do módulo para ModuleLoader.");
 
-  // Expõe as funções públicas do módulo apiClient
+  // Expor as funções do módulo
   return {
     init,
     salvarRegistro,
@@ -309,9 +274,6 @@ ModuleLoader.register('apiClient', function() {
     obterRegistro,
     excluirRegistro,
     uploadImagem,
-    syncOfflineRequests // Expõe a função para ser chamada pelo App
-    // Não expor 'request' diretamente evita chamadas fora do padrão
-    // Não expor 'saveOfflineRequest' diretamente
+    syncOfflineRequests
   };
-
-}); // Fim do ModuleLoader.register
+});
