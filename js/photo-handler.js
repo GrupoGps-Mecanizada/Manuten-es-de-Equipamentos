@@ -629,14 +629,12 @@ ModuleLoader.register('photoHandler', function() {
   // Exportar funções públicas do módulo
   return {
     init,
-    initContainerUI, // Para inicializar a UI em um local específico
+    initContainerUI,
     getPhotos,
-    // loadSavedPhotos, // Renomeado para loadSavedPhotosUI para clareza
     loadSavedPhotosUI,
-    preparePhotosForSubmission, // Para obter metadados para envio
-    clearPhotosForRegistro,   // Para limpar após finalizar/cancelar
+    preparePhotosForSubmission,
+    clearPhotosForRegistro,
     getPhotoUrl,
-    // Funções internas como handleFileInputChange, addImagePreview, removeImage não precisam ser exportadas
-    // a menos que sejam necessárias externamente por algum motivo específico.
+    showPhotoModal // <-- ADICIONADO AQUI PARA SER ACESSÍVEL externamente
   };
-});
+})
