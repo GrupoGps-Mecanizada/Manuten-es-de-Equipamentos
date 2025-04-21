@@ -13,7 +13,7 @@ const CONFIG = {
   API_KEY: 'AIzaSyAKitI_QG3Qd5v1DNXbAj_KwlNQSTUPRdY', // <-- Chave que você forneceu
 
   // URL do Google Apps Script Web App (já preenchido com a URL que você forneceu)
-  API_URL: 'https://script.google.com/macros/s/AKfycbwTtUw2q0LA3yZwfIqW-fqxNtVn-j4ikpyBOgPqTH1yLlXI9TGvBQABa-UbE23C99s5/exec',
+  API_URL: 'https://script.google.com/macros/s/AKfycbypf5RRKzxVYbOCN1mjJWe8cYEumHj4RkwKDRwFhf4RYG9nqIvpo56oFfhbNaD1Ola6/exec',
 
   // Forçar login? (true = sim, false = não)
   // Se true, main.js tentará inicializar o googleAuth
