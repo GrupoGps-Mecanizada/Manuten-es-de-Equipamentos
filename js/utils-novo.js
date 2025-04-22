@@ -21,41 +21,61 @@ window.Utils = {
     console.log('Spinner exibido: ' + (message || 'Carregando...'));
   },
   
-hideLoading: function() {
-  const spinner = document.getElementById('loadingSpinner');
-  if (!spinner) {
-    console.error('Utils.hideLoading: Elemento #loadingSpinner não encontrado!');
-    return;
-  }
-  
-  // Tenta garantir que o spinner realmente seja escondido
-  try {
-    spinner.style.display = 'none';
-    spinner.classList.add('hidden-spinner');
-    
-    // Forçar reflow/repaint para garantir que as mudanças sejam aplicadas imediatamente
-    void spinner.offsetWidth;
-    
-    // Configurar um backup de segurança em caso de problemas com o CSS
-    setTimeout(() => {
-      if (spinner.style.display !== 'none') {
-        spinner.style.display = 'none !important';
-        console.log('Spinner ocultado com !important (backup)');
-      }
-    }, 100);
-    
-    console.log('Spinner ocultado');
-  } catch (e) {
-    console.error('Erro ao ocultar spinner:', e);
-    // Última tentativa para garantir que o spinner seja ocultado
-    try {
-      spinner.remove();
-      console.log('Spinner removido como último recurso');
-    } catch (e2) {
-      console.error('Falha total ao ocultar spinner:', e2);
+  hideLoading: function() {
+    const spinner = document.getElementById('loadingSpinner');
+    if (!spinner) {
+      console.error('Utils.hideLoading: Elemento #loadingSpinner não encontrado!');
+      return;
     }
-  }
-}
+    
+    // Tenta garantir que o spinner realmente seja escondido
+    try {
+      spinner.style.display = 'none';
+      spinner.classList.add('hidden-spinner');
+      
+      // Forçar reflow/repaint para garantir que as mudanças sejam aplicadas imediatamente
+      void spinner.offsetWidth;
+      
+      // Configurar um backup de segurança em caso de problemas com o CSS
+      setTimeout(() => {
+        if (spinner.style.display !== 'none') {
+          spinner.style.display = 'none !important';
+          console.log('Spinner ocultado com !important (backup)');
+        }
+      }, 100);
+      
+      console.log('Spinner ocultado');
+    } catch (e) {
+      console.error('Erro ao ocultar spinner:', e);
+      // Última tentativa para garantir que o spinner seja ocultado
+      try {
+        spinner.remove();
+        console.log('Spinner removido como último recurso');
+      } catch (e2) {
+        console.error('Falha total ao ocultar spinner:', e2);
+      }
+    }
+  },
+  
+  showScreen: function(screenId) {
+    if (!screenId) return;
+    let found = false;
+    document.querySelectorAll('.tela-sistema').forEach(tela => {
+      if (tela.id === screenId) {
+        tela.style.display = 'block';
+        found = true;
+      } else {
+        tela.style.display = 'none';
+      }
+    });
+    
+    if (found) {
+      window.scrollTo(0, 0); // Rola para o topo
+      console.log(`Exibindo tela #${screenId}`);
+    } else {
+      console.warn(`Tela com ID #${screenId} não encontrada.`);
+    }
+  },
   
   // Funções de String
   sanitizeString: function(str) {
@@ -119,78 +139,78 @@ hideLoading: function() {
         valA = new Date(valA);
       }
       if (typeof valB === 'string' && /^\d{4}-\d{2}-\d{2}/.test(valB)) {
- valB = new Date(valB);
-}
-     
-// Comparar datas
-if (valA instanceof Date && valB instanceof Date) {
- return crescente ? valA - valB : valB - valA;
-}
-     
-// Comparar números
-if (typeof valA === 'number' && typeof valB === 'number') {
- return crescente ? valA - valB : valB - valA;
-}
-     
-// Comparar strings
-const strA = String(valA).toLowerCase();
-const strB = String(valB).toLowerCase();
-return crescente ? strA.localeCompare(strB) : strB.localeCompare(strA);
-});
-},
- 
-// Funções de LocalStorage
-salvarLocalStorage: function(chave, valor, minutosExpiracao = 0) {
- if (!chave || typeof chave !== 'string') return false;
-   
- const item = {
-   valor: valor,
-   timestamp: new Date().getTime(),
-   expiracao: minutosExpiracao > 0 ? new Date().getTime() + (minutosExpiracao * 60 * 1000) : 0
- };
-   
- try {
-   localStorage.setItem(chave, JSON.stringify(item));
-   return true;
- } catch (e) {
-   console.error(`Erro ao salvar '${chave}' no localStorage:`, e);
-   return false;
- }
-},
- 
-obterLocalStorage: function(chave) {
- if (!chave) return null;
-   
- try {
-   const itemStr = localStorage.getItem(chave);
-   if (!itemStr) return null;
-     
-   const item = JSON.parse(itemStr);
-     
-   // Verificar expiração
-   if (item.expiracao && item.expiracao > 0 && new Date().getTime() > item.expiracao) {
-     console.log(`Item '${chave}' expirado, removendo do localStorage.`);
-     localStorage.removeItem(chave);
-     return null;
-   }
-     
-   return item.valor;
- } catch (e) {
-   console.error(`Erro ao obter '${chave}' do localStorage:`, e);
-   localStorage.removeItem(chave);
-   return null;
- }
-},
- 
-removerLocalStorage: function(chave) {
- if (!chave) return false;
-   
- try {
-   localStorage.removeItem(chave);
-   return true;
- } catch (e) {
-   console.error(`Erro ao remover '${chave}' do localStorage:`, e);
-   return false;
- }
-}
+        valB = new Date(valB);
+      }
+      
+      // Comparar datas
+      if (valA instanceof Date && valB instanceof Date) {
+        return crescente ? valA - valB : valB - valA;
+      }
+      
+      // Comparar números
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return crescente ? valA - valB : valB - valA;
+      }
+      
+      // Comparar strings
+      const strA = String(valA).toLowerCase();
+      const strB = String(valB).toLowerCase();
+      return crescente ? strA.localeCompare(strB) : strB.localeCompare(strA);
+    });
+  },
+  
+  // Funções de LocalStorage
+  salvarLocalStorage: function(chave, valor, minutosExpiracao = 0) {
+    if (!chave || typeof chave !== 'string') return false;
+    
+    const item = {
+      valor: valor,
+      timestamp: new Date().getTime(),
+      expiracao: minutosExpiracao > 0 ? new Date().getTime() + (minutosExpiracao * 60 * 1000) : 0
+    };
+    
+    try {
+      localStorage.setItem(chave, JSON.stringify(item));
+      return true;
+    } catch (e) {
+      console.error(`Erro ao salvar '${chave}' no localStorage:`, e);
+      return false;
+    }
+  },
+  
+  obterLocalStorage: function(chave) {
+    if (!chave) return null;
+    
+    try {
+      const itemStr = localStorage.getItem(chave);
+      if (!itemStr) return null;
+      
+      const item = JSON.parse(itemStr);
+      
+      // Verificar expiração
+      if (item.expiracao && item.expiracao > 0 && new Date().getTime() > item.expiracao) {
+        console.log(`Item '${chave}' expirado, removendo do localStorage.`);
+        localStorage.removeItem(chave);
+        return null;
+      }
+      
+      return item.valor;
+    } catch (e) {
+      console.error(`Erro ao obter '${chave}' do localStorage:`, e);
+      localStorage.removeItem(chave);
+      return null;
+    }
+  },
+  
+  removerLocalStorage: function(chave) {
+    if (!chave) return false;
+    
+    try {
+      localStorage.removeItem(chave);
+      return true;
+    } catch (e) {
+      console.error(`Erro ao remover '${chave}' do localStorage:`, e);
+      return false;
+    }
+  }
 };
