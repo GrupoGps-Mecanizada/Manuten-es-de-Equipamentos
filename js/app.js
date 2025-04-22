@@ -23,9 +23,9 @@ const App = {
     this.AppState = ModuleLoader.get('state'); //
     this.PhotoHandler = ModuleLoader.get('photoHandler'); //
     this.FormHandler = ModuleLoader.get('formHandler'); //
-    this.Utils = window.Utils; //
+    this.Utils = window.Utils; // <- Agora pega a versão com contador
     this.Config = window.CONFIG; //
-    // Assume que apiClient foi modificado para NÃO mostrar/esconder loading interno
+    // Assume que apiClient pode ou não chamar loading, mas Utils gerencia corretamente
     this.ApiClient = ModuleLoader.get('apiClient');
 
     // Verificação de dependências críticas
@@ -64,7 +64,7 @@ const App = {
     // Configurar listeners de eventos da UI
     this.setupUIEvents(); //
 
-    // Testa a conexão usando o ApiClient (pode ter seu próprio loading balanceado)
+    // Testa a conexão usando o ApiClient (loading gerenciado pelo contador do Utils)
     if(this.ApiClient && this.Config.API_URL) { //
         await this.testAPIConnection(); //
     } else {
@@ -72,10 +72,10 @@ const App = {
         this.AppState?.update('apiOnline', false); //
     }
 
-    // Verificar conectividade e tentar sincronizar (com loading corrigido)
-    await this.checkConnectivityAndSync(); // <-- CORRIGIDO
+    // Verificar conectividade e tentar sincronizar (loading gerenciado pelo contador do Utils)
+    await this.checkConnectivityAndSync(); //
 
-    // Carregar lista de registros inicial (sem loading do apiClient)
+    // Carregar lista de registros inicial (sem loading global explícito aqui)
     await this.refreshRegistrosList(); //
 
     // Tratar parâmetros da URL
@@ -86,7 +86,7 @@ const App = {
 
   /**
    * Testa a conexão com a API usando o ApiClient
-   * Esta função TEM seu próprio par showLoading/hideLoading balanceado.
+   * Chama showLoading/hideLoading, gerenciados pelo contador em Utils.
    * @returns {Promise<boolean>} True se a conexão foi bem-sucedida, False caso contrário.
    */
   testAPIConnection: async function() {
@@ -97,12 +97,10 @@ const App = {
     }
 
     console.log("App: Testando conexão com a API via ApiClient.ping...");
-    // Mostra loading específico para o teste de conexão
-    this.Utils?.showLoading?.("Verificando conexão...");
+    this.Utils?.showLoading?.("Verificando conexão..."); // Incrementa contador
     let isSuccess = false;
     try {
-      // Assumindo que ApiClient.ping() foi modificado para NÃO ter show/hide interno
-      const response = await this.ApiClient.ping();
+      const response = await this.ApiClient.ping(); // ApiClient não gerencia mais loader
       if (response && response.success === true && response.message === "pong") {
         console.log("App: Conexão com a API bem-sucedida!", response);
         this.AppState?.update('apiOnline', true);
@@ -117,11 +115,9 @@ const App = {
     } catch (error) {
       console.error("App: Erro ao testar conexão com a API:", error.message || error);
       this.AppState?.update('apiOnline', false);
-      // Não mostra notificação de erro aqui, pois o estado offline já deve indicar
       isSuccess = false;
     } finally {
-        // Garante que o loading do teste de conexão SEMPRE é escondido
-        this.Utils?.hideLoading?.();
+        this.Utils?.hideLoading?.(); // Decrementa contador
     }
     return isSuccess;
   },
@@ -136,12 +132,10 @@ const App = {
     });
     document.getElementById('btnListaRegistros')?.addEventListener('click', () => { //
        this.Utils?.showScreen?.('telaListaRegistros'); //
-       // refreshRegistrosList não mostra mais loading global por si só
        this.refreshRegistrosList(); //
     });
     document.getElementById('btnVoltarLista')?.addEventListener('click', () => { //
       this.Utils?.showScreen?.('telaListaRegistros'); //
-      // refreshRegistrosList não mostra mais loading global por si só
        this.refreshRegistrosList(); //
     });
 
@@ -157,7 +151,7 @@ const App = {
       if (campoBusca) { this.filterRegistros(campoBusca.value); } //
     });
     document.getElementById('btnSincronizar')?.addEventListener('click', () => { //
-      // Chama a versão CORRIGIDA do checkConnectivityAndSync
+      // Chama checkConnectivityAndSync (loading gerenciado pelo contador do Utils)
       this.checkConnectivityAndSync(true); // Forçar sync
     });
     console.log("App: Eventos da UI configurados."); //
@@ -204,7 +198,7 @@ const App = {
 
   /**
    * Atualiza a lista de registros na tabela da UI.
-   * Não gerencia mais o loading global diretamente. Usa placeholder na tabela.
+   * Usa placeholder na tabela, não chama loading global.
    */
   refreshRegistrosList: async function() {
     console.log("App: Atualizando lista de registros..."); //
@@ -234,15 +228,14 @@ const App = {
     try {
         if (this.ApiClient && isCurrentlyOnline) {
           console.log("App: Tentando buscar registros via API (ApiClient)...");
-          // A chamada ApiClient.listarRegistros() NÃO deve mais ter show/hide interno
           const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout ao listar registros (10s)")), 10000));
+          // ApiClient.listarRegistros() não deve mais gerenciar loading
           const apiResult = await Promise.race([this.ApiClient.listarRegistros(), timeoutPromise]);
           if (Array.isArray(apiResult)) {
               registros = apiResult;
               console.log(`App: Recebidos ${registros.length} registros da API.`);
               this.AppState?.update('registros', registros); // Atualiza o estado local
           } else {
-              // A API respondeu mas o formato está errado
               console.warn("App: Resposta inesperada de listarRegistros da API:", apiResult);
               errorMessage = apiResult?.message || "Formato de resposta inválido da API";
               errorOccurred = true;
@@ -250,7 +243,6 @@ const App = {
               this.Utils?.showNotification?.(`Erro (${errorMessage}). Exibindo dados locais.`, 'warning');
           }
         } else {
-          // Situação offline ou ApiClient indisponível
           const offlineMsg = this.ApiClient ? "Modo offline." : "ApiClient indisponível.";
           console.log(`App: Buscando registros do estado local. ${offlineMsg}`);
           registros = this.AppState?.get('registros') || []; // Pega do cache local
@@ -262,7 +254,6 @@ const App = {
           }
         }
     } catch (error) {
-        // Erro na comunicação com a API ou outro erro inesperado
         errorOccurred = true;
         errorMessage = error.message || "Erro desconhecido";
         console.error('App: Erro ao buscar/processar registros:', errorMessage, error);
@@ -272,12 +263,11 @@ const App = {
         // Remove a linha de loading placeholder da tabela
         const loadingRow = tableBody.querySelector('#loading-row-placeholder');
         if (loadingRow) loadingRow.remove();
-        // NENHUM Utils.hideLoading() global aqui
     }
 
     // Exibir registros ou mensagem de erro/vazio
     if (!registros || registros.length === 0) {
-      const colspan = 6; // Ajuste conforme número de colunas da sua tabela
+      const colspan = 6;
       let message = '';
       if (errorOccurred) {
           message = `<div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i> Falha ao carregar: ${this.Utils?.sanitizeString(errorMessage)}</div>`;
@@ -285,23 +275,19 @@ const App = {
           message = `<div class="alert alert-secondary mb-0"><i class="bi bi-info-circle me-2"></i> Nenhum registro encontrado. <button class="btn btn-sm btn-link p-0 ms-2" id="btnNovoRegistroFromEmpty">Criar Novo</button></div>`;
       }
        tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-3">${message}</td></tr>`;
-       // Adiciona listener ao botão dentro da mensagem de vazio
        document.getElementById('btnNovoRegistroFromEmpty')?.addEventListener('click', () => this.FormHandler?.newRegistro());
     } else {
-        // Limpa a tabela antes de adicionar as novas linhas (garante que não haja duplicatas visuais)
         tableBody.innerHTML = '';
-        // Ordenar e exibir registros
-        const registrosOrdenados = this.Utils?.ordenarPor(registros, 'dataCriacao', false) || registros; // Ordena por data decrescente
+        const registrosOrdenados = this.Utils?.ordenarPor(registros, 'dataCriacao', false) || registros;
         registrosOrdenados.forEach(registro => {
            if (!registro || !registro.id) {
              console.warn("App: Registro inválido ou sem ID encontrado:", registro);
-             return; // Pula este registro
+             return;
            }
-           this.addRegistroRow(tableBody, registro); // Adiciona a linha à tabela
+           this.addRegistroRow(tableBody, registro);
         });
     }
     console.log("App: Lista de registros renderizada na tela.");
-    // Aplica filtro novamente se houver termo na busca (caso a lista tenha sido recarregada)
     const campoBusca = document.getElementById('buscaRegistro');
     if (campoBusca?.value) {
         this.filterRegistros(campoBusca.value);
@@ -310,7 +296,6 @@ const App = {
 
   /**
    * Adiciona uma linha (<tr>) representando um registro à tabela (<tbody>)
-   * Não gerencia loading global.
    */
   addRegistroRow: function(tableBody, registro) {
       const row = tableBody.insertRow();
@@ -351,36 +336,32 @@ const App = {
           const placa = sanitize(registro.placa);
           const modelo = sanitize(registro.modelo);
           if(id && confirm(`Tem certeza que deseja EXCLUIR o registro:\n\nID: ${id}\nPlaca: ${placa}\nModelo: ${modelo}\n\nEsta ação não pode ser desfeita.`)) {
-             if (!this.ApiClient || !this.AppState?.get('apiOnline')) { // Verifica apiOnline
+             if (!this.ApiClient || !this.AppState?.get('apiOnline')) {
                  this.Utils?.showNotification?.("Exclusão só é possível online.", "warning"); return;
              }
-             // Exclusão pode ser demorada, idealmente teria seu próprio loading aqui, mas seguimos sem por enquanto
-             // this.Utils?.showLoading?.(`Excluindo registro ${id}...`); // Se quiser reativar loading para delete
+             // Opcional: Mostrar loading para delete (gerenciado pelo contador)
+             // this.Utils?.showLoading?.(`Excluindo registro ${id}...`);
              let deleteSuccess = false;
              try {
-                 // Assume que ApiClient.excluirRegistro NÃO tem show/hide interno
-                 const result = await this.ApiClient.excluirRegistro(id);
+                 const result = await this.ApiClient.excluirRegistro(id); // ApiClient não gerencia loader
                  if(result && result.success !== false) {
                     this.Utils?.showNotification?.(`Registro ${id} (${placa}) excluído com sucesso.`, 'success');
-                    row.remove(); // Remove a linha da tabela
-                    // Atualiza o estado local removendo o registro
+                    row.remove();
                     let currentRegistros = this.AppState?.get('registros') || [];
                     this.AppState?.update('registros', currentRegistros.filter(r => r.id !== id));
-                    // Se a tabela ficar vazia, atualiza para mostrar a mensagem "Nenhum registro"
                     if (tableBody.rows.length === 0) { this.refreshRegistrosList(); }
                     deleteSuccess = true;
                  } else {
-                    // Erro retornado pela API
                     throw new Error(result?.message || "Falha ao excluir na API.");
                  }
              } catch (error) {
-                 // Erro de comunicação ou outro erro
                  console.error(`App: Erro ao excluir registro ${id}:`, error);
                  this.Utils?.showNotification?.(`Erro ao excluir registro: ${error.message}`, 'error');
                  deleteSuccess = false;
-             } /* finally { // Se reativar loading para delete, descomentar finally
+             } finally {
+                 // Opcional: Esconder loading para delete (gerenciado pelo contador)
                  // this.Utils?.hideLoading?.();
-             } */
+             }
           }
       });
   },
@@ -391,59 +372,50 @@ const App = {
   filterRegistros: function(termo) {
     const tableBody = document.getElementById('listaRegistrosBody');
     if (!tableBody) return;
-    const rows = tableBody.querySelectorAll('tr[data-registro-id]'); // Seleciona apenas linhas de dados
+    const rows = tableBody.querySelectorAll('tr[data-registro-id]');
     const termoLimpo = this.Utils?.removerAcentos(termo.toLowerCase().trim()) || '';
     let visibleCount = 0;
 
     rows.forEach(row => {
-        // Pega o conteúdo de texto das células relevantes para busca
         const id = row.cells[0]?.textContent?.toLowerCase() || '';
         const placa = row.cells[1]?.textContent?.toLowerCase() || '';
         const modelo = row.cells[2]?.textContent?.toLowerCase() || '';
-        const status = row.cells[4]?.textContent?.toLowerCase().trim() || ''; // Pega o texto dentro do badge
-
-        // Verifica se o termo limpo existe em algum dos campos
-        const match = termoLimpo === '' || // Se termo vazio, mostra tudo
+        const status = row.cells[4]?.textContent?.toLowerCase().trim() || '';
+        const match = termoLimpo === '' ||
                       id.includes(termoLimpo) ||
                       placa.includes(termoLimpo) ||
                       modelo.includes(termoLimpo) ||
                       status.includes(termoLimpo);
-
-        row.style.display = match ? '' : 'none'; // Mostra ou esconde a linha
+        row.style.display = match ? '' : 'none';
         if (match) visibleCount++;
     });
 
-    // Gerencia a mensagem de "Nenhum resultado para o filtro"
     let noResultsRow = tableBody.querySelector('.no-results-message');
-    if (visibleCount === 0 && termoLimpo !== '' && rows.length > 0) { // Mostra se não há resultados E há um termo de busca E existiam linhas antes
+    if (visibleCount === 0 && termoLimpo !== '' && rows.length > 0) {
         if (!noResultsRow) {
-            noResultsRow = tableBody.insertRow(); // Adiciona no final
+            noResultsRow = tableBody.insertRow();
             noResultsRow.className = 'no-results-message';
             noResultsRow.innerHTML = `<td colspan="6" class="text-center text-muted py-3 fst-italic">Nenhum registro encontrado para "${this.Utils?.sanitizeString(termo)}".</td>`;
         }
     } else if (noResultsRow) {
-        noResultsRow.remove(); // Remove a mensagem se há resultados ou o filtro está limpo
+        noResultsRow.remove();
     }
   },
 
   /**
    * Verifica a conectividade de rede e tenta sincronizar requisições offline.
-   * CORRIGIDO para usar try...finally e garantir hideLoading.
+   * USA O CONTADOR DO UTILS para gerenciar show/hideLoading.
    */
   checkConnectivityAndSync: async function(forceSync = false) {
     const wasOnline = this.AppState?.get('apiOnline') === true; // Usa apiOnline
-    // Tenta sincronizar se estiver online E não forçado offline, OU se forçar sync
     const canAttemptSync = (navigator.onLine && this.AppState?.get('forceOffline') !== true) || forceSync;
 
-    // Atualiza estado 'online' baseado no navegador (visual)
-    // Não atualiza 'apiOnline' aqui, isso é feito pelo testAPIConnection ou falha de API
     this.AppState?.update('online', navigator.onLine);
-    if (!forceSync) { // Só mostra notificações de mudança de status se não for forçado
+    if (!forceSync) {
       if (wasOnline && !navigator.onLine) { this.Utils?.showNotification?.('Dispositivo offline. Ações serão salvas localmente.', 'warning'); }
       else if (!wasOnline && navigator.onLine) { this.Utils?.showNotification?.('Conexão restaurada.', 'info', 3000); }
     }
 
-    // Verifica se pode/deve tentar sincronizar
     if (!canAttemptSync) {
       console.log('App: Sincronização não será tentada (offline ou forçado offline).');
       return false;
@@ -458,49 +430,44 @@ const App = {
     }
 
     console.log(`App: Verificando ${forceSync ? 'e forçando ' : ''}sincronização...`);
-    // Mostra loading específico para a operação de sync
-    this.Utils?.showLoading?.("Sincronizando dados...");
+    this.Utils?.showLoading?.("Sincronizando dados..."); // Incrementa contador
 
-    let success = false; // Variável para guardar o resultado final
+    let success = false;
 
     try {
-      // Chama a função de sync do ApiClient (que não tem mais loading interno)
-      const syncResult = await this.ApiClient.syncOfflineRequests();
-      if (syncResult) { // Processa o resultado da sincronização
+      const syncResult = await this.ApiClient.syncOfflineRequests(); // ApiClient não gerencia loader
+      if (syncResult) {
         if (syncResult.syncedCount > 0) {
             console.log(`App: Sincronização bem-sucedida de ${syncResult.syncedCount} itens. Atualizando lista.`);
-            await this.refreshRegistrosList(); // Atualiza a lista principal se algo foi sincronizado
+            // refreshRegistrosList não chama mais loading global
+            await this.refreshRegistrosList();
             this.Utils?.showNotification?.(`${syncResult.syncedCount} ação(ões) sincronizada(s).`, 'success', 3000);
         } else if (syncResult.pendingCount > 0) {
            console.log(`App: Sincronização concluída, ${syncResult.pendingCount} ações pendentes.`);
            if(syncResult.errorCount > 0 || syncResult.failedTemporarily > 0){
                this.Utils?.showNotification?.(`Algumas ações (${syncResult.errorCount + syncResult.failedTemporarily}) falharam ao sincronizar.`, 'warning', 5000);
-           } else if (forceSync) { // Só avisa que há pendentes se o sync foi forçado
+           } else if (forceSync) {
                this.Utils?.showNotification?.(`Ainda há ${syncResult.pendingCount} ações pendentes.`, 'info', 3000);
            }
         } else if (syncResult.pendingCount === 0 && syncResult.syncedCount === 0 && syncResult.errorCount === 0 && syncResult.failedTemporarily === 0) {
            console.log("App: Nenhuma ação pendente para sincronizar.");
-            if(forceSync) { // Só mostra notificação se o sync foi forçado
+            if(forceSync) {
                this.Utils?.showNotification?.(`Nenhuma ação pendente para sincronizar.`, 'info', 3000);
             }
         }
-        // Define o status de sucesso geral da operação de sync
-        success = syncResult.success !== false; // Considera sucesso se não for explicitamente false
+        success = syncResult.success !== false;
       } else {
-         // A função syncOfflineRequests retornou algo inesperado (null, undefined, etc)
          throw new Error("syncOfflineRequests retornou resultado inválido.");
       }
     } catch (error) {
-      // Captura erros da chamada syncOfflineRequests ou do processamento do resultado
       console.error(`App: Erro durante a sincronização:`, error);
       this.Utils?.showNotification?.(`Erro ao sincronizar: ${error.message}`, 'error');
-      success = false; // Garante que o resultado seja false em caso de erro
+      success = false;
     } finally {
-        // *** ESTE BLOCO SEMPRE EXECUTA ***
-        this.Utils?.hideLoading?.(); // GARANTE QUE O LOADING DA SINCRONIZAÇÃO É ESCONDIDO
+        this.Utils?.hideLoading?.(); // Decrementa contador (e esconde se chegar a 0)
         console.log(`App: Finalizando verificação de sincronização (finally). Sucesso: ${success}`);
     }
-    return success; // Retorna o status final da operação de sincronização
+    return success;
   } // Fim de checkConnectivityAndSync
 
 }; // Fim do objeto App
