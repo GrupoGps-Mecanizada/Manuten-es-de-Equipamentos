@@ -187,7 +187,7 @@ ModuleLoader.register('apiClient', function() {
     let requestId = -1; // Inicializa requestId
 
     try {
-      utils?.showLoading?.(true, `Processando ${action}...`); // Mostra indicador de loading
+      utils?.showLoading?.(`Processando ${action}...`); // Passa apenas a mensagem
 
       // 1. Garante que o iframe esteja inicializado (ou tenta inicializar)
       await initApiFrame();
