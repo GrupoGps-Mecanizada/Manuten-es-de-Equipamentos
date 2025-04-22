@@ -1,503 +1,2211 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sistema de Registro de Manutenções</title>
-
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-
-  <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/responsive.css">
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-  <style>
-      /* Feedback de validação visual para checklists */
-      .checklist-item-wrapper .btn-group label.is-invalid {
-         border-color: var(--bs-danger);
-         color: var(--bs-danger);
-         box-shadow: 0 0 0 .25rem rgba(var(--bs-danger-rgb),.25) !important; /* Adiciona sombra como inputs inválidos */
-      }
-      .checklist-item-wrapper .btn-group label.is-invalid:hover {
-          background-color: var(--bs-danger-bg-subtle);
-      }
-      /* Mostra a mensagem de erro do checklist apenas se um radio required não foi marcado */
-      .was-validated .checklist-item-wrapper .checklist-feedback {
-          display: none; /* Esconde por padrão */
-      }
-      .was-validated .checklist-item-wrapper:has(input[type="radio"]:required:invalid) .checklist-feedback {
-          display: block; /* Mostra se o grupo tem um required inválido */
-      }
-      .checklist-feedback {
-           width: 100%;
-           margin-top: .25rem;
-           font-size: .875em;
-           color: var(--bs-form-invalid-color);
-       }
-       /* Ajuste para thumbnail na visualização */
-       .photo-thumbnail-view {
-           border: 1px solid #dee2e6;
-           padding: 0.25rem;
-           background-color: #f8f9fa; /* Fundo leve */
-           transition: transform 0.2s ease-in-out;
-       }
-       .photo-thumbnail-view:hover {
-           transform: scale(1.05); /* Efeito de zoom leve */
-       }
-       /* Garante que o conteúdo principal ocupe o espaço restante */
-       body, .container-fluid {
-           min-height: 100vh;
-       }
-       .container-fluid {
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Manutenção de Equipamentos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --primary-color: #0d6efd;
+            --secondary-color: #6c757d;
+            --success-color: #198754;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #0dcaf0;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .navbar {
+            background-color: var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.4rem;
+            color: white !important;
+        }
+        
+        .card {
+            border-radius: 8px;
+            border: none;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            padding: 15px 20px;
+            font-weight: bold;
+            border-radius: 8px 8px 0 0 !important;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+        
+        .btn-success {
+            background-color: var(--success-color);
+            border-color: var(--success-color);
+        }
+        
+        .btn-danger {
+            background-color: var(--danger-color);
+            border-color: var(--danger-color);
+        }
+        
+        .list-group-item {
+            border-left: none;
+            border-right: none;
+            padding: 15px 20px;
+        }
+        
+        .status-badge {
+            font-size: 0.8em;
+            padding: 5px 10px;
+            border-radius: 20px;
+        }
+        
+        .checklist-item {
+            margin-bottom: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        
+        .checklist-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            height: auto;
+            object-fit: cover;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        
+        .image-container {
+            display: inline-block;
+            margin: 5px;
+            position: relative;
+        }
+        
+        .image-container img {
+            width: 150px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        
+        .image-container .delete-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
             display: flex;
-            flex-direction: column;
-       }
-       main {
-            flex-grow: 1;
-       }
-       
-       /* Garantir que o spinner de loading seja ocultado */
-       #loadingSpinner {
-         display: none !important;
-         opacity: 0 !important;
-         visibility: hidden !important;
-         pointer-events: none !important;
-       }
-       
-       /* Adicionar uma classe que pode ser aplicada via JS */
-       .hidden-spinner {
-         display: none !important;
-         opacity: 0 !important;
-         visibility: hidden !important;
-         pointer-events: none !important;
-       }
-  </style>
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        /* Status colors */
+        .status-aguardando {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .status-em-manutencao {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        
+        .status-concluido {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-disponivel {
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        
+        /* Dashboard */
+        .stat-card {
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            transition: transform 0.3s ease;
+            min-height: 120px;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card .stat-title {
+            font-size: 0.9rem;
+            color: #6c757d;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .recent-activity {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #e9ecef;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        /* Mobile Optimization */
+        @media (max-width: 768px) {
+            .card-body {
+                padding: 15px;
+            }
+            
+            .container {
+                padding-left: 10px;
+                padding-right: 10px;
+            }
+            
+            .btn {
+                padding: 0.375rem 0.75rem;
+            }
+            
+            .stat-card {
+                padding: 10px;
+                min-height: 100px;
+            }
+            
+            .stat-card .stat-value {
+                font-size: 1.5rem;
+            }
+            
+            .image-container img {
+                width: 100px;
+                height: 100px;
+            }
+        }
+        
+        /* Camera styles */
+        .camera-container {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+            position: relative;
+        }
+        
+        #camera-preview {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .camera-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 <body>
-  <div class="container-fluid p-0">
-
-    <header class="bg-primary text-white py-3 px-4 shadow-sm sticky-top">
-      <div class="d-flex justify-content-between align-items-center flex-wrap">
-        <h1 class="h4 mb-0 me-3"><i class="bi bi-tools me-2"></i> Sistema de Registro</h1>
-        <div class="d-flex align-items-center mt-2 mt-sm-0">
-          <button class="btn btn-outline-light btn-sm me-2" id="btnListaRegistros" title="Ver Lista de Registros">
-            <i class="bi bi-list-ul"></i> <span class="d-none d-md-inline">Registros</span>
-          </button>
-          <button class="btn btn-outline-light btn-sm me-2" id="btnNovoRegistro" title="Criar Novo Registro">
-            <i class="bi bi-plus-circle"></i> <span class="d-none d-md-inline">Novo</span>
-          </button>
-          <div id="auth-container" class="d-flex align-items-center">
-             <div class="spinner-border spinner-border-sm text-light ms-2" role="status">
-                <span class="visually-hidden">Carregando autenticação...</span>
-             </div>
-          </div>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark mb-4">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <i class="bi bi-tools me-2"></i>Sistema de Manutenção
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#" id="nav-dashboard">
+                            <i class="bi bi-speedometer2 me-1"></i>Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-lista">
+                            <i class="bi bi-list-ul me-1"></i>Lista
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="nav-novo">
+                            <i class="bi bi-plus-circle me-1"></i>Nova Manutenção
+                        </a>
+                    </li>
+                </ul>
+            </div>
         </div>
-      </div>
-    </header>
+    </nav>
 
-    <main class="container py-4">
-
-      <section id="dashboardSection" class="mb-4 tela-sistema" style="display: none;">
-          <div class="card shadow-sm">
-             <div class="card-header">
-                 <h2 class="h5 mb-0"><i class="bi bi-bar-chart-line me-2"></i> Dashboard</h2>
-             </div>
-              <div class="card-body">
-                  <div id="dashboard-container">
-                      <p class="text-muted text-center py-3">Carregando dados do dashboard...</p>
-                  </div>
-              </div>
-          </div>
-      </section>
-
-      <section id="telaListaRegistros" class="tela-sistema">
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-light">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-              <h2 class="h5 mb-0">Registros de Manutenção</h2>
-              <div class="input-group" style="max-width: 300px;">
-                <input type="text" class="form-control form-control-sm" placeholder="Buscar por ID, Placa, Modelo..." id="buscaRegistro" aria-label="Campo de busca">
-                <button class="btn btn-sm btn-outline-secondary" type="button" id="btnBuscar" title="Buscar">
-                  <i class="bi bi-search"></i>
-                </button>
-              </div>
-            </div>
-          </div>
-          <div class="card-body p-0 p-md-3">
-            <div class="table-responsive">
-              <table class="table table-hover table-striped mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th scope="col"><small>ID</small></th>
-                    <th scope="col">Placa</th>
-                    <th scope="col">Modelo</th>
-                    <th scope="col">Data Criação</th>
-                    <th scope="col">Status</th>
-                    <th scope="col" class="text-center">Ações</th>
-                  </tr>
-                </thead>
-                <tbody id="listaRegistrosBody">
-                  <tr>
-                    <td colspan="6" class="text-center py-4">
-                      <div class="spinner-border spinner-border-sm text-primary" role="status">
-                        <span class="visually-hidden">Carregando...</span>
-                      </div>
-                      <span class="ms-2">Carregando registros...</span>
-                    </td>
-                  </tr>
-                  </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section id="telaPreManutencao" class="tela-sistema" style="display: none;">
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-primary text-white">
-            <div class="d-flex justify-content-between align-items-center">
-              <h2 class="h5 mb-0"><i class="bi bi-clipboard-plus me-2"></i> Registro PRÉ-Manutenção</h2>
-              <div id="registroIdDisplay" class="badge bg-light text-primary fs-6">Novo Registro</div>
-            </div>
-          </div>
-          <div class="card-body">
-            <form id="formPreManutencao" class="needs-validation" novalidate>
-              <input type="hidden" id="registroId" name="registroId"> <fieldset class="mb-4 p-3 border rounded">
-                <legend class="fs-6 fw-bold mb-3">Informações do Veículo</legend>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label for="placa" class="form-label">Placa <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="placa" name="placa" required pattern="[A-Za-z]{3}-?[0-9][A-Za-z0-9]{3}" title="Formato AAA-1234 ou AAA1B34">
-                    <div class="invalid-feedback">Informe uma placa válida (ex: AAA-1234 ou ABC1D23).</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="modelo" class="form-label">Modelo <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="modelo" name="modelo" required maxlength="100">
-                    <div class="invalid-feedback">Informe o modelo do veículo (máx. 100 caracteres).</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="idInterna" class="form-label">ID Interna <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="idInterna" name="idInterna" required maxlength="50">
-                    <div class="invalid-feedback">Informe a ID interna do equipamento (máx. 50 caracteres).</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="quilometragem" class="form-label">Quilometragem</label>
-                    <input type="number" class="form-control enhanced-input" id="quilometragem" name="quilometragem" min="0" step="1">
-                     <div class="invalid-feedback">Informe uma quilometragem válida (número positivo).</div>
-                  </div>
-                </div>
-              </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded">
-                <legend class="fs-6 fw-bold mb-3">Detalhes do Problema</legend>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label for="categoriaProblema" class="form-label">Categoria <span class="text-danger">*</span></label>
-                    <select class="form-select enhanced-input" id="categoriaProblema" name="categoriaProblema" required>
-                      <option value="" selected disabled>Selecione...</option>
-                      </select>
-                    <div class="invalid-feedback">Selecione a categoria do problema.</div>
-                  </div>
-                  <div class="col-md-6">
-                    <label for="urgencia" class="form-label">Urgência <span class="text-danger">*</span></label>
-                    <select class="form-select enhanced-input" id="urgencia" name="urgencia" required>
-                       <option value="" selected disabled>Selecione...</option>
-                       </select>
-                    <div class="invalid-feedback">Selecione o nível de urgência.</div>
-                  </div>
-                  <div class="col-12">
-                    <label for="descricaoProblema" class="form-label">Descrição do Problema <span class="text-danger">*</span></label>
-                    <textarea class="form-control enhanced-input" id="descricaoProblema" name="descricaoProblema" rows="3" required maxlength="500"></textarea>
-                    <div class="invalid-feedback">Descreva o problema detalhadamente (máx. 500 caracteres).</div>
-                  </div>
-                </div>
-              </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded">
-                   <legend class="fs-6 fw-bold mb-3">Checklist de Condições PRÉ <span class="text-danger">*</span></legend>
-                   <div id="checklistPreContainer" class="row g-3">
-                       <p class="text-muted small fst-italic col-12">Carregando checklist...</p>
-                       </div>
-               </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded" id="photo-section-pre">
-                 <legend class="fs-6 fw-bold mb-3">Registro Fotográfico PRÉ</legend>
-                 <div id="photo-container-pre">
-                    <p class="text-muted small fst-italic">Carregando gerenciador de fotos...</p>
-                 </div>
-               </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded">
-                <legend class="fs-6 fw-bold mb-3">Observações Adicionais PRÉ</legend>
-                <textarea class="form-control enhanced-input" id="observacoesPre" name="observacoesPre" rows="2" maxlength="500"></textarea>
-                 <div class="invalid-feedback">Máximo de 500 caracteres.</div>
-              </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded">
-                <legend class="fs-6 fw-bold mb-3">Responsável pelo Registro</legend>
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label for="responsavel" class="form-label">Nome <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control enhanced-input" id="responsavel" name="responsavel" required maxlength="100">
-                    <div class="invalid-feedback">Informe o nome do responsável (máx. 100 caracteres).</div>
-                  </div>
-                  </div>
-              </fieldset>
-
-              <div class="text-end mt-4">
-                <button type="button" class="btn btn-outline-secondary me-2" id="btnCancelarPre">Cancelar</button>
-                <button type="submit" class="btn btn-primary">Salvar e Avançar para PÓS <i class="bi bi-arrow-right ms-1"></i></button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <section id="telaPosManutencao" class="tela-sistema" style="display: none;">
-        <div class="card shadow-sm mb-4">
-          <div class="card-header bg-success text-white">
-            <div class="d-flex justify-content-between align-items-center">
-              <h2 class="h5 mb-0"><i class="bi bi-check2-circle me-2"></i> Registro PÓS-Manutenção</h2>
-              <div id="registroIdPosDisplay" class="badge bg-light text-success fs-6">ID: --</div>
-            </div>
-          </div>
-          <div class="card-body">
-            <form id="formPosManutencao" class="needs-validation" novalidate>
-              <input type="hidden" id="registroIdPos" name="registroId"> <fieldset class="mb-4 p-3 border rounded bg-light">
-                 <legend class="fs-6 fw-bold mb-3">Resumo do Veículo</legend>
-                 <div class="row g-2">
-                    <div class="col-sm-4"><strong>Placa:</strong> <span id="placaPos">--</span></div>
-                    <div class="col-sm-4"><strong>Modelo:</strong> <span id="modeloPos">--</span></div>
-                    <div class="col-sm-4"><strong>ID Interna:</strong> <span id="idInternaPos">--</span></div>
-                 </div>
-              </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded">
-                <legend class="fs-6 fw-bold mb-3">Checklist de Condições PÓS <span class="text-danger">*</span></legend>
-                 <div id="checklistPosContainer" class="row g-3">
-                    <p class="text-muted small fst-italic col-12">Carregando checklist...</p>
+    <div class="container">
+        <!-- Conteúdo Principal -->
+        <div id="conteudo-principal">
+            
+            <!-- Dashboard -->
+            <div id="tela-dashboard" class="view-content">
+                <h2 class="mb-4">Dashboard de Manutenções</h2>
+                
+                <!-- Estatísticas -->
+                <div class="row mb-4">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stat-card bg-light">
+                            <div class="stat-title">Equipamentos</div>
+                            <div class="stat-value" id="total-equipamentos">0</div>
+                            <div>Total cadastrado</div>
+                        </div>
                     </div>
-              </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded" id="photo-section-pos">
-                 <legend class="fs-6 fw-bold mb-3">Registro Fotográfico PÓS</legend>
-                  <div id="photo-container-pos">
-                     <p class="text-muted small fst-italic">Carregando gerenciador de fotos...</p>
-                  </div>
-               </fieldset>
-
-              <fieldset class="mb-4 p-3 border rounded">
-                <legend class="fs-6 fw-bold mb-3">Observações Pós-Manutenção</legend>
-                <textarea class="form-control enhanced-input" id="observacoesPos" name="observacoesPos" rows="3" maxlength="500"></textarea>
-                 <div class="invalid-feedback">Máximo de 500 caracteres.</div>
-              </fieldset>
-
-              <div class="text-end mt-4">
-                <button type="button" class="btn btn-outline-secondary me-2" id="btnVoltarPre"><i class="bi bi-arrow-left me-1"></i> Voltar para PRÉ</button>
-                <button type="submit" class="btn btn-success"> <i class="bi bi-check-lg me-1"></i> Finalizar e Salvar Registro</button>
-              </div>
-            </form>
-          </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stat-card bg-light">
+                            <div class="stat-title">Aguardando</div>
+                            <div class="stat-value text-warning" id="total-aguardando">0</div>
+                            <div>Manutenções pendentes</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stat-card bg-light">
+                            <div class="stat-title">Em Manutenção</div>
+                            <div class="stat-value text-primary" id="total-em-manutencao">0</div>
+                            <div>Em andamento</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="stat-card bg-light">
+                            <div class="stat-title">Concluídas</div>
+                            <div class="stat-value text-success" id="total-concluidas">0</div>
+                            <div>Finalizadas</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Manutenções Recentes e Atividade -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-wrench me-2"></i>Manutenções Recentes
+                            </div>
+                            <div class="card-body p-0">
+                                <ul class="list-group" id="manutencoes-recentes">
+                                    <!-- Preenchido via JavaScript -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-activity me-2"></i>Atividade Recente
+                            </div>
+                            <div class="card-body p-0 recent-activity">
+                                <ul class="list-group" id="atividade-recente">
+                                    <!-- Preenchido via JavaScript -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gráficos e Estatísticas -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-bar-chart me-2"></i>Manutenções por Tipo de Equipamento
+                            </div>
+                            <div class="card-body" id="grafico-tipos">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card mb-4">
+                            <div class="card-header">
+                                <i class="bi bi-pie-chart me-2"></i>Manutenções por Categoria
+                            </div>
+                            <div class="card-body" id="grafico-categorias">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Lista de Manutenções -->
+            <div id="tela-lista" class="view-content" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Lista de Manutenções</h2>
+                    <button class="btn btn-primary" id="btn-nova-manutencao">
+                        <i class="bi bi-plus-circle me-1"></i>Nova Manutenção
+                    </button>
+                </div>
+                
+                <!-- Filtros -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <select class="form-select" id="filtro-status">
+                                    <option value="">Todos os Status</option>
+                                    <option value="Aguardando Manutenção">Aguardando</option>
+                                    <option value="Em Manutenção">Em Manutenção</option>
+                                    <option value="Manutenção Concluída">Concluídas</option>
+                                    <option value="Equipamento Disponível">Disponíveis</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <input type="text" class="form-control" id="filtro-placa" placeholder="Filtrar por Placa">
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" id="btn-filtrar">
+                                    <i class="bi bi-search me-1"></i>Filtrar
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-outline-secondary w-100" id="btn-limpar-filtro">
+                                    <i class="bi bi-x-circle me-1"></i>Limpar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lista de Manutenções -->
+                <div class="card">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Placa</th>
+                                        <th>Modelo</th>
+                                        <th>Data</th>
+                                        <th>Status</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="lista-manutencoes">
+                                    <!-- Preenchido via JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div id="sem-registros" class="text-center py-4" style="display: none;">
+                            <i class="bi bi-exclamation-circle fs-1 text-muted"></i>
+                            <p class="mt-2 text-muted">Nenhum registro encontrado</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Formulário Pré-Manutenção -->
+            <div id="tela-pre-manutencao" class="view-content" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Registro de Pré-Manutenção</h2>
+                    <button class="btn btn-outline-secondary btn-voltar">
+                        <i class="bi bi-arrow-left me-1"></i>Voltar
+                    </button>
+                </div>
+                
+                <form id="form-pre-manutencao">
+                    <input type="hidden" id="pre-id" name="id">
+                    
+                    <!-- Informações do Equipamento -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-truck me-2"></i>Informações do Equipamento
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <label for="pre-placa" class="form-label">Placa*</label>
+                                    <select class="form-select" id="pre-placa" name="placa" required>
+                                        <option value="">Selecione...</option>
+                                        <!-- Preenchido via JavaScript -->
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="pre-modelo" class="form-label">Modelo*</label>
+                                    <input type="text" class="form-control" id="pre-modelo" name="modelo" readonly>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="pre-tipo-equipamento" class="form-label">Tipo de Equipamento*</label>
+                                    <input type="text" class="form-control" id="pre-tipo-equipamento" name="tipoEquipamento" readonly>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Detalhes do Problema -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-exclamation-triangle me-2"></i>Detalhes do Problema
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="pre-categoria-problema" class="form-label">Categoria do Problema*</label>
+                                    <select class="form-select" id="pre-categoria-problema" name="categoriaProblema" required>
+                                        <option value="">Selecione...</option>
+                                        <!-- Preenchido via JavaScript -->
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="pre-urgencia" class="form-label">Urgência*</label>
+                                    <select class="form-select" id="pre-urgencia" name="urgencia" required>
+                                        <option value="">Selecione...</option>
+                                        <!-- Preenchido via JavaScript -->
+                                    </select>
+                                </div>
+                                <div class="col-12" id="motivo-outro-container" style="display: none;">
+                                    <label for="pre-motivo-outro" class="form-label">Especifique o Problema*</label>
+                                    <input type="text" class="form-control" id="pre-motivo-outro" name="motivoOutro">
+                                </div>
+                                <div class="col-12">
+                                    <label for="pre-descricao-problema" class="form-label">Descrição do Problema*</label>
+                                    <textarea class="form-control" id="pre-descricao-problema" name="descricaoProblema" rows="3" required></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Checklist Pré-Manutenção -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-check-square me-2"></i>Checklist Pré-Manutenção
+                        </div>
+                        <div class="card-body">
+                            <div id="pre-checklist-container">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                            <div class="mb-3">
+                                <label for="pre-observacoes" class="form-label">Observações Adicionais</label>
+                                <textarea class="form-control" id="pre-observacoes" name="observacoesPre" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Registro Fotográfico -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-camera me-2"></i>Registro Fotográfico
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="d-flex gap-2 mb-3">
+                                    <button type="button" class="btn btn-primary" id="btn-abrir-camera-pre">
+                                        <i class="bi bi-camera-fill me-1"></i>Abrir Câmera
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btn-selecionar-imagem-pre">
+                                        <i class="bi bi-image me-1"></i>Da Galeria
+                                    </button>
+                                    <input type="file" id="input-imagem-pre" accept="image/*" style="display: none;">
+                                </div>
+                                
+                                <!-- Camera Preview -->
+                                <div id="camera-container-pre" class="camera-container" style="display: none;">
+                                    <video id="camera-preview-pre" autoplay playsinline></video>
+                                    <div class="camera-controls">
+                                        <button type="button" class="btn btn-primary" id="btn-capturar-pre">
+                                            <i class="bi bi-camera-fill me-1"></i>Capturar
+                                        </button>
+                                        <button type="button" class="btn btn-danger" id="btn-fechar-camera-pre">
+                                            <i class="bi bi-x-circle me-1"></i>Fechar
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Imagens Preview -->
+                                <div id="imagens-preview-pre" class="d-flex flex-wrap gap-2 mt-3">
+                                    <!-- Preenchido via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Responsável -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-person me-2"></i>Responsável pelo Registro
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="pre-responsavel" class="form-label">Nome do Responsável*</label>
+                                <input type="text" class="form-control" id="pre-responsavel" name="responsavel" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-4">
+                        <button type="button" class="btn btn-outline-secondary btn-voltar">
+                            <i class="bi bi-arrow-left me-1"></i>Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Salvar e Avançar
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Formulário Pós-Manutenção -->
+            <div id="tela-pos-manutencao" class="view-content" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Registro de Pós-Manutenção</h2>
+                    <button class="btn btn-outline-secondary btn-voltar">
+                        <i class="bi bi-arrow-left me-1"></i>Voltar
+                    </button>
+                </div>
+                
+                <form id="form-pos-manutencao">
+                    <input type="hidden" id="pos-id" name="id">
+                    
+                    <!-- Resumo do Equipamento -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-truck me-2"></i>Resumo do Equipamento
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-4">
+                                    <p class="form-label">Placa</p>
+                                    <p class="form-control-plaintext" id="pos-placa-display"></p>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="form-label">Modelo</p>
+                                    <p class="form-control-plaintext" id="pos-modelo-display"></p>
+                                </div>
+                                <div class="col-md-4">
+                                    <p class="form-label">Tipo de Equipamento</p>
+                                    <p class="form-control-plaintext" id="pos-tipo-display"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Checklist Pós-Manutenção -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-check-square me-2"></i>Checklist Pós-Manutenção
+                        </div>
+                        <div class="card-body">
+                            <div id="pos-checklist-container">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                            <div class="mb-3">
+                                <label for="pos-observacoes" class="form-label">Observações da Manutenção</label>
+                                <textarea class="form-control" id="pos-observacoes" name="observacoesPos" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Registro Fotográfico -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-camera me-2"></i>Registro Fotográfico Pós-Manutenção
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <div class="d-flex gap-2 mb-3">
+                                    <button type="button" class="btn btn-primary" id="btn-abrir-camera-pos">
+                                        <i class="bi bi-camera-fill me-1"></i>Abrir Câmera
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" id="btn-selecionar-imagem-pos">
+                                        <i class="bi bi-image me-1"></i>Da Galeria
+                                    </button>
+                                    <input type="file" id="input-imagem-pos" accept="image/*" style="display: none;">
+                                </div>
+                                
+                                <!-- Camera Preview -->
+                                <div id="camera-container-pos" class="camera-container" style="display: none;">
+                                    <video id="camera-preview-pos" autoplay playsinline></video>
+                                    <div class="camera-controls">
+                                        <button type="button" class="btn btn-primary" id="btn-capturar-pos">
+                                            <i class="bi bi-camera-fill me-1"></i>Capturar
+                                        </button>
+                                        <button type="button" class="btn btn-danger" id="btn-fechar-camera-pos">
+                                            <i class="bi bi-x-circle me-1"></i>Fechar
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Imagens Preview -->
+                                <div id="imagens-preview-pos" class="d-flex flex-wrap gap-2 mt-3">
+                                    <!-- Preenchido via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mb-4">
+                        <button type="button" class="btn btn-outline-secondary" id="btn-voltar-pre">
+                            <i class="bi bi-arrow-left me-1"></i>Voltar para Pré-Manutenção
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle me-1"></i>Finalizar Manutenção
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <!-- Visualização de Manutenção -->
+            <div id="tela-visualizacao" class="view-content" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2>Detalhes da Manutenção</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-outline-secondary btn-voltar">
+                            <i class="bi bi-arrow-left me-1"></i>Voltar
+                        </button>
+                        <button class="btn btn-outline-primary" id="btn-editar-manutencao">
+                            <i class="bi bi-pencil me-1"></i>Editar
+                        </button>
+                        <button class="btn btn-outline-success" id="btn-gerar-pdf">
+                            <i class="bi bi-file-pdf me-1"></i>Gerar PDF
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="detalhes-manutencao">
+                    <!-- Informações Gerais -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-info-circle me-2"></i>Informações Gerais
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <h6 class="text-muted">ID da Manutenção</h6>
+                                    <p id="view-id"></p>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <h6 class="text-muted">Data de Abertura</h6>
+                                    <p id="view-data-criacao"></p>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <h6 class="text-muted">Status</h6>
+                                    <p><span class="badge" id="view-status"></span></p>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <h6 class="text-muted">Responsável</h6>
+                                    <p id="view-responsavel"></p>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <h6 class="text-muted">Placa</h6>
+                                    <p id="view-placa"></p>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <h6 class="text-muted">Modelo</h6>
+                                    <p id="view-modelo"></p>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <h6 class="text-muted">Tipo de Equipamento</h6>
+                                    <p id="view-tipo-equipamento"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Detalhes do Problema -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-exclamation-triangle me-2"></i>Detalhes do Problema
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="text-muted">Categoria do Problema</h6>
+                                    <p id="view-categoria-problema"></p>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="text-muted">Urgência</h6>
+                                    <p id="view-urgencia"></p>
+                                </div>
+                            </div>
+                            <div class="row mb-3" id="view-motivo-outro-container" style="display: none;">
+                                <div class="col-12">
+                                    <h6 class="text-muted">Especificação do Problema</h6>
+                                    <p id="view-motivo-outro"></p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-12">
+                                    <h6 class="text-muted">Descrição do Problema</h6>
+                                    <p id="view-descricao-problema"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pré-Manutenção -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-clipboard-check me-2"></i>Registro Pré-Manutenção
+                        </div>
+                        <div class="card-body">
+                            <h6 class="mb-3">Checklist Pré-Manutenção</h6>
+                            <div id="view-checklist-pre" class="mb-4">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                            
+                            <h6 class="mb-2">Observações</h6>
+                            <p id="view-observacoes-pre" class="mb-4"></p>
+                            
+                            <h6 class="mb-2">Imagens</h6>
+                            <div id="view-imagens-pre" class="d-flex flex-wrap gap-2">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Pós-Manutenção -->
+                    <div class="card mb-4" id="view-section-pos-manutencao">
+                        <div class="card-header">
+                            <i class="bi bi-clipboard-check me-2"></i>Registro Pós-Manutenção
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <h6 class="mb-2">Data da Manutenção</h6>
+                                    <p id="view-data-manutencao"></p>
+                                </div>
+                            </div>
+                            
+                            <h6 class="mb-3">Checklist Pós-Manutenção</h6>
+                            <div id="view-checklist-pos" class="mb-4">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                            
+                            <h6 class="mb-2">Observações</h6>
+                            <p id="view-observacoes-pos" class="mb-4"></p>
+                            
+                            <h6 class="mb-2">Imagens</h6>
+                            <div id="view-imagens-pos" class="d-flex flex-wrap gap-2">
+                                <!-- Preenchido via JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Atualização de Status -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <i class="bi bi-arrow-repeat me-2"></i>Atualizar Status
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-outline-warning btn-status" data-status="Aguardando Manutenção">
+                                    <i class="bi bi-hourglass me-1"></i>Aguardando
+                                </button>
+                                <button class="btn btn-outline-primary btn-status" data-status="Em Manutenção">
+                                    <i class="bi bi-tools me-1"></i>Em Manutenção
+                                </button>
+                                <button class="btn btn-outline-success btn-status" data-status="Manutenção Concluída">
+                                    <i class="bi bi-check-circle me-1"></i>Concluído
+                                </button>
+                                <button class="btn btn-outline-info btn-status" data-status="Equipamento Disponível">
+                                    <i class="bi bi-check-all me-1"></i>Disponível
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </section>
-
-      <section id="telaVisualizacao" class="tela-sistema" style="display: none;">
-         <div class="card shadow-sm mb-4">
-             <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-                 <h2 class="h5 mb-0"><i class="bi bi-eye me-2"></i> Visualização do Registro</h2>
-                 <div class="d-flex align-items-center">
-                     <span id="registroIdVisualizar" class="badge bg-secondary me-3 fs-6">ID: --</span>
-                     <button class="btn btn-sm btn-outline-secondary me-2" id="btnVoltarLista" title="Voltar para a Lista">
-                         <i class="bi bi-arrow-left"></i> <span class="d-none d-md-inline">Voltar</span>
-                     </button>
-                     <button class="btn btn-sm btn-warning" id="btnEditarVisualizacao" title="Editar este Registro">
-                         <i class="bi bi-pencil"></i> <span class="d-none d-md-inline">Editar</span>
-                     </button>
-                     </div>
-             </div>
-             <div class="card-body">
-                 <fieldset class="mb-4 p-3 border rounded">
-                     <legend class="fs-6 fw-bold mb-3">Informações Gerais</legend>
-                     <div class="row g-3">
-                         <div class="col-md-4 col-sm-6"><strong>Placa:</strong> <span id="placaView">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>Modelo:</strong> <span id="modeloView">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>ID Interna:</strong> <span id="idInternaView">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>Data Criação:</strong> <span id="dataView">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>Responsável:</strong> <span id="responsavelView">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>Status:</strong> <span id="statusView" class="badge">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>Quilometragem:</strong> <span id="quilometragemView">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>Categoria:</strong> <span id="categoriaView">--</span></div>
-                         <div class="col-md-4 col-sm-6"><strong>Urgência:</strong> <span id="urgenciaView">--</span></div>
-                         <div class="col-12"><strong>Descrição do Problema:</strong> <p id="descricaoProblemaView" class="bg-light p-2 rounded mb-0 text-break">--</p></div>
-                     </div>
-                 </fieldset>
-
-                 <div class="row g-3">
-                     <div class="col-lg-6">
-                         <div class="card h-100">
-                             <div class="card-header bg-primary text-white">
-                                 <h6 class="mb-0"><i class="bi bi-clipboard-plus me-1"></i> Detalhes PRÉ-Manutenção</h6>
-                             </div>
-                             <div class="card-body">
-                                 <h6 class="mb-2 fw-bold">Checklist PRÉ:</h6>
-                                 <div class="table-responsive mb-3">
-                                     <table class="table table-sm table-bordered mb-0">
-                                         <tbody id="checklistPreView">
-                                             <tr><td class="text-muted small fst-italic">Carregando...</td></tr>
-                                         </tbody>
-                                     </table>
-                                 </div>
-                                 <h6 class="mb-2 fw-bold">Fotos PRÉ:</h6>
-                                 <div id="fotosPreView" class="row g-2 mb-3">
-                                      <p class="text-muted small fst-italic col-12">Carregando...</p>
-                                 </div>
-                                 <h6 class="mb-1 fw-bold">Observações PRÉ:</h6>
-                                 <p id="observacoesPreView" class="text-muted bg-light p-2 rounded text-break mb-0">--</p>
-                             </div>
-                         </div>
-                     </div>
-                     <div class="col-lg-6">
-                         <div class="card h-100">
-                             <div class="card-header bg-success text-white">
-                                 <h6 class="mb-0"><i class="bi bi-check2-circle me-1"></i> Detalhes PÓS-Manutenção</h6>
-                             </div>
-                             <div class="card-body">
-                                 <h6 class="mb-2 fw-bold">Checklist PÓS:</h6>
-                                  <div class="table-responsive mb-3">
-                                     <table class="table table-sm table-bordered mb-0">
-                                         <tbody id="checklistPosView">
-                                             <tr><td class="text-muted small fst-italic">Carregando...</td></tr>
-                                         </tbody>
-                                     </table>
-                                 </div>
-                                 <h6 class="mb-2 fw-bold">Fotos PÓS:</h6>
-                                 <div id="fotosPosView" class="row g-2 mb-3">
-                                      <p class="text-muted small fst-italic col-12">Carregando...</p>
-                                 </div>
-                                 <h6 class="mb-1 fw-bold">Observações PÓS:</h6>
-                                 <p id="observacoesPosView" class="text-muted bg-light p-2 rounded text-break mb-0">--</p>
-                             </div>
-                         </div>
-                     </div>
-                 </div>
-             </div>
-         </div>
-     </section>
-    </main>
-
-    <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-       </div>
-
-    <div id="loadingSpinner" class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark bg-opacity-75 hidden-spinner" style="display: none !important; z-index: 9999; backdrop-filter: blur(2px);">
-      <div class="spinner-border text-primary mb-2" style="width: 3rem; height: 3rem;" role="status">
-        <span class="visually-hidden">Carregando...</span>
-      </div>
-      <p class="text-white loading-message mb-0">Carregando...</p>
+    </div>
+    
+    <!-- Modal da Câmera -->
+    <div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Capturar Imagem</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="camera-container">
+                        <video id="camera-modal-preview" autoplay playsinline></video>
+                        <canvas id="camera-canvas" style="display: none;"></canvas>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-capturar-modal">
+                        <i class="bi bi-camera-fill me-1"></i>Capturar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Confirmação -->
+    <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmação</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="confirm-message">Tem certeza que deseja realizar esta ação?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirm-yes">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Alerta -->
+    <div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="alert-title">Aviso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="alert-message"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal de Escolha Pós-Manutenção -->
+    <div class="modal fade" id="choiceModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Registro Salvo com Sucesso</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>O registro de pré-manutenção foi salvo com sucesso!</p>
+                    <p>O que deseja fazer agora?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" id="btn-choice-lista">
+                        <i class="bi bi-list-ul me-1"></i>Ir para Lista
+                    </button>
+                    <button type="button" class="btn btn-outline-primary" id="btn-choice-novo">
+                        <i class="bi bi-plus-circle me-1"></i>Novo Registro
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btn-choice-pos">
+                        <i class="bi bi-arrow-right me-1"></i>Continuar para Pós-Manutenção
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Script inline para garantir que o spinner seja ocultado -->
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script>
-      (function() {
-        document.getElementById('loadingSpinner').style.display = 'none';
-        setTimeout(function() {
-          var spinner = document.getElementById('loadingSpinner');
-          if (spinner) {
-            spinner.style.display = 'none';
-            spinner.setAttribute('style', 'display: none !important');
-          }
-        }, 500);
-      })();
-    </script>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/utils-novo.js"></script>
-    <!-- <script src="js/utils.js"></script> --> <!-- Comente a linha original -->
-    
-
-    <script src="js/core/module-loader.js"></script>
-
-    <script src="js/core/state.js"></script>
-    <script src="js/core/cache-manager.js"></script>
-    <script src="js/core/security.js"></script>
-    <script src="js/core/performance-monitor.js"></script>
-
-    <script src="js/api-client.js"></script> <script src="js/ui/theme-manager.js"></script> <script src="js/features/notifications.js"></script> <script src="js/auth/google-auth.js"></script> <script src="js/photo-handler.js"></script> <script src="js/form-handler.js"></script> <script src="js/features/dashboard.js"></script> <script src="js/main.js"></script>
-
-    <script src="js/app.js"></script>
-    
-    <!-- Script de correção para problemas de loading -->
-    <script>
-    /**
-     * Solução para resolver o problema do loading infinito
-     */
-    (function() {
-      // Executar imediatamente após carregar
-      function hideLoadingSpinner() {
-        const spinner = document.getElementById('loadingSpinner');
-        if (spinner) {
-          // Tentar todas as abordagens possíveis para ocultar/remover o spinner
-          spinner.style.display = 'none';
-          spinner.style.opacity = '0';
-          spinner.style.visibility = 'hidden';
-          spinner.classList.add('hidden-spinner');
-          
-          // Registrar que o spinner foi ocultado
-          console.log('Spinner ocultado forçadamente');
-          
-          // Remover completamente depois de um pequeno atraso
-          setTimeout(() => {
-            if (spinner.parentNode) {
-              spinner.parentNode.removeChild(spinner);
-              console.log('Spinner removido completamente do DOM');
-            }
-          }, 500);
-        }
-      }
-      
-      // Tentar ocultar imediatamente
-      hideLoadingSpinner();
-      
-      // Tentar novamente após um curto atraso
-      setTimeout(hideLoadingSpinner, 1000);
-      
-      // E mais uma vez após carregamento completo
-      window.addEventListener('load', hideLoadingSpinner);
-      
-      // Redefinir a função hideLoading global para ter certeza
-      if (window.Utils) {
-        const originalHideLoading = window.Utils.hideLoading;
-        window.Utils.hideLoading = function() {
-          // Chamar a implementação original
-          if (typeof originalHideLoading === 'function') {
-            originalHideLoading.call(window.Utils);
-          }
-          
-          // E então forçar a remoção completa
-          const spinner = document.getElementById('loadingSpinner');
-          if (spinner) {
-            spinner.style.display = 'none';
-            spinner.style.opacity = '0';
-            spinner.style.visibility = 'hidden';
-            
-            // Remover completamente após um pequeno atraso
-            setTimeout(() => {
-              if (spinner && spinner.parentNode) {
-                spinner.parentNode.removeChild(spinner);
-                console.log('Spinner removido completamente do DOM');
-              }
-            }, 100);
-          }
+        // Variáveis globais
+        let tiposEquipamentos = [];
+        let categoriasProblemas = [];
+        let niveisUrgencia = [];
+        let checklistItens = [];
+        let equipamentos = [];
+        let manutencoes = [];
+        let manutencaoAtual = null;
+        let imagenesPreUpload = [];
+        let imagenesPosUpload = [];
+        let mediaStream = null;
+        
+        // Elementos da interface
+        const views = {
+            dashboard: document.getElementById('tela-dashboard'),
+            lista: document.getElementById('tela-lista'),
+            preManu: document.getElementById('tela-pre-manutencao'),
+            posManu: document.getElementById('tela-pos-manutencao'),
+            visualizacao: document.getElementById('tela-visualizacao')
         };
-        console.log('Utils.hideLoading substituído com versão mais robusta');
-      }
-      
-      // Adicionar evento ao documento para garantir que o spinner seja removido quando o usuário interage
-      document.addEventListener('click', hideLoadingSpinner);
-    })();
+        
+        // Modals
+        const modals = {
+            camera: new bootstrap.Modal(document.getElementById('cameraModal')),
+            confirm: new bootstrap.Modal(document.getElementById('confirmModal')),
+            alert: new bootstrap.Modal(document.getElementById('alertModal')),
+            choice: new bootstrap.Modal(document.getElementById('choiceModal'))
+        };
+        
+        // Gráficos
+        let graficoTipos = null;
+        let graficoCategorias = null;
+        
+        // Função para exibir uma visualização e esconder as outras
+        function mostrarTela(tela) {
+            Object.values(views).forEach(view => {
+                view.style.display = 'none';
+            });
+            tela.style.display = 'block';
+            
+            // Atualizar classe ativa no menu
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            if (tela === views.dashboard) {
+                document.getElementById('nav-dashboard').classList.add('active');
+                carregarDashboard();
+            } else if (tela === views.lista) {
+                document.getElementById('nav-lista').classList.add('active');
+                carregarListaManutencoes();
+            } else if (tela === views.preManu) {
+                document.getElementById('nav-novo').classList.add('active');
+            }
+        }
+        
+        // Função para mostrar alerta
+        function mostrarAlerta(mensagem, titulo = 'Aviso') {
+            document.getElementById('alert-title').textContent = titulo;
+            document.getElementById('alert-message').textContent = mensagem;
+            modals.alert.show();
+        }
+        
+        // Função para mostrar confirmação
+        function mostrarConfirmacao(mensagem, callback) {
+            document.getElementById('confirm-message').textContent = mensagem;
+            document.getElementById('confirm-yes').onclick = () => {
+                modals.confirm.hide();
+                callback();
+            };
+            modals.confirm.show();
+        }
+        
+        // Funções para API
+        async function apiRequest(action, params = {}) {
+            try {
+                const url = new URL(window.location.href);
+                url.searchParams.set('action', action);
+                
+                for (const key in params) {
+                    if (params[key] !== undefined && params[key] !== null) {
+                        url.searchParams.set(key, params[key]);
+                    }
+                }
+                
+                const response = await fetch(url.toString());
+                if (!response.ok) {
+                    throw new Error(`Erro na API: ${response.status}`);
+                }
+                
+                return await response.json();
+            } catch (error) {
+                console.error('Erro na requisição:', error);
+                mostrarAlerta(`Erro na requisição: ${error.message}`, 'Erro');
+                return { success: false, message: error.message };
+            }
+        }
+        
+        // Carregar dados iniciais
+        async function carregarDadosIniciais() {
+            // Carregar tipos de equipamentos
+            const resTipos = await apiRequest('obterTiposEquipamentos');
+            if (resTipos.success) {
+                tiposEquipamentos = resTipos.tiposEquipamentos || [];
+                categoriasProblemas = resTipos.categoriasProblemas || [];
+                niveisUrgencia = resTipos.niveisUrgencia || [];
+                checklistItens = resTipos.checklistItens || [];
+                
+                // Preencher selects
+                preencherSelect('pre-categoria-problema', categoriasProblemas);
+                preencherSelect('pre-urgencia', niveisUrgencia);
+                
+                // Criar checklist
+                criarChecklist('pre-checklist-container', 'pre', checklistItens);
+                criarChecklist('pos-checklist-container', 'pos', checklistItens);
+            }
+            
+            // Carregar equipamentos
+            const resEquip = await apiRequest('obterEquipamentos');
+            if (resEquip.success) {
+                equipamentos = resEquip.equipamentos || [];
+                
+                // Preencher select de placas
+                const selectPlaca = document.getElementById('pre-placa');
+                selectPlaca.innerHTML = '<option value="">Selecione...</option>';
+                
+                equipamentos.forEach(equip => {
+                    const option = document.createElement('option');
+                    option.value = equip.Placa;
+                    option.textContent = `${equip.Placa} - ${equip.Modelo} (${equip.Tipo_Equipamento})`;
+                    option.dataset.modelo = equip.Modelo;
+                    option.dataset.tipo = equip.Tipo_Equipamento;
+                    selectPlaca.appendChild(option);
+                });
+            }
+            
+            // Iniciar na tela de dashboard
+            mostrarTela(views.dashboard);
+        }
+        
+        // Função para preencher select
+        function preencherSelect(elementId, options) {
+            const select = document.getElementById(elementId);
+            select.innerHTML = '<option value="">Selecione...</option>';
+            
+            options.forEach(option => {
+                const optElement = document.createElement('option');
+                optElement.value = option;
+                optElement.textContent = option;
+                select.appendChild(optElement);
+            });
+        }
+        
+        // Função para criar checklist
+        function criarChecklist(containerId, prefix, itens) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            
+            itens.forEach((item, index) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'checklist-item';
+                
+                const title = document.createElement('div');
+                title.className = 'checklist-title';
+                title.textContent = item;
+                
+                const radioGroup = document.createElement('div');
+                radioGroup.className = 'btn-group';
+                radioGroup.setAttribute('role', 'group');
+                
+                const options = [
+                    { value: 'OK', label: 'OK', icon: 'bi-check-circle-fill', className: 'btn-outline-success' },
+                    { value: 'Danificado', label: 'Danificado', icon: 'bi-exclamation-triangle-fill', className: 'btn-outline-danger' },
+                    { value: 'N/A', label: 'N/A', icon: 'bi-dash-circle-fill', className: 'btn-outline-secondary' }
+                ];
+                
+                options.forEach(option => {
+                    const label = document.createElement('label');
+                    label.className = `btn ${option.className}`;
+                    
+                    const input = document.createElement('input');
+                    input.type = 'radio';
+                    input.name = `${prefix}-checklist-${index}`;
+                    input.value = option.value;
+                    input.dataset.item = item;
+                    
+                    const icon = document.createElement('i');
+                    icon.className = `bi ${option.icon} me-1`;
+                    
+                    label.appendChild(input);
+                    label.appendChild(icon);
+                    label.appendChild(document.createTextNode(option.label));
+                    
+                    radioGroup.appendChild(label);
+                });
+                
+                itemDiv.appendChild(title);
+                itemDiv.appendChild(radioGroup);
+                container.appendChild(itemDiv);
+            });
+        }
+        
+        // Função para obter dados do formulário
+        function obterDadosFormulario(formId) {
+            const form = document.getElementById(formId);
+            const formData = new FormData(form);
+            const dados = Object.fromEntries(formData.entries());
+            
+            // Processar checklist
+            const checklistContainer = document.getElementById(formId === 'form-pre-manutencao' ? 'pre-checklist-container' : 'pos-checklist-container');
+            const checklist = {};
+            
+            checklistContainer.querySelectorAll('input[type="radio"]:checked').forEach(radio => {
+                checklist[radio.dataset.item] = radio.value;
+            });
+            
+            dados.checklist = checklist;
+            
+            return dados;
+        }
+        
+        // Função para carregar dashboard
+        async function carregarDashboard() {
+            const resDashboard = await apiRequest('obterDadosDashboard');
+            if (!resDashboard.success) return;
+            
+            const data = resDashboard;
+            
+            // Atualizar contadores
+            document.getElementById('total-equipamentos').textContent = data.statusEquipamentos.total;
+            document.getElementById('total-aguardando').textContent = data.contadores.statusManutencao['Aguardando Manutenção'] || 0;
+            document.getElementById('total-em-manutencao').textContent = data.contadores.statusManutencao['Em Manutenção'] || 0;
+            document.getElementById('total-concluidas').textContent = (data.contadores.statusManutencao['Manutenção Concluída'] || 0) + (data.contadores.statusManutencao['Equipamento Disponível'] || 0);
+            
+            // Manutenções recentes
+            const listaRecentes = document.getElementById('manutencoes-recentes');
+            listaRecentes.innerHTML = '';
+            
+            if (data.manutencoesRecentes.length === 0) {
+                listaRecentes.innerHTML = '<li class="list-group-item text-center text-muted">Nenhuma manutenção registrada</li>';
+            } else {
+                data.manutencoesRecentes.forEach(manutencao => {
+                    const statusClass = getStatusClass(manutencao.status);
+                    const item = document.createElement('li');
+                    item.className = 'list-group-item d-flex justify-content-between align-items-center';
+                    
+                    const div = document.createElement('div');
+                    div.innerHTML = `
+                        <strong>${manutencao.placa}</strong>
+                        <span class="text-muted ms-2">${manutencao.dataCriacao}</span>
+                    `;
+                    
+                    const badge = document.createElement('span');
+                    badge.className = `badge ${statusClass}`;
+                    badge.textContent = manutencao.status;
+                    
+                    item.appendChild(div);
+                    item.appendChild(badge);
+                    item.style.cursor = 'pointer';
+                    item.onclick = () => visualizarManutencao(manutencao.id);
+                    
+                    listaRecentes.appendChild(item);
+                });
+            }
+            
+            // Atividade recente
+            const listaAtividade = document.getElementById('atividade-recente');
+            listaAtividade.innerHTML = '';
+            
+            if (data.atividadeRecente.length === 0) {
+                listaAtividade.innerHTML = '<li class="list-group-item text-center text-muted">Nenhuma atividade registrada</li>';
+            } else {
+                data.atividadeRecente.forEach(atividade => {
+                    const item = document.createElement('li');
+                    item.className = 'list-group-item';
+                    
+                    const row = document.createElement('div');
+                    row.className = 'd-flex';
+                    
+                    const avatar = document.createElement('div');
+                    avatar.className = 'avatar bg-light text-primary';
+                    avatar.innerHTML = `<i class="bi bi-truck"></i>`;
+                    
+                    const content = document.createElement('div');
+                    content.innerHTML = `
+                        <div><strong>${atividade.placa}</strong></div>
+                        <div>Status alterado de <span class="fw-semibold">${atividade.statusAnterior || 'Novo'}</span> para <span class="fw-semibold">${atividade.statusNovo}</span></div>
+                        <div class="text-muted small">${atividade.data}</div>
+                    `;
+                    
+                    row.appendChild(avatar);
+                    row.appendChild(content);
+                    item.appendChild(row);
+                    listaAtividade.appendChild(item);
+                });
+            }
+            
+            // Gráfico de tipos de equipamento
+            const graficoTiposContainer = document.getElementById('grafico-tipos');
+            graficoTiposContainer.innerHTML = '<canvas id="chart-tipos"></canvas>';
+            
+            const tiposLabels = Object.keys(data.contadores.tipoEquipamento);
+            const tiposData = tiposLabels.map(tipo => data.contadores.tipoEquipamento[tipo]);
+            
+            if (graficoTipos) graficoTipos.destroy();
+            graficoTipos = new Chart(document.getElementById('chart-tipos'), {
+                type: 'bar',
+                data: {
+                    labels: tiposLabels,
+                    datasets: [{
+                        label: 'Manutenções',
+                        data: tiposData,
+                        backgroundColor: '#0d6efd80',
+                        borderColor: '#0d6efd',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Gráfico de categorias
+            const graficoCategoriasContainer = document.getElementById('grafico-categorias');
+            graficoCategoriasContainer.innerHTML = '<canvas id="chart-categorias"></canvas>';
+            
+            const categoriasLabels = Object.keys(data.contadores.categoriaProblema);
+            const categoriasData = categoriasLabels.map(cat => data.contadores.categoriaProblema[cat]);
+            
+            if (graficoCategorias) graficoCategorias.destroy();
+            graficoCategorias = new Chart(document.getElementById('chart-categorias'), {
+                type: 'pie',
+                data: {
+                    labels: categoriasLabels,
+                    datasets: [{
+                        data: categoriasData,
+                        backgroundColor: [
+                            '#0d6efd80',
+                            '#dc354580',
+                            '#ffc10780',
+                            '#19875480',
+                            '#6c757d80'
+                        ],
+                        borderColor: [
+                            '#0d6efd',
+                            '#dc3545',
+                            '#ffc107',
+                            '#198754',
+                            '#6c757d'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true
+                }
+            });
+        }
+        
+        // Função para carregar lista de manutenções
+        async function carregarListaManutencoes() {
+            const filtroStatus = document.getElementById('filtro-status').value;
+            const filtroPlaca = document.getElementById('filtro-placa').value;
+            
+            const resManutencoes = await apiRequest('listarManutencoes', {
+                status: filtroStatus
+            });
+            
+            if (!resManutencoes.success) return;
+            
+            manutencoes = resManutencoes.manutencoes || [];
+            
+            // Filtrar por placa se necessário
+            if (filtroPlaca) {
+                manutencoes = manutencoes.filter(m => 
+                    m.Placa.toLowerCase().includes(filtroPlaca.toLowerCase())
+                );
+            }
+            
+            const tbody = document.getElementById('lista-manutencoes');
+            const semRegistros = document.getElementById('sem-registros');
+            
+            tbody.innerHTML = '';
+            
+            if (manutencoes.length === 0) {
+                semRegistros.style.display = 'block';
+                return;
+            }
+            
+            semRegistros.style.display = 'none';
+            
+            manutencoes.forEach(m => {
+                const tr = document.createElement('tr');
+                
+                // Formatar data
+                const dataCriacao = m.Data_Criacao ? new Date(m.Data_Criacao) : null;
+                const dataFormatada = dataCriacao ? 
+                    dataCriacao.toLocaleDateString('pt-BR') + ' ' + dataCriacao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 
+                    'N/A';
+                
+                const statusClass = getStatusClass(m.Status);
+                
+                tr.innerHTML = `
+                    <td>${m.Placa}</td>
+                    <td>${m.Modelo}</td>
+                    <td>${dataFormatada}</td>
+                    <td><span class="badge ${statusClass}">${m.Status}</span></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary btn-visualizar" data-id="${m.ID}">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary btn-editar" data-id="${m.ID}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-success btn-pdf" data-id="${m.ID}">
+                            <i class="bi bi-file-pdf"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(tr);
+            });
+            
+            // Adicionar eventos aos botões
+            document.querySelectorAll('.btn-visualizar').forEach(btn => {
+                btn.addEventListener('click', () => visualizarManutencao(btn.dataset.id));
+            });
+            
+            document.querySelectorAll('.btn-editar').forEach(btn => {
+                btn.addEventListener('click', () => editarManutencao(btn.dataset.id));
+            });
+            
+            document.querySelectorAll('.btn-pdf').forEach(btn => {
+                btn.addEventListener('click', () => gerarPDF(btn.dataset.id));
+            });
+        }
+        
+        // Função para obter classe de status
+        function getStatusClass(status) {
+            switch (status) {
+                case 'Aguardando Manutenção': return 'status-aguardando';
+                case 'Em Manutenção': return 'status-em-manutencao';
+                case 'Manutenção Concluída': return 'status-concluido';
+                case 'Equipamento Disponível': return 'status-disponivel';
+                default: return 'bg-secondary';
+            }
+        }
+        
+        // Função para visualizar manutenção
+        async function visualizarManutencao(id) {
+            const res = await apiRequest('obterManutencao', { id });
+            if (!res.success || !res.manutencao) {
+                mostrarAlerta('Erro ao carregar manutenção');
+                return;
+            }
+            
+            manutencaoAtual = res.manutencao;
+            
+            // Preencher os dados na tela de visualização
+            document.getElementById('view-id').textContent = manutencaoAtual.ID;
+            document.getElementById('view-data-criacao').textContent = formatarData(manutencaoAtual.Data_Criacao);
+            document.getElementById('view-status').textContent = manutencaoAtual.Status;
+            document.getElementById('view-status').className = `badge ${getStatusClass(manutencaoAtual.Status)}`;
+            document.getElementById('view-responsavel').textContent = manutencaoAtual.Responsavel || 'N/A';
+            
+            document.getElementById('view-placa').textContent = manutencaoAtual.Placa;
+            document.getElementById('view-modelo').textContent = manutencaoAtual.Modelo;
+            document.getElementById('view-tipo-equipamento').textContent = manutencaoAtual.Tipo_Equipamento;
+            
+            document.getElementById('view-categoria-problema').textContent = manutencaoAtual.Categoria_Problema;
+            document.getElementById('view-urgencia').textContent = manutencaoAtual.Urgencia;
+            
+            // Motivo Outro
+            const viewMotivoOutroContainer = document.getElementById('view-motivo-outro-container');
+            if (manutencaoAtual.Categoria_Problema === 'Outro' && manutencaoAtual.Motivo_Outro) {
+                viewMotivoOutroContainer.style.display = 'block';
+                document.getElementById('view-motivo-outro').textContent = manutencaoAtual.Motivo_Outro;
+            } else {
+                viewMotivoOutroContainer.style.display = 'none';
+            }
+            
+            document.getElementById('view-descricao-problema').textContent = manutencaoAtual.Descricao_Problema;
+            
+            // Checklist Pré
+            const viewChecklistPre = document.getElementById('view-checklist-pre');
+            viewChecklistPre.innerHTML = '';
+            
+            const checklistPre = typeof manutencaoAtual.Checklist_Pre === 'string' ? 
+                JSON.parse(manutencaoAtual.Checklist_Pre) : manutencaoAtual.Checklist_Pre;
+            
+            if (checklistPre && Object.keys(checklistPre).length > 0) {
+                Object.entries(checklistPre).forEach(([item, valor]) => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'mb-2';
+                    
+                    let icon, textClass;
+                    switch (valor) {
+                        case 'OK':
+                            icon = 'bi-check-circle-fill text-success';
+                            textClass = 'text-success';
+                            break;
+                        case 'Danificado':
+                            icon = 'bi-exclamation-triangle-fill text-danger';
+                            textClass = 'text-danger';
+                            break;
+                        case 'N/A':
+                            icon = 'bi-dash-circle-fill text-secondary';
+                            textClass = 'text-secondary';
+                            break;
+                        default:
+                            icon = 'bi-circle';
+                            textClass = '';
+                    }
+                    
+                    itemDiv.innerHTML = `
+                        <i class="bi ${icon} me-2"></i>
+                        <span class="fw-semibold">${item}:</span>
+                        <span class="${textClass}">${valor}</span>
+                    `;
+                    
+                    viewChecklistPre.appendChild(itemDiv);
+                });
+            } else {
+                viewChecklistPre.innerHTML = '<p class="text-muted">Nenhum item verificado</p>';
+            }
+            
+            document.getElementById('view-observacoes-pre').textContent = manutencaoAtual.Observacoes_Pre || 'Nenhuma observação registrada';
+            
+            // Imagens Pré
+            const viewImagensPre = document.getElementById('view-imagens-pre');
+            viewImagensPre.innerHTML = '';
+            
+            let imagensPre = [];
+            try {
+                imagensPre = typeof manutencaoAtual.Imagens_Pre === 'string' ? 
+                    JSON.parse(manutencaoAtual.Imagens_Pre) : manutencaoAtual.Imagens_Pre || [];
+            } catch (e) {
+                imagensPre = [];
+                console.error('Erro ao parsear imagens pré:', e);
+            }
+            
+            if (Array.isArray(imagensPre) && imagensPre.length > 0) {
+                imagensPre.forEach(img => {
+                    const imgContainer = document.createElement('div');
+                    imgContainer.className = 'image-container';
+                    
+                    const imgElement = document.createElement('img');
+                    imgElement.src = img.url;
+                    imgElement.alt = 'Imagem Pré-Manutenção';
+                    imgElement.className = 'img-fluid';
+                    imgElement.onclick = () => window.open(img.url, '_blank');
+                    
+                    imgContainer.appendChild(imgElement);
+                    viewImagensPre.appendChild(imgContainer);
+                });
+            } else {
+                viewImagensPre.innerHTML = '<p class="text-muted">Nenhuma imagem registrada</p>';
+            }
+            
+            // Seção Pós-Manutenção
+            const viewSectionPosManutencao = document.getElementById('view-section-pos-manutencao');
+            
+            if (manutencaoAtual.Status === 'Manutenção Concluída' || manutencaoAtual.Status === 'Equipamento Disponível') {
+                viewSectionPosManutencao.style.display = 'block';
+                
+                document.getElementById('view-data-manutencao').textContent = formatarData(manutencaoAtual.Data_Manutencao) || 'N/A';
+                
+                // Checklist Pós
+                const viewChecklistPos = document.getElementById('view-checklist-pos');
+                viewChecklistPos.innerHTML = '';
+                
+                const checklistPos = typeof manutencaoAtual.Checklist_Pos === 'string' ? 
+                    JSON.parse(manutencaoAtual.Checklist_Pos) : manutencaoAtual.Checklist_Pos;
+                
+                if (checklistPos && Object.keys(checklistPos).length > 0) {
+                    Object.entries(checklistPos).forEach(([item, valor]) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = 'mb-2';
+                        
+                        let icon, textClass;
+                        switch (valor) {
+                            case 'OK':
+                                icon = 'bi-check-circle-fill text-success';
+                                textClass = 'text-success';
+                                break;
+                            case 'Danificado':
+                                icon = 'bi-exclamation-triangle-fill text-danger';
+                                textClass = 'text-danger';
+                                break;
+                            case 'N/A':
+                                icon = 'bi-dash-circle-fill text-secondary';
+                                textClass = 'text-secondary';
+                                break;
+                            default:
+                                icon = 'bi-circle';
+                                textClass = '';
+                        }
+                        
+                        itemDiv.innerHTML = `
+                            <i class="bi ${icon} me-2"></i>
+                            <span class="fw-semibold">${item}:</span>
+                            <span class="${textClass}">${valor}</span>
+                        `;
+                        
+                        viewChecklistPos.appendChild(itemDiv);
+                    });
+                } else {
+                    viewChecklistPos.innerHTML = '<p class="text-muted">Nenhum item verificado</p>';
+                }
+                
+                document.getElementById('view-observacoes-pos').textContent = manutencaoAtual.Observacoes_Pos || 'Nenhuma observação registrada';
+                
+                // Imagens Pós
+                const viewImagensPos = document.getElementById('view-imagens-pos');
+                viewImagensPos.innerHTML = '';
+                
+                let imagensPos = [];
+                try {
+                    imagensPos = typeof manutencaoAtual.Imagens_Pos === 'string' ? 
+                        JSON.parse(manutencaoAtual.Imagens_Pos) : manutencaoAtual.Imagens_Pos || [];
+                } catch (e) {
+                    imagensPos = [];
+                    console.error('Erro ao parsear imagens pós:', e);
+                }
+                
+                if (Array.isArray(imagensPos) && imagensPos.length > 0) {
+                    imagensPos.forEach(img => {
+                        const imgContainer = document.createElement('div');
+                        imgContainer.className = 'image-container';
+                        
+                        const imgElement = document.createElement('img');
+                        imgElement.src = img.url;
+                        imgElement.alt = 'Imagem Pós-Manutenção';
+                        imgElement.className = 'img-fluid';
+                        imgElement.onclick = () => window.open(img.url, '_blank');
+                        
+                        imgContainer.appendChild(imgElement);
+                        viewImagensPos.appendChild(imgContainer);
+                    });
+                } else {
+                    viewImagensPos.innerHTML = '<p class="text-muted">Nenhuma imagem registrada</p>';
+                }
+            } else {
+                viewSectionPosManutencao.style.display = 'none';
+            }
+            
+            // Mostrar tela de visualização
+            mostrarTela(views.visualizacao);
+        }
+        
+        // Função para editar manutenção
+        async function editarManutencao(id) {
+            const res = await apiRequest('obterManutencao', { id });
+            if (!res.success || !res.manutencao) {
+                mostrarAlerta('Erro ao carregar manutenção');
+                return;
+            }
+            
+            manutencaoAtual = res.manutencao;
+            
+            // Preencher formulário pré-manutenção
+            document.getElementById('pre-id').value = manutencaoAtual.ID;
+            document.getElementById('pre-placa').value = manutencaoAtual.Placa;
+            document.getElementById('pre-modelo').value = manutencaoAtual.Modelo;
+            document.getElementById('pre-tipo-equipamento').value = manutencaoAtual.Tipo_Equipamento;
+            document.getElementById('pre-categoria-problema').value = manutencaoAtual.Categoria_Problema;
+            document.getElementById('pre-urgencia').value = manutencaoAtual.Urgencia;
+            
+            if (manutencaoAtual.Categoria_Problema === 'Outro') {
+                document.getElementById('motivo-outro-container').style.display = 'block';
+                document.getElementById('pre-motivo-outro').value = manutencaoAtual.Motivo_Outro || '';
+            } else {
+                document.getElementById('motivo-outro-container').style.display = 'none';
+            }
+            
+            document.getElementById('pre-descricao-problema').value = manutencaoAtual.Descricao_Problema || '';
+            document.getElementById('pre-observacoes').value = manutencaoAtual.Observacoes_Pre || '';
+            document.getElementById('pre-responsavel').value = manutencaoAtual.Responsavel || '';
+            
+            // Carregar checklist pré
+            const checklistPre = typeof manutencaoAtual.Checklist_Pre === 'string' ? 
+                JSON.parse(manutencaoAtual.Checklist_Pre) : manutencaoAtual.Checklist_Pre || {};
+            
+            Object.entries(checklistPre).forEach(([item, valor]) => {
+                const checklistContainer = document.getElementById('pre-checklist-container');
+                const radioButtons = checklistContainer.querySelectorAll(`input[type="radio"][data-item="${item}"]`);
+                
+                radioButtons.forEach(radio => {
+                    if (radio.value === valor) {
+                        radio.checked = true;
+                    }
+                });
+            });
+            
+            // Carregar imagens pré
+            const imagensPreContainer = document.getElementById('imagens-preview-pre');
+            imagensPreContainer.innerHTML = '';
+            
+            imagenesPreUpload = [];
+            
+            try {
+                const imagensPre = typeof manutencaoAtual.Imagens_Pre === 'string' ? 
+                    JSON.parse(manutencaoAtual.Imagens_Pre) : manutencaoAtual.Imagens_Pre || [];
+                
+                imagensPre.forEach(img => {
+                    adicionarImagemPreview(img.url, 'pre');
+                    imagenesPreUpload.push(img);
+                });
+            } catch (e) {
+                console.error('Erro ao carregar imagens pré:', e);
+            }
+            
+            if (manutencaoAtual.Status === 'Manutenção Concluída' || manutencaoAtual.Status === 'Equipamento Disponível') {
+                mostrarTela(views.posManu);
+                
+                // Preencher dados no form pós
+                document.getElementById('pos-id').value = manutencaoAtual.ID;
+                document.getElementById('pos-placa-display').textContent = manutencaoAtual.Placa;
+                document.getElementById('pos-modelo-display').textContent = manutencaoAtual.Modelo;
+                document.getElementById('pos-tipo-display').textContent = manutencaoAtual.Tipo_Equipamento;
+                document.getElementById('pos-observacoes').value = manutencaoAtual.Observacoes_Pos || '';
+                
+                // Carregar checklist pós
+                const checklistPos = typeof manutencaoAtual.Checklist_Pos === 'string' ? 
+                    JSON.parse(manutencaoAtual.Checklist_Pos) : manutencaoAtual.Checklist_Pos || {};
+                
+                Object.entries(checklistPos).forEach(([item, valor]) => {
+                    const checklistContainer = document.getElementById('pos-checklist-container');
+                    const radioButtons = checklistContainer.querySelectorAll(`input[type="radio"][data-item="${item}"]`);
+                    
+                    radioButtons.forEach(radio => {
+                        if (radio.value === valor) {
+                            radio.checked = true;
+                        }
+                    });
+                });
+                
+                // Carregar imagens pós
+                const imagensPosContainer = document.getElementById('imagens-preview-pos');
+                imagensPosContainer.innerHTML = '';
+                
+                imagenesPosUpload = [];
+                
+                try {
+                    const imagensPos = typeof manutencaoAtual.Imagens_Pos === 'string' ? 
+                        JSON.parse(manutencaoAtual.Imagens_Pos) : manutencaoAtual.Imagens_Pos || [];
+                    
+                    imagensPos.forEach(img => {
+                        adicionarImagemPreview(img.url, 'pos');
+                        imagenesPosUpload.push(img);
+                    });
+                } catch (e) {
+                    console.error('Erro ao carregar imagens pós:', e);
+                }
+            } else {
+                mostrarTela(views.preManu);
+            }
+        }
+        
+        // Função para formatar data
+        function formatarData(dataStr) {
+            if (!dataStr) return 'N/A';
+            
+            try {
+                const data = new Date(dataStr);
+                return data.toLocaleDateString('pt-BR') + ' ' + data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                return dataStr;
+            }
+        }
+        
+        // Função para adicionar imagem ao preview
+        function adicionarImagemPreview(src, tipo) {
+            const container = document.getElementById(`imagens-preview-${tipo}`);
+            
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'image-container';
+            
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = 'Imagem';
+            
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'delete-btn';
+            deleteBtn.innerHTML = '<i class="bi bi-x"></i>';
+            deleteBtn.onclick = function(e) {
+                e.preventDefault();
+                imgContainer.remove();
+                
+                if (tipo === 'pre') {
+                    imagenesPreUpload = imagenesPreUpload.filter(img => img.url !== src);
+                } else {
+                    imagenesPosUpload = imagenesPosUpload.filter(img => img.url !== src);
+                }
+            };
+            
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(deleteBtn);
+            container.appendChild(imgContainer);
+        }
+        
+        // Função para gerar PDF
+        async function gerarPDF(id) {
+            const res = await apiRequest('gerarRelatorioManutencao', { id });
+            if (!res.success) {
+                mostrarAlerta('Erro ao gerar relatório');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            doc.setFontSize(12);
+            
+            // Dividir o texto em linhas para caber na página
+            const linhas = res.relatorio.split('\n');
+            let y = 10;
+            
+            linhas.forEach(linha => {
+                if (y > 280) {
+                    doc.addPage();
+                    y = 10;
+                }
+                
+                doc.text(linha, 10, y);
+                y += 7;
+            });
+            
+            doc.save(`manutencao_${id}.pdf`);
+        }
+        
+        // Eventos
+        document.addEventListener('DOMContentLoaded', () => {
+            // Carregar dados iniciais
+            carregarDadosIniciais();
+            
+            // Navegação
+            document.getElementById('nav-dashboard').addEventListener('click', e => {
+                e.preventDefault();
+                mostrarTela(views.dashboard);
+            });
+            
+            document.getElementById('nav-lista').addEventListener('click', e => {
+                e.preventDefault();
+                mostrarTela(views.lista);
+            });
+            
+            document.getElementById('nav-novo').addEventListener('click', e => {
+                e.preventDefault();
+                
+                // Limpar formulário
+                document.getElementById('form-pre-manutencao').reset();
+                document.getElementById('pre-id').value = '';
+                document.getElementById('motivo-outro-container').style.display = 'none';
+                document.getElementById('imagens-preview-pre').innerHTML = '';
+                imagenesPreUpload = [];
+                
+                // Resetar checklist
+                const checklistContainer = document.getElementById('pre-checklist-container');
+                checklistContainer.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.checked = false;
+                });
+                
+                mostrarTela(views.preManu);
+            });
+            
+            document.getElementById('btn-nova-manutencao').addEventListener('click', () => {
+                document.getElementById('nav-novo').click();
+            });
+            
+            // Botões voltar
+            document.querySelectorAll('.btn-voltar').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    mostrarTela(views.lista);
+                });
+            });
+            
+            // Botão de editar na visualização
+            document.getElementById('btn-editar-manutencao').addEventListener('click', () => {
+                if (manutencaoAtual) {
+                    editarManutencao(manutencaoAtual.ID);
+                }
+            });
+            
+            // Botão de gerar PDF na visualização
+            document.getElementById('btn-gerar-pdf').addEventListener('click', () => {
+                if (manutencaoAtual) {
+                    gerarPDF(manutencaoAtual.ID);
+                }
+            });
+            
+            // Filtro na lista
+            document.getElementById('btn-filtrar').addEventListener('click', () => {
+                carregarListaManutencoes();
+            });
+            
+            document.getElementById('btn-limpar-filtro').addEventListener('click', () => {
+                document.getElementById('filtro-status').value = '';
+                document.getElementById('filtro-placa').value = '';
+                carregarListaManutencoes();
+            });
+            
+            // Ao mudar placa no formulário, preencher automaticamente modelo e tipo
+            document.getElementById('pre-placa').addEventListener('change', function() {
+                const option = this.options[this.selectedIndex];
+                if (option) {
+                    document.getElementById('pre-modelo').value = option.dataset.modelo || '';
+                    document.getElementById('pre-tipo-equipamento').value = option.dataset.tipo || '';
+                }
+            });
+            
+            // Ao mudar categoria, mostrar/esconder campo de outro motivo
+            document.getElementById('pre-categoria-problema').addEventListener('change', function() {
+                const motivoOutroContainer = document.getElementById('motivo-outro-container');
+                if (this.value === 'Outro') {
+                    motivoOutroContainer.style.display = 'block';
+                    document.getElementById('pre-motivo-outro').required = true;
+                } else {
+                    motivoOutroContainer.style.display = 'none';
+                    document.getElementById('pre-motivo-outro').required = false;
+                }
+            });
+            
+            // Submit do formulário pré-manutenção
+            document.getElementById('form-pre-manutencao').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                // Obter dados do formulário
+                const dados = obterDadosFormulario('form-pre-manutencao');
+                
+                // Adicionar imagens
+                dados.imagensPre = imagenesPreUpload;
+                
+                // Converter checklist
+                dados.checklistPre = dados.checklist;
+                delete dados.checklist;
+                
+                // Salvar manutenção
+                const res = await apiRequest('salvarManutencao', {
+                    dados: JSON.stringify({
+                        id: dados.id || undefined,
+                        placa: dados.placa,
+                        modelo: dados.modelo,
+                        tipoEquipamento: dados.tipoEquipamento,
+                        categoriaProblema: dados.categoriaProblema,
+                        urgencia: dados.urgencia,
+                        motivoOutro: dados.motivoOutro,
+                        descricaoProblema: dados.descricaoProblema,
+                        checklistPre: dados.checklistPre,
+                        observacoesPre: dados.observacoesPre,
+                        imagensPre: dados.imagensPre,
+                        responsavel: dados.responsavel,
+                        status: 'Aguardando Manutenção'
+                    })
+                });
+                
+                if (!res.success) {
+                    mostrarAlerta('Erro ao salvar manutenção: ' + res.message);
+                    return;
+                }
+                
+                // Perguntar o que fazer agora
+                document.getElementById('btn-choice-lista').onclick = () => {
+                    modals.choice.hide();
+                    mostrarTela(views.lista);
+                    carregarListaManutencoes();
+                };
+                
+                document.getElementById('btn-choice-novo').onclick = () => {
+                    modals.choice.hide();
+                    document.getElementById('nav-novo').click();
+                };
+                
+                document.getElementById('btn-choice-pos').onclick = () => {
+                    modals.choice.hide();
+                    
+                    // Carregar para o formulário pós
+                    document.getElementById('pos-id').value = res.id;
+                    document.getElementById('pos-placa-display').textContent = dados.placa;
+                    document.getElementById('pos-modelo-display').textContent = dados.modelo;
+                    document.getElementById('pos-tipo-display').textContent = dados.tipoEquipamento;
+                    
+                    // Limpar dados
+                    document.getElementById('pos-observacoes').value = '';
+                    document.getElementById('imagens-preview-pos').innerHTML = '';
+                    imagenesPosUpload = [];
+                    
+                    // Resetar checklist
+                    const checklistContainer = document.getElementById('pos-checklist-container');
+                    checklistContainer.querySelectorAll('input[type="radio"]').forEach(radio => {
+                        radio.checked = false;
+                    });
+                    
+                    mostrarTela(views.posManu);
+                };
+                
+                modals.choice.show();
+            });
+            
+            // Submit do formulário pós-manutenção
+            document.getElementById('form-pos-manutencao').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const id = document.getElementById('pos-id').value;
+                if (!id) {
+                    mostrarAlerta('ID da manutenção não encontrado');
+                    return;
+                }
+                
+                // Obter dados do formulário
+                const dados = obterDadosFormulario('form-pos-manutencao');
+                
+                // Adicionar imagens
+                dados.imagensPos = imagenesPosUpload;
+                
+                // Converter checklist
+                dados.checklistPos = dados.checklist;
+                delete dados.checklist;
+                
+                // Obter manutenção atual
+                const resManutencao = await apiRequest('obterManutencao', { id });
+                if (!resManutencao.success || !resManutencao.manutencao) {
+                    mostrarAlerta('Erro ao carregar dados da manutenção');
+                    return;
+                }
+                
+                const manutencao = resManutencao.manutencao;
+                
+                // Salvar manutenção
+                const res = await apiRequest('salvarManutencao', {
+                    dados: JSON.stringify({
+                        id: id,
+                        placa: manutencao.Placa,
+                        modelo: manutencao.Modelo,
+                        tipoEquipamento: manutencao.Tipo_Equipamento,
+                        categoriaProblema: manutencao.Categoria_Problema,
+                        urgencia: manutencao.Urgencia,
+                        motivoOutro: manutencao.Motivo_Outro,
+                        descricaoProblema: manutencao.Descricao_Problema,
+                        checklistPre: manutencao.Checklist_Pre,
+                        observacoesPre: manutencao.Observacoes_Pre,
+                        imagensPre: manutencao.Imagens_Pre,
+                        responsavel: manutencao.Responsavel,
+                        dataManutencao: new Date().toISOString(),
+                        checklistPos: dados.checklistPos,
+                        observacoesPos: dados.observacoesPos,
+                        imagensPos: dados.imagensPos,
+                        status: 'Manutenção Concluída'
+                    })
+                });
+                
+                if (!res.success) {
+                    mostrarAlerta('Erro ao salvar manutenção: ' + res.message);
+                    return;
+                }
+                
+                mostrarAlerta('Manutenção finalizada com sucesso!', 'Sucesso');
+                
+                // Voltar para a lista
+                mostrarTela(views.lista);
+                carregarListaManutencoes();
+            });
+            
+            // Botão para voltar para pré-manutenção
+            document.getElementById('btn-voltar-pre').addEventListener('click', () => {
+                const id = document.getElementById('pos-id').value;
+                if (id) {
+                    editarManutencao(id);
+                } else {
+                    mostrarTela(views.preManu);
+                }
+            });
+            
+            // Botões de atualização de status
+            document.querySelectorAll('.btn-status').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    if (!manutencaoAtual) return;
+                    
+                    const status = this.dataset.status;
+                    
+                    // Confirmar alteração
+                    mostrarConfirmacao(`Deseja realmente alterar o status para "${status}"?`, async () => {
+                        const res = await apiRequest('atualizarStatusManutencao', {
+                            id: manutencaoAtual.ID,
+                            status: status
+                        });
+                        
+                        if (!res.success) {
+                            mostrarAlerta('Erro ao atualizar status: ' + res.message);
+                            return;
+                        }
+                        
+                        mostrarAlerta('Status atualizado com sucesso!', 'Sucesso');
+                        
+                        // Atualizar visualização
+                        visualizarManutencao(manutencaoAtual.ID);
+                    });
+                });
+            });
+            
+            // Câmera para pré-manutenção
+            document.getElementById('btn-abrir-camera-pre').addEventListener('click', () => {
+                abrirCamera('pre');
+            });
+            
+            document.getElementById('btn-fechar-camera-pre').addEventListener('click', () => {
+                fecharCamera('pre');
+            });
+            
+            document.getElementById('btn-capturar-pre').addEventListener('click', () => {
+                capturarImagem('pre');
+            });
+            
+            // Câmera para pós-manutenção
+            document.getElementById('btn-abrir-camera-pos').addEventListener('click', () => {
+                abrirCamera('pos');
+            });
+            
+            document.getElementById('btn-fechar-camera-pos').addEventListener('click', () => {
+                fecharCamera('pos');
+            });
+            
+            document.getElementById('btn-capturar-pos').addEventListener('click', () => {
+                capturarImagem('pos');
+            });
+            
+            // Seleção de imagem da galeria
+            document.getElementById('btn-selecionar-imagem-pre').addEventListener('click', () => {
+                document.getElementById('input-imagem-pre').click();
+            });
+            
+            document.getElementById('input-imagem-pre').addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        const base64 = e.target.result;
+                        await uploadImagem(base64, 'pre');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+            
+            document.getElementById('btn-selecionar-imagem-pos').addEventListener('click', () => {
+                document.getElementById('input-imagem-pos').click();
+            });
+            
+            document.getElementById('input-imagem-pos').addEventListener('change', function() {
+                if (this.files && this.files[0]) {
+                    const file = this.files[0];
+                    const reader = new FileReader();
+                    reader.onload = async function(e) {
+                        const base64 = e.target.result;
+                        await uploadImagem(base64, 'pos');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+        
+        // Funções da câmera
+        async function abrirCamera(tipo) {
+            try {
+                const constraints = {
+                    video: { facingMode: "environment" }
+                };
+                
+                mediaStream = await navigator.mediaCamera.getUserMedia(constraints);
+                
+                const video = document.getElementById(`camera-preview-${tipo}`);
+                video.srcObject = mediaStream;
+                
+                document.getElementById(`camera-container-${tipo}`).style.display = 'block';
+            } catch (e) {
+                console.error('Erro ao abrir câmera:', e);
+                mostrarAlerta('Erro ao abrir câmera: ' + e.message);
+            }
+        }
+        
+        function fecharCamera(tipo) {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            
+            document.getElementById(`camera-container-${tipo}`).style.display = 'none';
+        }
+        
+        async function capturarImagem(tipo) {
+            try {
+                const video = document.getElementById(`camera-preview-${tipo}`);
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const base64 = canvas.toDataURL('image/jpeg');
+                
+                fecharCamera(tipo);
+                
+                await uploadImagem(base64, tipo);
+            } catch (e) {
+                console.error('Erro ao capturar imagem:', e);
+                mostrarAlerta('Erro ao capturar imagem: ' + e.message);
+            }
+        }
+        
+        async function uploadImagem(base64, tipo) {
+            try {
+                const id = tipo === 'pre' ? 
+                    document.getElementById('pre-id').value || 'new' : 
+                    document.getElementById('pos-id').value;
+                
+                if (!id) {
+                    mostrarAlerta('ID da manutenção não encontrado');
+                    return;
+                }
+                
+                // Adicionar imagem localmente primeiro
+                adicionarImagemPreview(base64, tipo);
+                
+                // Fazer upload para o servidor
+                const res = await apiRequest('uploadImagem', {
+                    id: id,
+                    imagem: base64,
+                    tipo: tipo
+                });
+                
+                if (!res.success) {
+                    mostrarAlerta('Erro ao fazer upload da imagem: ' + res.message);
+                    return;
+                }
+                
+                // Adicionar à lista de imagens
+                if (tipo === 'pre') {
+                    imagenesPreUpload.push({
+                        url: res.url,
+                        id: res.id,
+                        timestamp: new Date().toISOString()
+                    });
+                } else {
+                    imagenesPosUpload.push({
+                        url: res.url,
+                        id: res.id,
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } catch (e) {
+                console.error('Erro ao fazer upload de imagem:', e);
+                mostrarAlerta('Erro ao fazer upload de imagem: ' + e.message);
+            }
+        }
     </script>
-    </div> 
 </body>
 </html>
