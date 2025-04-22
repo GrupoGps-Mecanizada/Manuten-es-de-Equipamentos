@@ -21,38 +21,41 @@ window.Utils = {
     console.log('Spinner exibido: ' + (message || 'Carregando...'));
   },
   
-  hideLoading: function() {
-    const spinner = document.getElementById('loadingSpinner');
-    if (!spinner) {
-      console.error('Utils.hideLoading: Elemento #loadingSpinner não encontrado!');
-      return;
-    }
-    
-    // Sempre esconde o spinner
+hideLoading: function() {
+  const spinner = document.getElementById('loadingSpinner');
+  if (!spinner) {
+    console.error('Utils.hideLoading: Elemento #loadingSpinner não encontrado!');
+    return;
+  }
+  
+  // Tenta garantir que o spinner realmente seja escondido
+  try {
     spinner.style.display = 'none';
     spinner.classList.add('hidden-spinner');
-    console.log('Spinner ocultado');
-  },
-  
-  showScreen: function(screenId) {
-    if (!screenId) return;
-    let found = false;
-    document.querySelectorAll('.tela-sistema').forEach(tela => {
-      if (tela.id === screenId) {
-        tela.style.display = 'block';
-        found = true;
-      } else {
-        tela.style.display = 'none';
-      }
-    });
     
-    if (found) {
-      window.scrollTo(0, 0); // Rola para o topo
-      console.log(`Exibindo tela #${screenId}`);
-    } else {
-      console.warn(`Tela com ID #${screenId} não encontrada.`);
+    // Forçar reflow/repaint para garantir que as mudanças sejam aplicadas imediatamente
+    void spinner.offsetWidth;
+    
+    // Configurar um backup de segurança em caso de problemas com o CSS
+    setTimeout(() => {
+      if (spinner.style.display !== 'none') {
+        spinner.style.display = 'none !important';
+        console.log('Spinner ocultado com !important (backup)');
+      }
+    }, 100);
+    
+    console.log('Spinner ocultado');
+  } catch (e) {
+    console.error('Erro ao ocultar spinner:', e);
+    // Última tentativa para garantir que o spinner seja ocultado
+    try {
+      spinner.remove();
+      console.log('Spinner removido como último recurso');
+    } catch (e2) {
+      console.error('Falha total ao ocultar spinner:', e2);
     }
-  },
+  }
+}
   
   // Funções de String
   sanitizeString: function(str) {
