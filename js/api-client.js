@@ -122,6 +122,7 @@ ModuleLoader.register('apiClient', function() {
         }
         // --- FIM DA CORREÇÃO ---
 
+
         // Para TODAS as outras mensagens (respostas), APLICA a verificação de origem estrita
         if (event.origin !== expectedOrigin) {
           // Ignora mensagens (que não são 'ready') de origens inesperadas
