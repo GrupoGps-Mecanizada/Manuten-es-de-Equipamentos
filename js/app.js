@@ -402,84 +402,91 @@ const App = {
     }
   },
 
-  /**
-   * Verifica a conectividade de rede e tenta sincronizar requisições offline.
-   * USA O CONTADOR DO UTILS para gerenciar show/hideLoading.
-   */
-  checkConnectivityAndSync: async function(forceSync = false) {
-    // Se não for forçado e a sincronização estiver em modo debug, apenas retorna
-    if (!forceSync && window.CONFIG?.DEBUG) {
-      console.log(`App: Sincronização não forçada em modo DEBUG. Pulando...`);
-      return false;
-    }
-    
-    const wasOnline = this.AppState?.get('apiOnline') === true;
-    const canAttemptSync = (navigator.onLine && this.AppState?.get('forceOffline') !== true) || forceSync;
+/**
+ * Verifica a conectividade de rede e tenta sincronizar requisições offline.
+ */
+checkConnectivityAndSync: async function(forceSync = false) {
+  // Garantir que qualquer spinner prévio esteja escondido
+  this.Utils?.hideLoading?.();
+  
+  // Se não for forçado e a sincronização estiver em modo debug, apenas retorna
+  if (!forceSync && window.CONFIG?.DEBUG) {
+    console.log(`App: Sincronização não forçada em modo DEBUG. Pulando...`);
+    return false;
+  }
+  
+  const wasOnline = this.AppState?.get('apiOnline') === true;
+  const canAttemptSync = (navigator.onLine && this.AppState?.get('forceOffline') !== true) || forceSync;
 
-    this.AppState?.update('online', navigator.onLine);
-    if (!forceSync) {
-      if (wasOnline && !navigator.onLine) { 
-        this.Utils?.showNotification?.('Dispositivo offline. Ações serão salvas localmente.', 'warning'); 
-      }
-      else if (!wasOnline && navigator.onLine) { 
-        this.Utils?.showNotification?.('Conexão restaurada.', 'info', 3000); 
-      }
+  this.AppState?.update('online', navigator.onLine);
+  if (!forceSync) {
+    if (wasOnline && !navigator.onLine) { 
+      this.Utils?.showNotification?.('Dispositivo offline. Ações serão salvas localmente.', 'warning'); 
     }
-
-    if (!canAttemptSync) {
-      console.log('App: Sincronização não será tentada (offline ou forçado offline).');
-      return false;
+    else if (!wasOnline && navigator.onLine) { 
+      this.Utils?.showNotification?.('Conexão restaurada.', 'info', 3000); 
     }
-    
-    if (!this.ApiClient || typeof this.ApiClient.syncOfflineRequests !== 'function') {
-      console.warn("App: ApiClient ou syncOfflineRequests indisponível.");
-      return false;
-    }
-    
-    if (!this.Config?.API_URL) {
-      console.warn('App: API URL não configurada. Não é possível sincronizar.');
-      return false;
-    }
+  }
 
-    console.log(`App: Verificando ${forceSync ? 'e forçando ' : ''}sincronização...`);
-    this.Utils?.showLoading?.("Sincronizando dados..."); // Mostra loading
+  if (!canAttemptSync) {
+    console.log('App: Sincronização não será tentada (offline ou forçado offline).');
+    return false;
+  }
+  
+  if (!this.ApiClient || typeof this.ApiClient.syncOfflineRequests !== 'function') {
+    console.warn("App: ApiClient ou syncOfflineRequests indisponível.");
+    return false;
+  }
+  
+  if (!this.Config?.API_URL) {
+    console.warn('App: API URL não configurada. Não é possível sincronizar.');
+    return false;
+  }
 
-    let success = false;
+  console.log(`App: Verificando ${forceSync ? 'e forçando ' : ''}sincronização...`);
+  
+  // Mostrar loading explicitamente apenas se não estiver no modo debug
+  if (!window.CONFIG?.DEBUG) {
+    this.Utils?.showLoading?.("Sincronizando dados...");
+  }
 
-    try {
-      const syncResult = await this.ApiClient.syncOfflineRequests();
-      if (syncResult) {
-        if (syncResult.synced > 0) {
-          console.log(`App: Sincronização bem-sucedida de ${syncResult.synced} itens. Atualizando lista.`);
-          await this.refreshRegistrosList();
-          this.Utils?.showNotification?.(`${syncResult.synced} ação(ões) sincronizada(s).`, 'success', 3000);
-        } else if (syncResult.pending > 0) {
-          console.log(`App: Sincronização concluída, ${syncResult.pending} ações pendentes.`);
-          if(syncResult.dropped > 0 || syncResult.tempFail > 0){
-            this.Utils?.showNotification?.(`Algumas ações (${syncResult.dropped + syncResult.tempFail}) falharam ao sincronizar.`, 'warning', 5000);
-          } else if (forceSync) {
-            this.Utils?.showNotification?.(`Ainda há ${syncResult.pending} ações pendentes.`, 'info', 3000);
-          }
-        } else if (syncResult.pending === 0 && syncResult.synced === 0 && syncResult.dropped === 0 && syncResult.tempFail === 0) {
-          console.log("App: Nenhuma ação pendente para sincronizar.");
-          if(forceSync) {
-            this.Utils?.showNotification?.(`Nenhuma ação pendente para sincronizar.`, 'info', 3000);
-          }
+  let success = false;
+
+  try {
+    const syncResult = await this.ApiClient.syncOfflineRequests();
+    if (syncResult) {
+      if (syncResult.synced > 0) {
+        console.log(`App: Sincronização bem-sucedida de ${syncResult.synced} itens.`);
+        await this.refreshRegistrosList();
+        this.Utils?.showNotification?.(`${syncResult.synced} ação(ões) sincronizada(s).`, 'success', 3000);
+      } else if (syncResult.pending > 0) {
+        console.log(`App: Sincronização concluída, ${syncResult.pending} ações pendentes.`);
+        if(syncResult.dropped > 0 || syncResult.tempFail > 0){
+          this.Utils?.showNotification?.(`Algumas ações (${syncResult.dropped + syncResult.tempFail}) falharam ao sincronizar.`, 'warning', 5000);
+        } else if (forceSync) {
+          this.Utils?.showNotification?.(`Ainda há ${syncResult.pending} ações pendentes.`, 'info', 3000);
         }
-        success = syncResult.success !== false;
-      } else {
-        throw new Error("syncOfflineRequests retornou resultado inválido.");
+      } else if (syncResult.pending === 0 && syncResult.synced === 0) {
+        console.log("App: Nenhuma ação pendente para sincronizar.");
+        if(forceSync) {
+          this.Utils?.showNotification?.(`Nenhuma ação pendente para sincronizar.`, 'info', 3000);
+        }
       }
-    } catch (error) {
-      console.error(`App: Erro durante a sincronização:`, error);
-      this.Utils?.showNotification?.(`Erro ao sincronizar: ${error.message}`, 'error');
-      success = false;
-    } finally {
-      this.Utils?.hideLoading?.(); // Garante que o spinner seja escondido
-      console.log(`App: Finalizando verificação de sincronização. Sucesso: ${success}`);
+      success = syncResult.success !== false;
+    } else {
+      throw new Error("syncOfflineRequests retornou resultado inválido.");
     }
-    return success;
-  } // Fim de checkConnectivityAndSync
+  } catch (error) {
+    console.error(`App: Erro durante a sincronização:`, error);
+    this.Utils?.showNotification?.(`Erro ao sincronizar: ${error.message}`, 'error');
+    success = false;
+  } finally {
+    // Garante que o spinner seja escondido, mesmo em caso de erro
+    this.Utils?.hideLoading?.();
+    console.log(`App: Finalizando verificação de sincronização. Sucesso: ${success}`);
+  }
+  return success;
+} // Fim de checkConnectivityAndSync
 
 }; // Fim do objeto App
 
