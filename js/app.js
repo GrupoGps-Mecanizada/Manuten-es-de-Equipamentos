@@ -406,24 +406,33 @@ const App = {
    * Verifica a conectividade de rede e tenta sincronizar requisições offline.
    * USA O CONTADOR DO UTILS para gerenciar show/hideLoading.
    */
-  checkConnectivityAndSync: async function(forceSync = false) {
-    console.log(`App: Verificando sincronização DESATIVADA para debug...`);
-    this.Utils?.hideLoading?.(); // Garante que o spinner seja oculto
-    return false; // Retorna imediatamente sem tentar sincronizar
-    
-    const wasOnline = this.AppState?.get('apiOnline') === true; // Usa apiOnline
-    const canAttemptSync = (navigator.onLine && this.AppState?.get('forceOffline') !== true) || forceSync;
+checkConnectivityAndSync: async function(forceSync = false) {
+  // Se não for forçado e a sincronização estiver desativada, retorna falso
+  if (!forceSync && window.CONFIG?.DEBUG) {
+    console.log(`App: Sincronização não forçada em modo DEBUG. Pulando...`);
+    return false;
+  }
+  
+  const wasOnline = this.AppState?.get('apiOnline') === true;
+  const canAttemptSync = (navigator.onLine && this.AppState?.get('forceOffline') !== true) || forceSync;
 
-    this.AppState?.update('online', navigator.onLine);
-    if (!forceSync) {
-      if (wasOnline && !navigator.onLine) { this.Utils?.showNotification?.('Dispositivo offline. Ações serão salvas localmente.', 'warning'); }
-      else if (!wasOnline && navigator.onLine) { this.Utils?.showNotification?.('Conexão restaurada.', 'info', 3000); }
+  this.AppState?.update('online', navigator.onLine);
+  if (!forceSync) {
+    if (wasOnline && !navigator.onLine) { 
+      this.Utils?.showNotification?.('Dispositivo offline. Ações serão salvas localmente.', 'warning'); 
     }
+    else if (!wasOnline && navigator.onLine) { 
+      this.Utils?.showNotification?.('Conexão restaurada.', 'info', 3000); 
+    }
+  }
 
-    if (!canAttemptSync) {
-      console.log('App: Sincronização não será tentada (offline ou forçado offline).');
-      return false;
-    }
+  if (!canAttemptSync) {
+    console.log('App: Sincronização não será tentada (offline ou forçado offline).');
+    return false;
+  }
+  
+  // Resto do código original...
+}
     if (!this.ApiClient || typeof this.ApiClient.syncOfflineRequests !== 'function') {
       console.warn("App: ApiClient ou syncOfflineRequests indisponível.");
       return false;
