@@ -12,11 +12,19 @@ document.addEventListener('DOMContentLoaded', function() {
      return;
   }
 
+  // ADICIONAR AQUI: Verificação do objeto Utils
+  if (!window.Utils) {
+    console.error('CRITICAL: Utils não encontrado. A aplicação não pode iniciar.');
+    document.body.innerHTML = `<div class="alert alert-danger m-5" role="alert"><strong>Erro Crítico:</strong> Utilitários básicos não encontrados. Verifique o console e recarregue a página.</div>`;
+    return;
+  }
+
   // Inicializar módulos core
   initCoreModules()
     .then(initUIModules) // Encadeia as promessas diretamente
     .then(initFeatureModules)
     .then(() => {
+      // Resto do código...
       console.log('Todos os módulos básicos inicializados. Iniciando App...');
       // Inicializar aplicação principal após carregar todos os módulos
       // Verifica se App e App.init existem antes de chamar
