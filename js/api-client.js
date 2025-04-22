@@ -141,7 +141,7 @@ ModuleLoader.register('apiClient', function () {
         return;
     }
     try {
-      const list = u.obterLocalStorage('offlineRequests') || [];
+      const list = window.Utils.obterLocalStorage('offlineRequests') || [];
       const id   = `offline_${u.gerarId()}`;
       list.push({ id, action, data, retries:0, t:new Date().toISOString() });
       u.salvarLocalStorage('offlineRequests', list);
