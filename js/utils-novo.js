@@ -1,29 +1,39 @@
 // utils-novo.js - versão simplificada com funções essenciais
 window.Utils = {
   // Funções de UI
-  showLoading: function(message) {
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) {
-      spinner.style.display = 'flex';
-      spinner.classList.remove('hidden-spinner');
-      
-      // Atualiza a mensagem se houver um elemento para isso
-      const msgEl = spinner.querySelector('.loading-message');
-      if (msgEl && message) {
-        msgEl.textContent = this.sanitizeString(message);
-      }
-    }
-  },
+  // Melhoria nas funções de loading para garantir que o spinner seja sempre controlado corretamente
+showLoading: function(message) {
+  const spinner = document.getElementById('loadingSpinner');
+  if (!spinner) {
+    console.error('Utils.showLoading: Elemento #loadingSpinner não encontrado!');
+    return;
+  }
   
-  hideLoading: function() {
-    const spinner = document.getElementById('loadingSpinner');
-    if (spinner) {
-      // Sempre esconde o spinner, independente de contador
-      spinner.style.display = 'none';
-      spinner.classList.add('hidden-spinner');
-      console.log('Spinner ocultado forçadamente');
-    }
-  },
+  // Garante que o spinner seja visível
+  spinner.style.display = 'flex';
+  spinner.classList.remove('hidden-spinner');
+  
+  // Atualiza a mensagem se houver um elemento para isso
+  const msgEl = spinner.querySelector('.loading-message');
+  if (msgEl && message) {
+    msgEl.textContent = this.sanitizeString(message);
+  }
+  
+  console.log('Spinner exibido: ' + (message || 'Carregando...'));
+},
+
+hideLoading: function() {
+  const spinner = document.getElementById('loadingSpinner');
+  if (!spinner) {
+    console.error('Utils.hideLoading: Elemento #loadingSpinner não encontrado!');
+    return;
+  }
+  
+  // Sempre esconde o spinner
+  spinner.style.display = 'none';
+  spinner.classList.add('hidden-spinner');
+  console.log('Spinner ocultado');
+}
   
   showScreen: function(screenId) {
     if (!screenId) return;
