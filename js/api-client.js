@@ -4,7 +4,7 @@
 
 /**
  * Cliente para comunicação com a API do Google Apps Script (Módulo)
- * ATUALIZADO para usar Iframe Proxy com tratamento de erros e inicialização robusta.
+ * ATUALIZADO para usar Iframe Proxy com inicialização via Polling.
  */
 ModuleLoader.register('apiClient', function() {
 
@@ -14,7 +14,7 @@ ModuleLoader.register('apiClient', function() {
   let nextRequestId = 1; // Contador para IDs únicos de requisição
   let isInitializing = false; // Flag para evitar inicializações múltiplas do iframe
   let initializationPromise = null; // Armazena a Promise da inicialização em andamento
-  let frameLoadTimeoutId = null; // ID do timeout de carregamento inicial do frame
+  // Removido: frameLoadTimeoutId (timeout agora é geral)
   let messageListener = null; // Referência ao listener de mensagens para poder removê-lo
 
   /**
@@ -47,10 +47,8 @@ ModuleLoader.register('apiClient', function() {
    */
   function cleanupApiFrame() {
       console.log("ApiClient: Limpando recursos do iframe...");
-      if (frameLoadTimeoutId) {
-          clearTimeout(frameLoadTimeoutId);
-          frameLoadTimeoutId = null;
-      }
+      // Limpa timeouts/intervals se existirem (embora o novo init deva cuidar disso)
+      // if (frameLoadTimeoutId) clearTimeout(frameLoadTimeoutId); // Removido
       if (messageListener && window.removeEventListener) {
            window.removeEventListener('message', messageListener);
            messageListener = null;
@@ -58,12 +56,12 @@ ModuleLoader.register('apiClient', function() {
       if (apiFrame && apiFrame.parentNode) {
           apiFrame.parentNode.removeChild(apiFrame);
       }
-      apiFrame = null;
-      isInitializing = false;
-      initializationPromise = null;
+      apiFrame = null; // Importante resetar
+      isInitializing = false; // Importante resetar
+      initializationPromise = null; // Importante resetar
+
       // Rejeita todas as requisições que estavam pendentes durante a falha
       Object.values(pendingRequests).forEach(req => {
-          // Verifica se a função reject existe antes de chamá-la
           if (typeof req.reject === 'function') {
               req.reject(new Error("Comunicação com a API interrompida durante inicialização/limpeza."));
           }
@@ -73,116 +71,125 @@ ModuleLoader.register('apiClient', function() {
 
 
   /**
-   * Inicializa o iframe da API se ainda não foi inicializado.
-   * Retorna uma Promise que resolve quando o iframe envia 'ready'.
+   * Inicializa o iframe da API usando Polling para verificar se está pronto.
+   * Retorna uma Promise que resolve com o elemento iframe pronto.
    */
   function initApiFrame() {
-    if (apiFrame) return Promise.resolve(); // Já inicializado
-    if (isInitializing) return initializationPromise; // Inicialização em andamento
+      if (apiFrame && !isInitializing) return Promise.resolve(apiFrame); // Já inicializado e não em processo
+      if (isInitializing) return initializationPromise; // Inicialização em andamento
 
-    const apiUrl = getApiUrl();
-    if (!apiUrl) {
-      return Promise.reject(new Error('URL da API não configurada. Não é possível inicializar o frame.'));
-    }
+      const apiUrl = getApiUrl();
+      if (!apiUrl) {
+          return Promise.reject(new Error('URL da API não configurada. Não é possível inicializar o frame.'));
+      }
 
-    isInitializing = true;
-    console.log("ApiClient: Iniciando inicialização do frame da API...");
+      isInitializing = true; // Marca que está inicializando
+      console.log("ApiClient: Iniciando inicialização do frame da API (Polling)...");
 
-    initializationPromise = new Promise((resolve, reject) => {
-      // Cria o iframe
-      apiFrame = document.createElement('iframe');
-      apiFrame.style.display = 'none'; // Oculto
-      apiFrame.src = apiUrl;
-      apiFrame.setAttribute('aria-hidden', 'true'); // Acessibilidade
-      apiFrame.setAttribute('title', 'API Communication Proxy'); // Acessibilidade
+      initializationPromise = new Promise((resolve, reject) => {
+          cleanupApiFrame(); // Limpa qualquer estado anterior antes de começar
 
-      // Handler para mensagens recebidas (do iframe ou outras fontes)
-      messageListener = (event) => {
-        let expectedOrigin = null;
-        try {
-             expectedOrigin = new URL(apiUrl).origin;
-        } catch(e) {
-             console.error("ApiClient: Falha ao obter origem da API_URL para validação.", e);
-             if (!isInitializing) cleanupApiFrame();
-             reject(new Error("URL da API inválida para obter origem."));
-             return;
-        }
+          // Cria o iframe
+          apiFrame = document.createElement('iframe');
+          apiFrame.style.display = 'none';
+          apiFrame.src = apiUrl;
+          apiFrame.setAttribute('aria-hidden', 'true');
+          apiFrame.setAttribute('title', 'API Communication Proxy');
 
-        // =========================================================== //
-        // =================== INÍCIO DA CORREÇÃO ==================== //
-        // =========================================================== //
-        // Verifica se a mensagem é 'ready' ANTES de verificar a origem estritamente
-        // A verificação crucial aqui é se a mensagem veio da *janela* do iframe que criamos.
-        if (event.data?.status === 'ready' && event.source === apiFrame.contentWindow) {
-            console.log(`ApiClient: Mensagem 'ready' recebida da janela do iframe (Origem: ${event.origin}). Processando...`);
-            if (frameLoadTimeoutId) clearTimeout(frameLoadTimeoutId); // Limpa o timeout de inicialização
-            isInitializing = false;
-            resolve(); // Resolve a promise de inicialização
-            return; // Mensagem 'ready' processada, não continua a execução do listener
-        }
-        // =========================================================== //
-        // ===================== FIM DA CORREÇÃO ===================== //
-        // =========================================================== //
+          let checkIntervalId = null;
+          let initializationTimeoutId = null;
+          let checkRequestId = -1; // ID da requisição de check_ready atual
 
-        // Para TODAS as outras mensagens (respostas), APLICA a verificação de origem estrita
-        if (event.origin !== expectedOrigin) {
-          // Ignora mensagens (que não são 'ready') de origens inesperadas
-          // console.debug("ApiClient: Mensagem (não-ready) ignorada de origem inesperada:", event.origin);
-          return;
-        }
-
-        // Verifica se a mensagem (que passou na verificação de origem) tem dados
-        if (!event.data || typeof event.data !== 'object') {
-             console.warn("ApiClient: Mensagem (origem OK) ignorada - sem dados ou formato inválido:", event);
-             return;
-        }
-
-        // Processa respostas (sucesso ou erro) para requisições pendentes
-        if ((event.data.status === 'success' || event.data.status === 'error') && event.data.requestId) {
-          const pendingReq = pendingRequests[event.data.requestId];
-          if (pendingReq) {
-            console.debug(`ApiClient: Recebida resposta para Req ID ${event.data.requestId} (Ação: ${pendingReq.action}), Status: ${event.data.status}`);
-            if (event.data.status === 'success') {
-              pendingReq.resolve(event.data.response);
-            } else {
-              let errorMsg = event.data.error || 'Erro desconhecido retornado pela API no iframe';
-              if (typeof event.data.error === 'object' && event.data.error.message) {
-                errorMsg = event.data.error.message;
+          // Handler para mensagens (focado na resposta do check_ready)
+          messageListener = (event) => {
+               // Verificação básica de segurança e formato da resposta
+              if (!event.data || typeof event.data !== 'object' || event.data.requestId !== checkRequestId) {
+                  // Ignora mensagens que não são a resposta para o ÚLTIMO check_ready enviado
+                  return;
               }
-              pendingReq.reject(new Error(String(errorMsg)));
-            }
-            delete pendingRequests[event.data.requestId]; // Remove após processar
-          } else {
-              console.warn(`ApiClient: Recebida resposta para Req ID ${event.data.requestId}, mas não encontrada na lista de pendentes.`);
-          }
-        }
-        // Ignora outras mensagens válidas que não são respostas esperadas
-        // else { console.debug("ApiClient: Mensagem (origem OK) ignorada - tipo não reconhecido:", event.data); }
+               // Verifica se a origem é a esperada (do iframe)
+               let expectedOrigin = null;
+               try { expectedOrigin = new URL(apiUrl).origin; } catch (e) { /* já tratado antes */ return; }
+               if (event.origin !== expectedOrigin) {
+                  console.warn("ApiClient: Resposta de check_ready ignorada - origem inesperada:", event.origin);
+                  return;
+               }
 
-      }; // Fim do messageListener
+              // Verifica se a resposta é do nosso ping e se o status é 'success' e contém a resposta esperada
+              if (event.data.status === 'success' && event.data.response?.status === 'proxy_ready') {
+                  console.log(`ApiClient: Resposta 'proxy_ready' recebida do iframe. Inicialização bem-sucedida.`);
+                  // Limpeza e resolução
+                  if (checkIntervalId) clearInterval(checkIntervalId); // Para o polling
+                  if (initializationTimeoutId) clearTimeout(initializationTimeoutId); // Para o timeout geral
+                  window.removeEventListener('message', messageListener); // Remove este listener específico
+                  messageListener = null;
+                  isInitializing = false; // Marca como não inicializando mais
+                  resolve(apiFrame); // Resolve a promise com o frame pronto
+              }
+          };
 
-      // Adiciona o listener globalmente
-      window.addEventListener('message', messageListener);
+          window.addEventListener('message', messageListener);
 
-      // Timeout para o carregamento inicial e recebimento do 'ready'
-      const initializationTimeoutMs = 15000; // 15 segundos
-      frameLoadTimeoutId = setTimeout(() => {
-        console.error(`ApiClient: Timeout (${initializationTimeoutMs}ms) ao esperar pelo sinal 'ready' do frame da API.`);
-        cleanupApiFrame(); // Limpa tudo se o iframe não respondeu 'ready' a tempo
-        reject(new Error(`Timeout ao inicializar o frame da API (${initializationTimeoutMs/1000}s)`));
-      }, initializationTimeoutMs);
+          // Define a função de erro para o iframe (caso não carregue)
+          apiFrame.onerror = (error) => {
+              console.error("ApiClient: Erro ao carregar o iframe da API:", error);
+              if (checkIntervalId) clearInterval(checkIntervalId);
+              if (initializationTimeoutId) clearTimeout(initializationTimeoutId);
+              cleanupApiFrame();
+              reject(new Error("Erro ao carregar o iframe da API. Verifique a URL e a rede."));
+          };
 
-      // Adiciona o iframe ao DOM para iniciar o carregamento
-      document.body.appendChild(apiFrame);
+          // Adiciona o iframe ao DOM *antes* de iniciar o polling
+          document.body.appendChild(apiFrame);
 
-    }).catch(err => {
-        console.error("ApiClient: Falha final na inicialização do Iframe:", err);
-        cleanupApiFrame(); // Garante a limpeza
-        throw err; // Re-lança o erro
-    });
+          // Tenta enviar 'check_ready' periodicamente após um pequeno delay inicial
+          const initialDelayMs = 500; // Espera um pouco antes de começar a perguntar
+          setTimeout(() => {
+              const checkIntervalMs = 750; // Verifica a cada 750ms (um pouco mais espaçado)
+              checkIntervalId = setInterval(() => {
+                  if (apiFrame && apiFrame.contentWindow) {
+                      checkRequestId = `check_${nextRequestId++}`; // ID único para cada check
+                      console.debug(`ApiClient: Enviando check_ready (ID: ${checkRequestId}) para o iframe...`);
+                      // Define a origem de destino corretamente
+                      let targetOrigin = '*'; // Default seguro
+                       try { targetOrigin = new URL(apiUrl).origin; } catch(e){ console.error("URL inválida para targetOrigin no check_ready"); }
 
-    return initializationPromise;
+                      apiFrame.contentWindow.postMessage({
+                          action: 'check_ready',
+                          requestId: checkRequestId
+                      }, targetOrigin); // Envia para a origem esperada do iframe
+                  } else if (!apiFrame) {
+                      // Se o apiFrame foi removido (ex: por erro), para o interval
+                      console.warn("ApiClient: Iframe não existe mais, parando polling de check_ready.");
+                      if (checkIntervalId) clearInterval(checkIntervalId);
+                      if (initializationTimeoutId) clearTimeout(initializationTimeoutId);
+                       // Não rejeita aqui, pois o onerror ou timeout geral tratará
+                  } else {
+                      console.warn("ApiClient: Tentando enviar check_ready, mas contentWindow não está pronto ainda.");
+                  }
+              }, checkIntervalMs);
+          }, initialDelayMs);
+
+          // Timeout geral para a inicialização (polling)
+          const initializationTimeoutMs = 20000; // 20 segundos (aumentado)
+          initializationTimeoutId = setTimeout(() => {
+              console.error(`ApiClient: Timeout (${initializationTimeoutMs}ms) esperando pela resposta 'proxy_ready' do iframe via polling.`);
+              if (checkIntervalId) clearInterval(checkIntervalId);
+              cleanupApiFrame(); // Limpa tudo
+              reject(new Error(`Timeout (${initializationTimeoutMs/1000}s) ao inicializar comunicação com a API.`));
+          }, initializationTimeoutMs);
+
+      }).catch(err => {
+          // Garante limpeza e reset de flags em caso de erro na Promise
+          console.error("ApiClient: Falha final na inicialização do Iframe (Polling):", err);
+          cleanupApiFrame();
+          // isInitializing e initializationPromise já são resetados em cleanupApiFrame
+          throw err; // Re-lança para quem chamou
+      });
+
+      return initializationPromise;
   }
+
 
   /**
    * Envia uma requisição para a API através do iframe proxy.
@@ -192,54 +199,52 @@ ModuleLoader.register('apiClient', function() {
    */
   async function request(action, data = {}) {
     const utils = window.Utils;
-    let requestId = -1;
+    let requestId = -1; // Inicializa fora do try
 
     try {
-      // Mostra loading (simplificado - apenas uma mensagem)
+      // Mostra loading (se a função existir)
       utils?.showLoading?.(`Processando ${action}...`);
 
-      // 1. Garante inicialização do iframe
-      await initApiFrame();
+      // 1. Garante inicialização do iframe (agora usando polling)
+      const currentApiFrame = await initApiFrame(); // Espera o frame estar pronto
 
-      // 2. Gera ID e armazena Promise
+      // 2. Gera ID e armazena Promise de resposta
       requestId = nextRequestId++;
       console.debug(`ApiClient (Iframe): Enviando ação '${action}' (ID: ${requestId})`);
 
       const resultPromise = new Promise((resolve, reject) => {
         pendingRequests[requestId] = { resolve, reject, action };
 
-        // 3. Envia mensagem ao iframe
-        const apiUrl = apiFrame.src;
-        let targetOrigin = '*'; // Default para '*' por segurança se a URL for inválida
+        // 3. Envia mensagem ao iframe (contentWindow deve estar pronto agora)
+        const apiUrl = currentApiFrame.src; // Usa a URL do frame obtido
+        let targetOrigin = '*'; // Default seguro
         try {
             targetOrigin = new URL(apiUrl).origin;
         } catch (e) {
-            console.error("ApiClient: URL da API inválida ao tentar obter origem para postMessage. Usando '*'.", e);
+            console.error("ApiClient: URL da API inválida ao obter origem para postMessage. Usando '*'.", e);
         }
 
-
-        // Verifica se contentWindow está acessível antes de chamar postMessage
-        if (apiFrame && apiFrame.contentWindow) {
-            apiFrame.contentWindow.postMessage({
+        // Verifica contentWindow novamente por segurança antes de enviar
+        if (currentApiFrame.contentWindow) {
+            currentApiFrame.contentWindow.postMessage({
               requestId: requestId,
               action: action,
               data: data
-            }, targetOrigin); // Envia SOMENTE para a origem correta (ou '*' se falhou)
+            }, targetOrigin);
         } else {
-            console.error(`ApiClient (Iframe): contentWindow do iframe não está acessível para enviar ação '${action}' (ID: ${requestId})`);
-            reject(new Error(`Não foi possível enviar a mensagem para a API (contentWindow inacessível)`));
-            delete pendingRequests[requestId]; // Limpa a requisição pendente
-            return; // Sai da função Promise
+            // Isso não deveria acontecer se initApiFrame resolveu corretamente, mas é uma segurança extra
+            console.error(`ApiClient (Iframe): contentWindow inacessível após inicialização para enviar ação '${action}' (ID: ${requestId})`);
+            reject(new Error(`Falha ao enviar mensagem para a API (contentWindow)`));
+            delete pendingRequests[requestId];
+            return; // Sai da função da Promise
         }
 
-
-        // 4. Timeout da requisição
+        // 4. Timeout da requisição ESPECÍFICA (diferente do timeout de inicialização)
         const requestTimeoutMs = 30000; // 30 segundos
         setTimeout(() => {
           if (pendingRequests[requestId]) {
             const pendingAction = pendingRequests[requestId].action;
             console.error(`ApiClient (Iframe): Timeout (${requestTimeoutMs/1000}s) na requisição para ação '${pendingAction}' (ID: ${requestId})`);
-            // Verifica se reject existe antes de chamar
             if (typeof pendingRequests[requestId].reject === 'function') {
                 pendingRequests[requestId].reject(new Error(`Timeout na requisição ${pendingAction} (${requestTimeoutMs/1000}s)`));
             }
@@ -248,109 +253,91 @@ ModuleLoader.register('apiClient', function() {
         }, requestTimeoutMs);
       });
 
-      // 5. Aguarda e retorna
+      // 5. Aguarda e retorna o resultado
       const result = await resultPromise;
       console.debug(`ApiClient (Iframe): Resposta recebida com sucesso para ação '${action}' (ID: ${requestId})`);
 
-      utils?.hideLoading?.(); // Esconde SÓ no sucesso
+      utils?.hideLoading?.(); // Esconde loading no sucesso
       return result;
 
     } catch (error) {
+      // Captura erros da inicialização (initApiFrame) ou da requisição (resultPromise)
       console.error(`ApiClient (Iframe): Erro na requisição para ação '${action}'${requestId > 0 ? ` (ID: ${requestId})` : ''}:`, error.message || error);
+      // Tenta salvar offline se a função existir
       if (typeof saveOfflineRequest === 'function') {
-          saveOfflineRequest(action, data); // Tenta salvar offline
+          saveOfflineRequest(action, data);
       }
-      utils?.hideLoading?.(); // Garante esconder no erro
-      throw error; // Propaga o erro para quem chamou a função
+      utils?.hideLoading?.(); // Garante esconder loading no erro
+      throw error; // Propaga o erro para a função chamadora (ex: App.js)
     }
   }
 
 
-  // ========= Funções de Ações Específicas =========
+  // ========= Funções de Ações Específicas (sem alterações) =========
 
-  /** Envia solicitação para salvar/atualizar registro */
   async function salvarRegistro(registro) {
     if (!registro || !registro.id) {
         console.error("ApiClient.salvarRegistro: Dados ou ID inválidos.", registro);
         throw new Error("Dados ou ID do registro inválidos para salvar.");
     }
-    // Retorna a promise diretamente da função request
     return request('salvarRegistro', registro);
   }
 
-  /** Envia solicitação para listar todos os registros */
   async function listarRegistros() {
     const result = await request('listarRegistros');
-    // Valida se a resposta esperada (um array) foi recebida
     if (result && Array.isArray(result.registros)) {
-      return result.registros; // Retorna apenas o array de registros
+      return result.registros;
     }
-    // Loga e lança erro se a resposta não for a esperada
     console.error("ApiClient.listarRegistros: Resposta inesperada da API:", result);
     throw new Error('Formato de resposta inválido ao listar registros (via iframe)');
   }
 
-  /** Envia solicitação para obter um registro por ID */
   async function obterRegistro(id) {
     if (!id) throw new Error("ID do registro não fornecido para obterRegistro.");
     const result = await request('obterRegistro', { id: id });
-    // Verifica se a API retornou sucesso e o campo 'registro' existe
     if (result && result.success === true) {
-       // Retorna o registro ou null se não foi encontrado (registro: null)
        return result.registro !== undefined ? result.registro : null;
     }
-    // Loga e lança erro se a API retornou falha ou formato inesperado
     console.error("ApiClient.obterRegistro: Resposta inesperada da API:", result);
     throw new Error(result?.message || `Falha ao obter registro ${id} (via iframe)`);
   }
 
-  /** Envia solicitação para excluir um registro por ID */
   async function excluirRegistro(id) {
     if (!id) throw new Error("ID do registro não fornecido para exclusão.");
-    // Retorna a promise diretamente da função request
     return request('excluirRegistro', { id: id });
   }
 
-  /** Envia solicitação para fazer upload de imagem */
   async function uploadImagem(photoObject) {
-    // Validação dos dados da foto
     if (!photoObject?.dataUrl || !photoObject?.name || !photoObject?.type || !photoObject?.registroId || !photoObject?.id) {
       console.error("ApiClient.uploadImagem: Dados da imagem incompletos.", photoObject);
       throw new Error("Dados da imagem incompletos para upload.");
     }
-    // Monta o payload esperado pela função do Apps Script
     const payload = {
-      fileName: `${photoObject.registroId}_${photoObject.id}_${photoObject.name}`, // Nome padronizado
+      fileName: `${photoObject.registroId}_${photoObject.id}_${photoObject.name}`,
       mimeType: photoObject.type,
-      content: photoObject.dataUrl, // A imagem em base64
+      content: photoObject.dataUrl,
       registroId: photoObject.registroId,
       photoId: photoObject.id
     };
     console.warn("ApiClient (Iframe): Upload de imagem via iframe pode ser lento/instável para arquivos grandes.");
-    // Retorna a promise diretamente da função request
     return request('uploadImagem', payload);
   }
 
-  /** Envia uma solicitação 'ping' para testar a conexão */
   async function ping() {
     console.log("ApiClient (Iframe): Chamando ação 'ping'");
-    // Retorna a promise diretamente da função request
     return request('ping');
   }
 
 
-  // ========= Lógica Offline (Funções permanecem no mesmo módulo) =========
+  // ========= Lógica Offline (sem alterações) =========
 
-  /** Salva uma requisição falhada no localStorage para tentativa posterior */
   function saveOfflineRequest(action, data) {
     const utils = window.Utils;
-    // Evita salvar uploads de imagem offline por causa do tamanho
     if (action === 'uploadImagem') {
       console.warn(`ApiClient (Iframe): Upload da imagem (${data?.fileName}) falhou e NÃO será salvo offline.`);
       utils?.showNotification?.(`Falha no upload da imagem. Tente novamente com conexão.`, 'error', 6000);
       return;
     }
-    // Verifica se as funções necessárias do Utils existem
     if (!utils?.salvarLocalStorage || !utils?.obterLocalStorage || !utils?.gerarId) {
       console.error("ApiClient (Iframe): Funções Utils não disponíveis para salvar requisição offline.");
       return;
@@ -358,11 +345,11 @@ ModuleLoader.register('apiClient', function() {
     console.log(`ApiClient (Iframe): Salvando requisição offline para ação '${action}'...`);
     try {
         const offlineRequests = utils.obterLocalStorage('offlineRequests') || [];
-        const requestId = `offline_${utils.gerarId()}`; // Gera um ID único para a requisição offline
+        const requestId = `offline_${utils.gerarId()}`;
         offlineRequests.push({
-          id: requestId, action, data, timestamp: new Date().toISOString(), retries: 0 // Adiciona retries
+          id: requestId, action, data, timestamp: new Date().toISOString(), retries: 0
         });
-        utils.salvarLocalStorage('offlineRequests', offlineRequests); // Salva a lista atualizada
+        utils.salvarLocalStorage('offlineRequests', offlineRequests);
         console.log(`Requisição offline ID ${requestId} salva. Pendentes: ${offlineRequests.length}`);
         utils.showNotification?.(`Sem conexão ou erro. Ação (${action}) salva para tentar mais tarde.`, 'warning', 5000);
     } catch (e) {
@@ -371,7 +358,6 @@ ModuleLoader.register('apiClient', function() {
     }
   }
 
-  /** Limpa todas as requisições offline salvas */
   function clearOfflineRequests() {
     const utils = window.Utils;
     if (!utils?.salvarLocalStorage) {
@@ -379,7 +365,7 @@ ModuleLoader.register('apiClient', function() {
       return false;
     }
     try {
-      utils.salvarLocalStorage('offlineRequests', []); // Salva um array vazio
+      utils.salvarLocalStorage('offlineRequests', []);
       console.log("ApiClient: Requisições offline limpas.");
       utils.showNotification?.("Fila de ações offline limpa.", "success", 3000);
       return true;
@@ -390,16 +376,14 @@ ModuleLoader.register('apiClient', function() {
     }
   }
 
-  /** Tenta sincronizar (reenviar) requisições offline pendentes */
   async function syncOfflineRequests() {
       const utils = window.Utils;
-      const configSync = window.CONFIG?.SYNC || {}; // Pega configurações de sync do CONFIG global
-      const batchSize = configSync.BATCH_SIZE || 3; // Quantas processar por vez
-      const maxRetries = configSync.MAX_RETRIES || 3; // Máximo de tentativas
+      const configSync = window.CONFIG?.SYNC || {};
+      const batchSize = configSync.BATCH_SIZE || 3;
+      const maxRetries = configSync.MAX_RETRIES || 3;
 
       if (!utils?.salvarLocalStorage || !utils?.obterLocalStorage) {
         console.error("ApiClient.sync: Funções Utils não disponíveis.");
-        // Retorna um objeto de resultado indicando falha
         return { success: false, syncedCount: 0, errorCount: 0, failedTemporarily: 0, pendingCount: 0, errors: [{ error: "Utils indisponível" }] };
       }
 
@@ -411,83 +395,73 @@ ModuleLoader.register('apiClient', function() {
         return { success: true, syncedCount: 0, errorCount: 0, failedTemporarily: 0, pendingCount: 0, errors: [] };
       }
 
-      // Verifica se está online antes de tentar
       if (!navigator.onLine) {
         console.log("ApiClient.sync: Sem conexão. Sincronização adiada.");
         return { success: false, message: "Sem conexão", syncedCount: 0, errorCount: 0, failedTemporarily: 0, pendingCount: totalPendingInitial, errors: [] };
       }
 
-      // Pega apenas um lote (batch) para processar
       const requestsToProcess = offlineRequests.slice(0, batchSize);
-      const remainingForLater = offlineRequests.slice(batchSize); // As que ficam para depois
+      const remainingForLater = offlineRequests.slice(batchSize);
       console.log(`ApiClient.sync: Tentando sincronizar ${requestsToProcess.length} de ${totalPendingInitial} via Iframe...`);
 
       let successCount = 0;
-      const failedRequestsToKeep = []; // Requisições que falharam, mas ainda podem tentar
-      const errorsPermanent = []; // Requisições que falharam permanentemente
+      const failedRequestsToKeep = [];
+      const errorsPermanent = [];
 
-      // Processa cada requisição do lote
       for (const req of requestsToProcess) {
         try {
           console.log(`ApiClient.sync: Enviando req offline ID ${req.id} (Ação: ${req.action})...`);
-          await request(req.action, req.data); // Tenta reenviar usando a função 'request'
+          await request(req.action, req.data);
           console.log(`ApiClient.sync: Req offline ID ${req.id} sincronizada.`);
           successCount++;
         } catch (error) {
-          // Se falhou, incrementa o contador de tentativas
           console.error(`ApiClient.sync: Erro sincronizando req ID ${req.id} (${req.action}):`, error.message || error);
           req.retries = (req.retries || 0) + 1;
           if (req.retries < maxRetries) {
-            // Se ainda tem tentativas, mantém na lista para tentar depois
             failedRequestsToKeep.push(req);
             console.log(`ApiClient.sync: Req ID ${req.id} falhou (${req.retries}/${maxRetries}), retentará.`);
           } else {
-            // Se esgotou as tentativas, marca como erro permanente
             console.error(`ApiClient.sync: Req ID ${req.id} (${req.action}) descartada após ${maxRetries} tentativas.`);
             errorsPermanent.push({ requestId: req.id, action: req.action, error: `Máx ${maxRetries} tentativas. Erro: ${error.message || String(error)}` });
           }
         }
-      } // Fim do loop for
+      } // Fim for
 
-      // Atualiza a lista de requisições offline no localStorage
       const updatedOfflineRequests = [...failedRequestsToKeep, ...remainingForLater];
       utils.salvarLocalStorage('offlineRequests', updatedOfflineRequests);
       const finalPendingCount = updatedOfflineRequests.length;
 
-      // Monta o objeto de resultado da sincronização
       const finalResult = {
-          success: errorsPermanent.length === 0 && failedRequestsToKeep.length === 0, // Sucesso geral se nada falhou permanentemente ou temporariamente *neste lote*
-          syncedCount: successCount, // Quantas sincronizaram com sucesso
-          errorCount: errorsPermanent.length, // Quantas falharam permanentemente
-          failedTemporarily: failedRequestsToKeep.length, // Quantas falharam mas ainda tentarão
-          pendingCount: finalPendingCount, // Quantas ainda restam na fila
-          errors: errorsPermanent // Detalhes dos erros permanentes
+          success: errorsPermanent.length === 0 && failedRequestsToKeep.length === 0,
+          syncedCount: successCount,
+          errorCount: errorsPermanent.length,
+          failedTemporarily: failedRequestsToKeep.length,
+          pendingCount: finalPendingCount,
+          errors: errorsPermanent
       };
       console.log(`ApiClient.sync: Concluído. ${successCount} sucesso(s), ${errorsPermanent.length} erro(s) perm, ${failedRequestsToKeep.length} falhas temp. Pendentes: ${finalPendingCount}.`);
-      return finalResult; // Retorna o resultado detalhado
+      return finalResult;
   }
 
 
   /** Função de inicialização do módulo (chamada pelo ModuleLoader). */
   function init() {
-    console.log('ApiClient (Iframe Proxy) inicializado via ModuleLoader.');
-    // A inicialização real do iframe acontece na primeira chamada a `request`
+    console.log('ApiClient (Iframe Proxy - Polling) inicializado via ModuleLoader.');
+    // A inicialização do iframe via polling acontece na primeira chamada a `request`
   }
 
   // --- Objeto Retornado pelo Módulo ---
   console.log("ApiClient (Iframe): Retornando interface pública do módulo.");
-  // Exporta as funções que a aplicação usará
   return {
-    init, // Função chamada pelo ModuleLoader
+    init,
     salvarRegistro,
     listarRegistros,
     obterRegistro,
     excluirRegistro,
     uploadImagem,
-    ping, // Função de teste de conexão
-    syncOfflineRequests, // Função para disparar sincronização
-    clearOfflineRequests, // Função para limpar a fila offline
-    // request: request, // Descomente para expor a função 'request' genérica, se necessário
+    ping,
+    syncOfflineRequests,
+    clearOfflineRequests,
   };
 
 }); // Fim do ModuleLoader.register
