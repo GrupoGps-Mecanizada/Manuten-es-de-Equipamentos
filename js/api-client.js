@@ -27,11 +27,11 @@ ModuleLoader.register('apiClient', function () {
     return url;
   }
 
-// --------------------------------------------------
+  // --------------------------------------------------
   // request(action, data) – faz o POST com fetch()
   // --------------------------------------------------
   async function request(action, data = {}) {
-    const utils  = window.Utils;
+    const utils  = window.Utils; // Mantido caso Utils seja usado para outra coisa
     const apiUrl = getApiUrl();
     if (!apiUrl) {
       // Tenta salvar offline antes de lançar o erro se a função existir
@@ -39,8 +39,7 @@ ModuleLoader.register('apiClient', function () {
       throw new Error('API_URL ausente.');
     }
 
-    // É seguro chamar showLoading aqui, pois o finally garantirá o hideLoading
-    utils?.showLoading?.(`Processando ${action}…`);
+    // utils?.showLoading?.(`Processando ${action}…`); // <-- LINHA COMENTADA/REMOVIDA
 
     const payload = { action, data };
 
@@ -80,9 +79,8 @@ ModuleLoader.register('apiClient', function () {
       throw err; // Re-lança o erro, mas o finally será executado antes
 
     } finally {
-       // *** ESTE BLOCO SEMPRE SERÁ EXECUTADO ***
-       utils?.hideLoading?.();
-       console.debug(`ApiClient: finalizando '${action}' (finally)`); // Log opcional para debug
+       // utils?.hideLoading?.(); // <-- LINHA COMENTADA/REMOVIDA
+       // console.debug(`ApiClient: finalizando '${action}' (finally)`); // Log opcional também comentado
     }
   }
 
@@ -95,6 +93,7 @@ ModuleLoader.register('apiClient', function () {
   };
 
   const listarRegistros = async () => {
+    // A função request chamada aqui agora NÃO mostrará mais o loading
     const r = await request('listarRegistros');
     if (r?.success && Array.isArray(r.registros)) return r.registros;
     throw new Error(r?.message || 'Formato inesperado em listarRegistros');
@@ -102,11 +101,13 @@ ModuleLoader.register('apiClient', function () {
 
   const obterRegistro = id => {
     if (!id) throw new Error('ID não fornecido para obterRegistro');
+    // A função request chamada aqui agora NÃO mostrará mais o loading
     return request('obterRegistro', { id }).then(r => r.registro ?? null);
   };
 
   const excluirRegistro = id => {
     if (!id) throw new Error('ID não fornecido para excluirRegistro');
+    // A função request chamada aqui agora NÃO mostrará mais o loading
     return request('excluirRegistro', { id });
   };
 
@@ -114,6 +115,7 @@ ModuleLoader.register('apiClient', function () {
     if (!photo?.dataUrl || !photo?.name || !photo?.type || !photo?.registroId || !photo?.id)
       throw new Error('Dados de imagem incompletos em uploadImagem');
 
+    // A função request chamada aqui agora NÃO mostrará mais o loading
     return request('uploadImagem', {
       fileName   : `${photo.registroId}_${photo.id}_${photo.name}`,
       mimeType   : photo.type,
@@ -123,20 +125,28 @@ ModuleLoader.register('apiClient', function () {
     });
   };
 
-  const ping = () => request('ping');
+  const ping = () => {
+    // A função request chamada aqui agora NÃO mostrará mais o loading
+    return request('ping');
+  }
 
   // --------------------------------------------------
   // Offline queue  (saveOfflineRequest, sync, clear)
   // --------------------------------------------------
   function saveOfflineRequest(action, data) {
     const u = window.Utils;
-    if (action === 'uploadImagem') return; // não põe uploads na fila
+    // Não salva uploads na fila, mas mostra notificação se Utils existir
+    if (action === 'uploadImagem') {
+        u?.showNotification?.(`Upload de imagem (${data?.fileName}) não pode ser feito offline.`, 'info', 5000);
+        return;
+    }
     try {
       const list = u.obterLocalStorage('offlineRequests') || [];
       const id   = `offline_${u.gerarId()}`;
       list.push({ id, action, data, retries:0, t:new Date().toISOString() });
       u.salvarLocalStorage('offlineRequests', list);
-      u.showNotification?.(`Ação (${action}) salva offline.`, 'warning', 4000);
+      // Mostra notificação usando Utils, se disponível
+      u?.showNotification?.(`Ação (${action}) salva offline.`, 'warning', 4000);
     } catch(e) { console.error('saveOfflineRequest erro:', e); }
   }
 
@@ -152,20 +162,40 @@ ModuleLoader.register('apiClient', function () {
     const nowBatch = list.slice(0, BATCH);
     const rest     = list.slice(BATCH);
 
+    // Nenhuma notificação de loading global para o processo de sync aqui
+    console.log(`Sync: Iniciando processamento de ${nowBatch.length} itens.`);
+
     for (const req of nowBatch) {
-      try { await request(req.action, req.data); success++; }
+      try {
+        console.log(`Sync: Tentando sincronizar ${req.action} (${req.id})`);
+        // A chamada request interna NÃO mostrará mais loading individual
+        await request(req.action, req.data);
+        console.log(`Sync: Sucesso para ${req.action} (${req.id})`);
+        success++;
+      }
       catch(err){
+        console.warn(`Sync: Falha para ${req.action} (${req.id}), retries: ${req.retries + 1}`, err.message);
         req.retries++;
-        if (req.retries < MAXR) { tempFail++; rest.push(req); }
-        else { dropped++; }
+        if (req.retries < MAXR) {
+          tempFail++;
+          rest.push(req); // Devolve para a fila para tentar depois
+        } else {
+          console.error(`Sync: Item ${req.action} (${req.id}) descartado após ${MAXR} tentativas.`);
+          dropped++;
+        }
       }
     }
+    // Salva o restante da fila
     u.salvarLocalStorage('offlineRequests', rest);
+    console.log(`Sync: Finalizado. Synced: ${success}, Failed Temp: ${tempFail}, Dropped: ${dropped}, Pending: ${rest.length}`);
+
+    // Retorna o resultado do batch
     return { success:true, synced:success, dropped, tempFail, pending:rest.length };
   }
 
   const clearOfflineRequests = () => {
     window.Utils?.salvarLocalStorage('offlineRequests', []);
+    console.log('Fila offline limpa.');
     return true;
   };
 
@@ -174,6 +204,7 @@ ModuleLoader.register('apiClient', function () {
   // --------------------------------------------------
   function init() {
     console.log('ApiClient (Fetch) inicializado');
+    // Não há mais chamadas de loading/hideLoading aqui
   }
 
   // Interface pública
