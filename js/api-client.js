@@ -27,58 +27,7 @@ ModuleLoader.register('apiClient', function () {
     return url;
   }
 
-// --------------------------------------------------
-// request(action, data) – faz o POST com fetch()
-// --------------------------------------------------
-async function request(action, data = {}) {
-  const utils  = window.Utils;
-  const apiUrl = getApiUrl();
-  if (!apiUrl) {
-    if (typeof saveOfflineRequest === 'function')
-        saveOfflineRequest(action, data);
-    throw new Error('API_URL ausente.');
-  }
-
-  utils?.showLoading?.(`Processando ${action}…`);
-
-  const payload = { action, data };
-
-  const requestOptions = {
-    method : 'POST',
-    headers: {
-      // simple‑request  →  sem pre‑flight
-      'Content-Type': 'text/plain',
-      'Accept'      : 'application/json'
-    },
-    body   : JSON.stringify(payload)
-  };
-
-  try {
-    const resp = await fetch(apiUrl, requestOptions);
-
-    if (!resp.ok) {
-      const raw = await resp.text();
-      let msg = `HTTP ${resp.status} – ${resp.statusText}`;
-      try { msg = JSON.parse(raw).message || msg; } catch {}
-      throw new Error(msg);
-    }
-
-    const result = await resp.json();          // pode lançar
-    if (result?.success === false)
-        throw new Error(result.message || `Erro em ${action}`);
-
-    return result;                             // sucesso ✅
-
-  } catch (err) {
-    console.error(`ApiClient: erro em '${action}':`, err);
-    if (typeof saveOfflineRequest === 'function')
-        saveOfflineRequest(action, data);
-    throw err;                                 // propaga
-  } finally {
-    // *sempre* decrementa o spinner, mesmo se der erro
-    utils?.hideLoading?.();
-  }
-}
+async function request(action, data = {}) { … }
 
 
   // --------------------------------------------------
