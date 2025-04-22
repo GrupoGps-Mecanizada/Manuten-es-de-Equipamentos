@@ -420,5 +420,5 @@
     hideLoading, // Exporta a versão com contador
     showScreen
   }
-    
-})();
+
+})(); // Fim da IIFE
