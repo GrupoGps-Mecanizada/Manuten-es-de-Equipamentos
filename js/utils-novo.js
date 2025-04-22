@@ -9,8 +9,10 @@ window.Utils = {
   hideLoading: function() {
     const spinner = document.getElementById('loadingSpinner');
     if (spinner) {
+      // Sempre esconde o spinner, independente de contador
       spinner.style.display = 'none';
       spinner.classList.add('hidden-spinner');
+      console.log('Spinner ocultado forçadamente');
     }
   },
   
