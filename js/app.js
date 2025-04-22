@@ -99,7 +99,7 @@ const App = {
     }
 
     console.log("App: Testando conexão com a API via ApiClient.ping (Iframe)...");
-    this.Utils?.showLoading?.(true, "Verificando conexão..."); // Mostra loading
+    this.Utils?.showLoading?.("Verificando conexão..."); // Passa apenas a mensagem
     try {
       // Chama a função ping através do apiClient (que usa o iframe)
       const response = await this.ApiClient.ping();
