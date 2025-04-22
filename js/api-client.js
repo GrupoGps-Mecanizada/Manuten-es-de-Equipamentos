@@ -108,20 +108,21 @@ ModuleLoader.register('apiClient', function() {
              return;
         }
 
-        // --- INÍCIO DA CORREÇÃO para Timeout ---
+        // =========================================================== //
+        // =================== INÍCIO DA CORREÇÃO ==================== //
+        // =========================================================== //
         // Verifica se a mensagem é 'ready' ANTES de verificar a origem estritamente
+        // A verificação crucial aqui é se a mensagem veio da *janela* do iframe que criamos.
         if (event.data?.status === 'ready' && event.source === apiFrame.contentWindow) {
-            // Para a mensagem 'ready', a verificação mais importante é
-            // se ela veio da janela do iframe que criamos (event.source).
-            // A verificação de origem pode ser relaxada aqui se houver problemas com subdomínios googleusercontent.
             console.log(`ApiClient: Mensagem 'ready' recebida da janela do iframe (Origem: ${event.origin}). Processando...`);
-            if (frameLoadTimeoutId) clearTimeout(frameLoadTimeoutId);
+            if (frameLoadTimeoutId) clearTimeout(frameLoadTimeoutId); // Limpa o timeout de inicialização
             isInitializing = false;
-            resolve(); // Resolve a inicialização
-            return; // Mensagem 'ready' processada.
+            resolve(); // Resolve a promise de inicialização
+            return; // Mensagem 'ready' processada, não continua a execução do listener
         }
-        // --- FIM DA CORREÇÃO ---
-
+        // =========================================================== //
+        // ===================== FIM DA CORREÇÃO ===================== //
+        // =========================================================== //
 
         // Para TODAS as outras mensagens (respostas), APLICA a verificação de origem estrita
         if (event.origin !== expectedOrigin) {
@@ -194,7 +195,7 @@ ModuleLoader.register('apiClient', function() {
     let requestId = -1;
 
     try {
-      // --- CORREÇÃO: Chamada a showLoading com 1 argumento ---
+      // Mostra loading (simplificado - apenas uma mensagem)
       utils?.showLoading?.(`Processando ${action}...`);
 
       // 1. Garante inicialização do iframe
@@ -209,13 +210,28 @@ ModuleLoader.register('apiClient', function() {
 
         // 3. Envia mensagem ao iframe
         const apiUrl = apiFrame.src;
-        const targetOrigin = new URL(apiUrl).origin;
+        let targetOrigin = '*'; // Default para '*' por segurança se a URL for inválida
+        try {
+            targetOrigin = new URL(apiUrl).origin;
+        } catch (e) {
+            console.error("ApiClient: URL da API inválida ao tentar obter origem para postMessage. Usando '*'.", e);
+        }
 
-        apiFrame.contentWindow.postMessage({
-          requestId: requestId,
-          action: action,
-          data: data
-        }, targetOrigin); // Envia SOMENTE para a origem correta
+
+        // Verifica se contentWindow está acessível antes de chamar postMessage
+        if (apiFrame && apiFrame.contentWindow) {
+            apiFrame.contentWindow.postMessage({
+              requestId: requestId,
+              action: action,
+              data: data
+            }, targetOrigin); // Envia SOMENTE para a origem correta (ou '*' se falhou)
+        } else {
+            console.error(`ApiClient (Iframe): contentWindow do iframe não está acessível para enviar ação '${action}' (ID: ${requestId})`);
+            reject(new Error(`Não foi possível enviar a mensagem para a API (contentWindow inacessível)`));
+            delete pendingRequests[requestId]; // Limpa a requisição pendente
+            return; // Sai da função Promise
+        }
+
 
         // 4. Timeout da requisição
         const requestTimeoutMs = 30000; // 30 segundos
@@ -223,7 +239,10 @@ ModuleLoader.register('apiClient', function() {
           if (pendingRequests[requestId]) {
             const pendingAction = pendingRequests[requestId].action;
             console.error(`ApiClient (Iframe): Timeout (${requestTimeoutMs/1000}s) na requisição para ação '${pendingAction}' (ID: ${requestId})`);
-            pendingRequests[requestId].reject(new Error(`Timeout na requisição ${pendingAction} (${requestTimeoutMs/1000}s)`));
+            // Verifica se reject existe antes de chamar
+            if (typeof pendingRequests[requestId].reject === 'function') {
+                pendingRequests[requestId].reject(new Error(`Timeout na requisição ${pendingAction} (${requestTimeoutMs/1000}s)`));
+            }
             delete pendingRequests[requestId];
           }
         }, requestTimeoutMs);
@@ -239,10 +258,10 @@ ModuleLoader.register('apiClient', function() {
     } catch (error) {
       console.error(`ApiClient (Iframe): Erro na requisição para ação '${action}'${requestId > 0 ? ` (ID: ${requestId})` : ''}:`, error.message || error);
       if (typeof saveOfflineRequest === 'function') {
-          saveOfflineRequest(action, data);
+          saveOfflineRequest(action, data); // Tenta salvar offline
       }
       utils?.hideLoading?.(); // Garante esconder no erro
-      throw error;
+      throw error; // Propaga o erro para quem chamou a função
     }
   }
 
@@ -255,15 +274,18 @@ ModuleLoader.register('apiClient', function() {
         console.error("ApiClient.salvarRegistro: Dados ou ID inválidos.", registro);
         throw new Error("Dados ou ID do registro inválidos para salvar.");
     }
+    // Retorna a promise diretamente da função request
     return request('salvarRegistro', registro);
   }
 
   /** Envia solicitação para listar todos os registros */
   async function listarRegistros() {
     const result = await request('listarRegistros');
+    // Valida se a resposta esperada (um array) foi recebida
     if (result && Array.isArray(result.registros)) {
-      return result.registros;
+      return result.registros; // Retorna apenas o array de registros
     }
+    // Loga e lança erro se a resposta não for a esperada
     console.error("ApiClient.listarRegistros: Resposta inesperada da API:", result);
     throw new Error('Formato de resposta inválido ao listar registros (via iframe)');
   }
@@ -272,9 +294,12 @@ ModuleLoader.register('apiClient', function() {
   async function obterRegistro(id) {
     if (!id) throw new Error("ID do registro não fornecido para obterRegistro.");
     const result = await request('obterRegistro', { id: id });
+    // Verifica se a API retornou sucesso e o campo 'registro' existe
     if (result && result.success === true) {
+       // Retorna o registro ou null se não foi encontrado (registro: null)
        return result.registro !== undefined ? result.registro : null;
     }
+    // Loga e lança erro se a API retornou falha ou formato inesperado
     console.error("ApiClient.obterRegistro: Resposta inesperada da API:", result);
     throw new Error(result?.message || `Falha ao obter registro ${id} (via iframe)`);
   }
@@ -282,29 +307,34 @@ ModuleLoader.register('apiClient', function() {
   /** Envia solicitação para excluir um registro por ID */
   async function excluirRegistro(id) {
     if (!id) throw new Error("ID do registro não fornecido para exclusão.");
+    // Retorna a promise diretamente da função request
     return request('excluirRegistro', { id: id });
   }
 
   /** Envia solicitação para fazer upload de imagem */
   async function uploadImagem(photoObject) {
+    // Validação dos dados da foto
     if (!photoObject?.dataUrl || !photoObject?.name || !photoObject?.type || !photoObject?.registroId || !photoObject?.id) {
       console.error("ApiClient.uploadImagem: Dados da imagem incompletos.", photoObject);
       throw new Error("Dados da imagem incompletos para upload.");
     }
+    // Monta o payload esperado pela função do Apps Script
     const payload = {
-      fileName: `${photoObject.registroId}_${photoObject.id}_${photoObject.name}`,
+      fileName: `${photoObject.registroId}_${photoObject.id}_${photoObject.name}`, // Nome padronizado
       mimeType: photoObject.type,
-      content: photoObject.dataUrl,
+      content: photoObject.dataUrl, // A imagem em base64
       registroId: photoObject.registroId,
       photoId: photoObject.id
     };
     console.warn("ApiClient (Iframe): Upload de imagem via iframe pode ser lento/instável para arquivos grandes.");
+    // Retorna a promise diretamente da função request
     return request('uploadImagem', payload);
   }
 
   /** Envia uma solicitação 'ping' para testar a conexão */
   async function ping() {
     console.log("ApiClient (Iframe): Chamando ação 'ping'");
+    // Retorna a promise diretamente da função request
     return request('ping');
   }
 
@@ -314,11 +344,13 @@ ModuleLoader.register('apiClient', function() {
   /** Salva uma requisição falhada no localStorage para tentativa posterior */
   function saveOfflineRequest(action, data) {
     const utils = window.Utils;
+    // Evita salvar uploads de imagem offline por causa do tamanho
     if (action === 'uploadImagem') {
       console.warn(`ApiClient (Iframe): Upload da imagem (${data?.fileName}) falhou e NÃO será salvo offline.`);
       utils?.showNotification?.(`Falha no upload da imagem. Tente novamente com conexão.`, 'error', 6000);
       return;
     }
+    // Verifica se as funções necessárias do Utils existem
     if (!utils?.salvarLocalStorage || !utils?.obterLocalStorage || !utils?.gerarId) {
       console.error("ApiClient (Iframe): Funções Utils não disponíveis para salvar requisição offline.");
       return;
@@ -326,11 +358,11 @@ ModuleLoader.register('apiClient', function() {
     console.log(`ApiClient (Iframe): Salvando requisição offline para ação '${action}'...`);
     try {
         const offlineRequests = utils.obterLocalStorage('offlineRequests') || [];
-        const requestId = `offline_${utils.gerarId()}`;
+        const requestId = `offline_${utils.gerarId()}`; // Gera um ID único para a requisição offline
         offlineRequests.push({
-          id: requestId, action, data, timestamp: new Date().toISOString(), retries: 0
+          id: requestId, action, data, timestamp: new Date().toISOString(), retries: 0 // Adiciona retries
         });
-        utils.salvarLocalStorage('offlineRequests', offlineRequests);
+        utils.salvarLocalStorage('offlineRequests', offlineRequests); // Salva a lista atualizada
         console.log(`Requisição offline ID ${requestId} salva. Pendentes: ${offlineRequests.length}`);
         utils.showNotification?.(`Sem conexão ou erro. Ação (${action}) salva para tentar mais tarde.`, 'warning', 5000);
     } catch (e) {
@@ -347,7 +379,7 @@ ModuleLoader.register('apiClient', function() {
       return false;
     }
     try {
-      utils.salvarLocalStorage('offlineRequests', []);
+      utils.salvarLocalStorage('offlineRequests', []); // Salva um array vazio
       console.log("ApiClient: Requisições offline limpas.");
       utils.showNotification?.("Fila de ações offline limpa.", "success", 3000);
       return true;
@@ -361,12 +393,13 @@ ModuleLoader.register('apiClient', function() {
   /** Tenta sincronizar (reenviar) requisições offline pendentes */
   async function syncOfflineRequests() {
       const utils = window.Utils;
-      const configSync = window.CONFIG?.SYNC || {};
-      const batchSize = configSync.BATCH_SIZE || 3;
-      const maxRetries = configSync.MAX_RETRIES || 3;
+      const configSync = window.CONFIG?.SYNC || {}; // Pega configurações de sync do CONFIG global
+      const batchSize = configSync.BATCH_SIZE || 3; // Quantas processar por vez
+      const maxRetries = configSync.MAX_RETRIES || 3; // Máximo de tentativas
 
       if (!utils?.salvarLocalStorage || !utils?.obterLocalStorage) {
         console.error("ApiClient.sync: Funções Utils não disponíveis.");
+        // Retorna um objeto de resultado indicando falha
         return { success: false, syncedCount: 0, errorCount: 0, failedTemporarily: 0, pendingCount: 0, errors: [{ error: "Utils indisponível" }] };
       }
 
@@ -378,73 +411,83 @@ ModuleLoader.register('apiClient', function() {
         return { success: true, syncedCount: 0, errorCount: 0, failedTemporarily: 0, pendingCount: 0, errors: [] };
       }
 
+      // Verifica se está online antes de tentar
       if (!navigator.onLine) {
         console.log("ApiClient.sync: Sem conexão. Sincronização adiada.");
         return { success: false, message: "Sem conexão", syncedCount: 0, errorCount: 0, failedTemporarily: 0, pendingCount: totalPendingInitial, errors: [] };
       }
 
+      // Pega apenas um lote (batch) para processar
       const requestsToProcess = offlineRequests.slice(0, batchSize);
-      const remainingForLater = offlineRequests.slice(batchSize);
+      const remainingForLater = offlineRequests.slice(batchSize); // As que ficam para depois
       console.log(`ApiClient.sync: Tentando sincronizar ${requestsToProcess.length} de ${totalPendingInitial} via Iframe...`);
 
       let successCount = 0;
-      const failedRequestsToKeep = [];
-      const errorsPermanent = [];
+      const failedRequestsToKeep = []; // Requisições que falharam, mas ainda podem tentar
+      const errorsPermanent = []; // Requisições que falharam permanentemente
 
+      // Processa cada requisição do lote
       for (const req of requestsToProcess) {
         try {
           console.log(`ApiClient.sync: Enviando req offline ID ${req.id} (Ação: ${req.action})...`);
-          await request(req.action, req.data); // Usa a função 'request' deste módulo
+          await request(req.action, req.data); // Tenta reenviar usando a função 'request'
           console.log(`ApiClient.sync: Req offline ID ${req.id} sincronizada.`);
           successCount++;
         } catch (error) {
+          // Se falhou, incrementa o contador de tentativas
           console.error(`ApiClient.sync: Erro sincronizando req ID ${req.id} (${req.action}):`, error.message || error);
           req.retries = (req.retries || 0) + 1;
           if (req.retries < maxRetries) {
+            // Se ainda tem tentativas, mantém na lista para tentar depois
             failedRequestsToKeep.push(req);
             console.log(`ApiClient.sync: Req ID ${req.id} falhou (${req.retries}/${maxRetries}), retentará.`);
           } else {
+            // Se esgotou as tentativas, marca como erro permanente
             console.error(`ApiClient.sync: Req ID ${req.id} (${req.action}) descartada após ${maxRetries} tentativas.`);
             errorsPermanent.push({ requestId: req.id, action: req.action, error: `Máx ${maxRetries} tentativas. Erro: ${error.message || String(error)}` });
           }
         }
-      } // Fim for
+      } // Fim do loop for
 
+      // Atualiza a lista de requisições offline no localStorage
       const updatedOfflineRequests = [...failedRequestsToKeep, ...remainingForLater];
       utils.salvarLocalStorage('offlineRequests', updatedOfflineRequests);
       const finalPendingCount = updatedOfflineRequests.length;
 
+      // Monta o objeto de resultado da sincronização
       const finalResult = {
-          success: errorsPermanent.length === 0 && failedRequestsToKeep.length === 0,
-          syncedCount: successCount,
-          errorCount: errorsPermanent.length,
-          failedTemporarily: failedRequestsToKeep.length,
-          pendingCount: finalPendingCount,
-          errors: errorsPermanent
+          success: errorsPermanent.length === 0 && failedRequestsToKeep.length === 0, // Sucesso geral se nada falhou permanentemente ou temporariamente *neste lote*
+          syncedCount: successCount, // Quantas sincronizaram com sucesso
+          errorCount: errorsPermanent.length, // Quantas falharam permanentemente
+          failedTemporarily: failedRequestsToKeep.length, // Quantas falharam mas ainda tentarão
+          pendingCount: finalPendingCount, // Quantas ainda restam na fila
+          errors: errorsPermanent // Detalhes dos erros permanentes
       };
       console.log(`ApiClient.sync: Concluído. ${successCount} sucesso(s), ${errorsPermanent.length} erro(s) perm, ${failedRequestsToKeep.length} falhas temp. Pendentes: ${finalPendingCount}.`);
-      return finalResult;
+      return finalResult; // Retorna o resultado detalhado
   }
 
 
   /** Função de inicialização do módulo (chamada pelo ModuleLoader). */
   function init() {
     console.log('ApiClient (Iframe Proxy) inicializado via ModuleLoader.');
+    // A inicialização real do iframe acontece na primeira chamada a `request`
   }
 
   // --- Objeto Retornado pelo Módulo ---
   console.log("ApiClient (Iframe): Retornando interface pública do módulo.");
+  // Exporta as funções que a aplicação usará
   return {
-    init,
+    init, // Função chamada pelo ModuleLoader
     salvarRegistro,
     listarRegistros,
     obterRegistro,
     excluirRegistro,
     uploadImagem,
-    ping,
-    syncOfflineRequests,
-    clearOfflineRequests,
-    // request: request, // Descomente para expor request genérico
+    ping, // Função de teste de conexão
+    syncOfflineRequests, // Função para disparar sincronização
+    clearOfflineRequests, // Função para limpar a fila offline
+    // request: request, // Descomente para expor a função 'request' genérica, se necessário
   };
 
 }); // Fim do ModuleLoader.register
