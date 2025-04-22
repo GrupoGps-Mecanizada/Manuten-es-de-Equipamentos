@@ -32,18 +32,22 @@ document.addEventListener('DOMContentLoaded', function() {
        // Este .then() será executado após App.init() completar (se App.init for async)
        console.log('Sistema inicializado com sucesso!');
        // Remover spinner de loading inicial, se houver
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        if (loadingSpinner) loadingSpinner.style.display = 'none';
+       if (window.Utils && typeof window.Utils.hideLoading === 'function') {
+         window.Utils.hideLoading();
+       } else {
+         const loadingSpinner = document.getElementById('loadingSpinner');
+         if (loadingSpinner) loadingSpinner.style.display = 'none';
+       }
     })
     .catch(error => {
       console.error('Erro na sequência de inicialização do sistema:', error);
       showErrorMessage(`Ocorreu um erro grave ao inicializar o sistema: ${error.message}. Por favor, recarregue a página.`);
       // Mostrar spinner de erro ou mensagem mais visível
-       const loadingSpinner = document.getElementById('loadingSpinner');
-       if (loadingSpinner) {
-          loadingSpinner.innerHTML = '<div class="alert alert-danger">Erro ao carregar! Recarregue.</div>';
-          loadingSpinner.style.display = 'flex'; // Garante que está visível
-       }
+      const loadingSpinner = document.getElementById('loadingSpinner');
+      if (loadingSpinner) {
+         loadingSpinner.innerHTML = '<div class="alert alert-danger">Erro ao carregar! Recarregue.</div>';
+         loadingSpinner.style.display = 'flex'; // Garante que está visível
+      }
     });
 });
 
