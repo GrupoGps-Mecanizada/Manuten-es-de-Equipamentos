@@ -1,39 +1,38 @@
 // utils-novo.js - versão simplificada com funções essenciais
 window.Utils = {
   // Funções de UI
-  // Melhoria nas funções de loading para garantir que o spinner seja sempre controlado corretamente
-showLoading: function(message) {
-  const spinner = document.getElementById('loadingSpinner');
-  if (!spinner) {
-    console.error('Utils.showLoading: Elemento #loadingSpinner não encontrado!');
-    return;
-  }
+  showLoading: function(message) {
+    const spinner = document.getElementById('loadingSpinner');
+    if (!spinner) {
+      console.error('Utils.showLoading: Elemento #loadingSpinner não encontrado!');
+      return;
+    }
+    
+    // Garante que o spinner seja visível
+    spinner.style.display = 'flex';
+    spinner.classList.remove('hidden-spinner');
+    
+    // Atualiza a mensagem se houver um elemento para isso
+    const msgEl = spinner.querySelector('.loading-message');
+    if (msgEl && message) {
+      msgEl.textContent = this.sanitizeString(message);
+    }
+    
+    console.log('Spinner exibido: ' + (message || 'Carregando...'));
+  },
   
-  // Garante que o spinner seja visível
-  spinner.style.display = 'flex';
-  spinner.classList.remove('hidden-spinner');
-  
-  // Atualiza a mensagem se houver um elemento para isso
-  const msgEl = spinner.querySelector('.loading-message');
-  if (msgEl && message) {
-    msgEl.textContent = this.sanitizeString(message);
-  }
-  
-  console.log('Spinner exibido: ' + (message || 'Carregando...'));
-},
-
-hideLoading: function() {
-  const spinner = document.getElementById('loadingSpinner');
-  if (!spinner) {
-    console.error('Utils.hideLoading: Elemento #loadingSpinner não encontrado!');
-    return;
-  }
-  
-  // Sempre esconde o spinner
-  spinner.style.display = 'none';
-  spinner.classList.add('hidden-spinner');
-  console.log('Spinner ocultado');
-}
+  hideLoading: function() {
+    const spinner = document.getElementById('loadingSpinner');
+    if (!spinner) {
+      console.error('Utils.hideLoading: Elemento #loadingSpinner não encontrado!');
+      return;
+    }
+    
+    // Sempre esconde o spinner
+    spinner.style.display = 'none';
+    spinner.classList.add('hidden-spinner');
+    console.log('Spinner ocultado');
+  },
   
   showScreen: function(screenId) {
     if (!screenId) return;
@@ -117,78 +116,78 @@ hideLoading: function() {
         valA = new Date(valA);
       }
       if (typeof valB === 'string' && /^\d{4}-\d{2}-\d{2}/.test(valB)) {
-        valB = new Date(valB);
-      }
-      
-      // Comparar datas
-      if (valA instanceof Date && valB instanceof Date) {
-        return crescente ? valA - valB : valB - valA;
-      }
-      
-      // Comparar números
-      if (typeof valA === 'number' && typeof valB === 'number') {
-        return crescente ? valA - valB : valB - valA;
-      }
-      
-      // Comparar strings
-      const strA = String(valA).toLowerCase();
-      const strB = String(valB).toLowerCase();
-      return crescente ? strA.localeCompare(strB) : strB.localeCompare(strA);
-    });
-  },
-  
-  // Funções de LocalStorage
-  salvarLocalStorage: function(chave, valor, minutosExpiracao = 0) {
-    if (!chave || typeof chave !== 'string') return false;
-    
-    const item = {
-      valor: valor,
-      timestamp: new Date().getTime(),
-      expiracao: minutosExpiracao > 0 ? new Date().getTime() + (minutosExpiracao * 60 * 1000) : 0
-    };
-    
-    try {
-      localStorage.setItem(chave, JSON.stringify(item));
-      return true;
-    } catch (e) {
-      console.error(`Erro ao salvar '${chave}' no localStorage:`, e);
-      return false;
-    }
-  },
-  
-  obterLocalStorage: function(chave) {
-    if (!chave) return null;
-    
-    try {
-      const itemStr = localStorage.getItem(chave);
-      if (!itemStr) return null;
-      
-      const item = JSON.parse(itemStr);
-      
-      // Verificar expiração
-      if (item.expiracao && item.expiracao > 0 && new Date().getTime() > item.expiracao) {
-        console.log(`Item '${chave}' expirado, removendo do localStorage.`);
-        localStorage.removeItem(chave);
-        return null;
-      }
-      
-      return item.valor;
-    } catch (e) {
-      console.error(`Erro ao obter '${chave}' do localStorage:`, e);
-      localStorage.removeItem(chave);
-      return null;
-    }
-  },
-  
-  removerLocalStorage: function(chave) {
-    if (!chave) return false;
-    
-    try {
-      localStorage.removeItem(chave);
-      return true;
-    } catch (e) {
-      console.error(`Erro ao remover '${chave}' do localStorage:`, e);
-      return false;
-    }
-  }
+ valB = new Date(valB);
+}
+     
+// Comparar datas
+if (valA instanceof Date && valB instanceof Date) {
+ return crescente ? valA - valB : valB - valA;
+}
+     
+// Comparar números
+if (typeof valA === 'number' && typeof valB === 'number') {
+ return crescente ? valA - valB : valB - valA;
+}
+     
+// Comparar strings
+const strA = String(valA).toLowerCase();
+const strB = String(valB).toLowerCase();
+return crescente ? strA.localeCompare(strB) : strB.localeCompare(strA);
+});
+},
+ 
+// Funções de LocalStorage
+salvarLocalStorage: function(chave, valor, minutosExpiracao = 0) {
+ if (!chave || typeof chave !== 'string') return false;
+   
+ const item = {
+   valor: valor,
+   timestamp: new Date().getTime(),
+   expiracao: minutosExpiracao > 0 ? new Date().getTime() + (minutosExpiracao * 60 * 1000) : 0
+ };
+   
+ try {
+   localStorage.setItem(chave, JSON.stringify(item));
+   return true;
+ } catch (e) {
+   console.error(`Erro ao salvar '${chave}' no localStorage:`, e);
+   return false;
+ }
+},
+ 
+obterLocalStorage: function(chave) {
+ if (!chave) return null;
+   
+ try {
+   const itemStr = localStorage.getItem(chave);
+   if (!itemStr) return null;
+     
+   const item = JSON.parse(itemStr);
+     
+   // Verificar expiração
+   if (item.expiracao && item.expiracao > 0 && new Date().getTime() > item.expiracao) {
+     console.log(`Item '${chave}' expirado, removendo do localStorage.`);
+     localStorage.removeItem(chave);
+     return null;
+   }
+     
+   return item.valor;
+ } catch (e) {
+   console.error(`Erro ao obter '${chave}' do localStorage:`, e);
+   localStorage.removeItem(chave);
+   return null;
+ }
+},
+ 
+removerLocalStorage: function(chave) {
+ if (!chave) return false;
+   
+ try {
+   localStorage.removeItem(chave);
+   return true;
+ } catch (e) {
+   console.error(`Erro ao remover '${chave}' do localStorage:`, e);
+   return false;
+ }
+}
 };
