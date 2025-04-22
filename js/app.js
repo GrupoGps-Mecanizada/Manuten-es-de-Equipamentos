@@ -505,8 +505,7 @@ const App = {
     }
 
     console.log(`App: Verificando ${forceSync ? 'e forçando ' : ''}sincronização...`);
-    this.Utils?.showLoading?.(true, "Sincronizando dados..."); // Mostra loading
-
+    this.Utils?.showLoading?.("Sincronizando dados..."); // Passa apenas a mensagem
     try {
       // Chama a função de sincronização do ApiClient
       const syncResult = await this.ApiClient.syncOfflineRequests();
