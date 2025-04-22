@@ -419,6 +419,6 @@
     showLoading, // Exporta a versão com contador
     hideLoading, // Exporta a versão com contador
     showScreen
-  };
+  }
 
 })(); // Fim da IIFE (Immediately Invoked Function Expression)
