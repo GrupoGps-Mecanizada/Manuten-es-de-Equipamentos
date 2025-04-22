@@ -27,62 +27,59 @@ ModuleLoader.register('apiClient', function () {
     return url;
   }
 
-  // --------------------------------------------------
-  // request(action, data) – faz o POST com fetch()
-  // --------------------------------------------------
-  async function request(action, data = {}) {
-    const utils  = window.Utils; // Mantido caso Utils seja usado para outra coisa
-    const apiUrl = getApiUrl();
-    if (!apiUrl) {
-      // Tenta salvar offline antes de lançar o erro se a função existir
-      if (typeof saveOfflineRequest === 'function') saveOfflineRequest(action, data);
-      throw new Error('API_URL ausente.');
-    }
-
-    // utils?.showLoading?.(`Processando ${action}…`); // <-- LINHA COMENTADA/REMOVIDA
-
-    const payload = { action, data };
-
-    const requestOptions = {
-      method : 'POST',
-      headers: {
-        'Content-Type': 'text/plain', // Simple-request
-        'Accept'      : 'application/json'
-      },
-      body   : JSON.stringify(payload)
-    };
-
-    try { // O try agora envolve apenas a lógica da requisição
-      console.debug(`ApiClient: enviando '${action}' → ${apiUrl}`);
-      const response = await fetch(apiUrl, requestOptions);
-
-      if (!response.ok) {
-        const raw = await response.text();
-        let msg = `HTTP ${response.status} – ${response.statusText}`;
-        try { msg = JSON.parse(raw).message || msg; } catch {}
-        throw new Error(msg); // Vai para o catch e depois finally
-      }
-
-      const result = await response.json(); // Pode lançar erro se não for JSON
-      if (result?.success === false) {
-         throw new Error(result.message || `Erro em ${action}`); // Vai para o catch e depois finally
-      }
-
-      // Se chegou aqui, a requisição foi bem-sucedida E o resultado esperado
-      return result; // Sai do try, executa o finally
-
-    } catch (err) {
-      // Captura erros do fetch, response.ok, response.json(), result.success === false
-      console.error(`ApiClient: erro em '${action}':`, err);
-      // Tenta salvar offline em caso de erro
-      if (typeof saveOfflineRequest === 'function') saveOfflineRequest(action, data);
-      throw err; // Re-lança o erro, mas o finally será executado antes
-
-    } finally {
-       // utils?.hideLoading?.(); // <-- LINHA COMENTADA/REMOVIDA
-       // console.debug(`ApiClient: finalizando '${action}' (finally)`); // Log opcional também comentado
-    }
+// --------------------------------------------------
+// request(action, data) – faz o POST com fetch()
+// --------------------------------------------------
+async function request(action, data = {}) {
+  const utils  = window.Utils;
+  const apiUrl = getApiUrl();
+  if (!apiUrl) {
+    if (typeof saveOfflineRequest === 'function')
+        saveOfflineRequest(action, data);
+    throw new Error('API_URL ausente.');
   }
+
+  utils?.showLoading?.(`Processando ${action}…`);
+
+  const payload = { action, data };
+
+  const requestOptions = {
+    method : 'POST',
+    headers: {
+      // simple‑request  →  sem pre‑flight
+      'Content-Type': 'text/plain',
+      'Accept'      : 'application/json'
+    },
+    body   : JSON.stringify(payload)
+  };
+
+  try {
+    const resp = await fetch(apiUrl, requestOptions);
+
+    if (!resp.ok) {
+      const raw = await resp.text();
+      let msg = `HTTP ${resp.status} – ${resp.statusText}`;
+      try { msg = JSON.parse(raw).message || msg; } catch {}
+      throw new Error(msg);
+    }
+
+    const result = await resp.json();          // pode lançar
+    if (result?.success === false)
+        throw new Error(result.message || `Erro em ${action}`);
+
+    return result;                             // sucesso ✅
+
+  } catch (err) {
+    console.error(`ApiClient: erro em '${action}':`, err);
+    if (typeof saveOfflineRequest === 'function')
+        saveOfflineRequest(action, data);
+    throw err;                                 // propaga
+  } finally {
+    // *sempre* decrementa o spinner, mesmo se der erro
+    utils?.hideLoading?.();
+  }
+}
+
 
   // --------------------------------------------------
   // Ações específicas (thin‑wrappers em torno de request)
