@@ -36,19 +36,19 @@ const App = {
     if (!this.Config) missingEssentialDeps.push('Config'); //
 
     if (missingEssentialDeps.length > 0) { //
-       const errorMsg = `App.init: Falha ao carregar módulos essenciais: ${missingEssentialDeps.join(', ')}. A aplicação não pode iniciar.`; //
-       console.error(errorMsg); //
-       this.Utils?.showNotification?.(errorMsg, 'error'); //
-       document.body.innerHTML = `<div class="alert alert-danger m-5" role="alert"><strong>Erro Crítico:</strong> ${errorMsg} Verifique o console e recarregue a página.</div>`; //
-       return; // Interrompe a inicialização
+        const errorMsg = `App.init: Falha ao carregar módulos essenciais: ${missingEssentialDeps.join(', ')}. A aplicação não pode iniciar.`; //
+        console.error(errorMsg); //
+        this.Utils?.showNotification?.(errorMsg, 'error'); //
+        document.body.innerHTML = `<div class="alert alert-danger m-5" role="alert"><strong>Erro Crítico:</strong> ${errorMsg} Verifique o console e recarregue a página.</div>`; //
+        return; // Interrompe a inicialização
     }
 
     // Avisa se ApiClient não foi encontrado
     if (!this.ApiClient) { //
-       console.error("App.init: ApiClient não foi encontrado ou carregado via ModuleLoader. Operando em modo offline forçado."); //
-       this.AppState?.update('apiOnline', false); //
-       this.AppState?.update('forceOffline', true); //
-       this.Utils?.showNotification?.("Erro: Módulo API não carregado. Funcionalidade online desativada.", 'error'); //
+        console.error("App.init: ApiClient não foi encontrado ou carregado via ModuleLoader. Operando em modo offline forçado."); //
+        this.AppState?.update('apiOnline', false); //
+        this.AppState?.update('forceOffline', true); //
+        this.Utils?.showNotification?.("Erro: Módulo API não carregado. Funcionalidade online desativada.", 'error'); //
     } else {
         // Verifica se a URL da API está configurada
         if (!this.Config.API_URL) { //
@@ -89,9 +89,9 @@ const App = {
    */
   testAPIConnection: async function() {
     if (!this.ApiClient || typeof this.ApiClient.ping !== 'function') { //
-       console.error("App.testAPIConnection: ApiClient ou função 'ping' indisponível."); //
-       this.AppState?.update('apiOnline', false); //
-       return false; //
+        console.error("App.testAPIConnection: ApiClient ou função 'ping' indisponível."); //
+        this.AppState?.update('apiOnline', false); //
+        return false; //
     }
 
     console.log("App: Testando conexão com a API via ApiClient.ping (Iframe)..."); //
@@ -199,12 +199,11 @@ const App = {
     console.log("App: Atualizando lista de registros..."); //
     const tableBody = document.getElementById('listaRegistrosBody'); //
     if (!tableBody) { //
-       console.error("App: Elemento #listaRegistrosBody não encontrado no DOM."); //
-       return; //
+        console.error("App: Elemento #listaRegistrosBody não encontrado no DOM."); //
+        return; //
     }
 
-    // --- INÍCIO DA CORREÇÃO: Lógica de Loading Simples ---
-    // Limpa a tabela e insere linha de loading
+    // --- Lógica de Loading Simples: Insere placeholder na tabela ---
     tableBody.innerHTML = `
       <tr id="loading-row-placeholder">
         <td colspan="6" class="text-center py-4 text-muted">
@@ -215,7 +214,7 @@ const App = {
         </td>
       </tr>
     `; //
-    // --- FIM DA CORREÇÃO ---
+    // --- Fim Loading Simples ---
 
     let registros = []; //
     let errorOccurred = false; //
@@ -223,8 +222,10 @@ const App = {
     const isCurrentlyOnline = this.AppState?.get('online') === true; //
 
     try {
-       if (this.ApiClient && isCurrentlyOnline) { //
+        if (this.ApiClient && isCurrentlyOnline) { //
           console.log("App: Tentando buscar registros via API (ApiClient)..."); //
+          // A chamada ao ApiClient (ex: listarRegistros) já deve internamente
+          // mostrar/esconder o indicador de loading global, se configurado para isso.
           const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout ao listar registros (10s)")), 10000)); //
           const apiResult = await Promise.race([this.ApiClient.listarRegistros(), timeoutPromise]); //
           if (Array.isArray(apiResult)) { //
@@ -232,13 +233,13 @@ const App = {
               console.log(`App: Recebidos ${registros.length} registros da API.`); //
               this.AppState?.update('registros', registros); //
           } else {
-               console.warn("App: Resposta inesperada de listarRegistros da API:", apiResult); //
-               errorMessage = apiResult?.message || "Formato de resposta inválido da API"; //
-               errorOccurred = true; //
-               registros = this.AppState?.get('registros') || []; //
-               this.Utils?.showNotification?.(`Erro (${errorMessage}). Exibindo dados locais.`, 'warning'); //
+              console.warn("App: Resposta inesperada de listarRegistros da API:", apiResult); //
+              errorMessage = apiResult?.message || "Formato de resposta inválido da API"; //
+              errorOccurred = true; //
+              registros = this.AppState?.get('registros') || []; //
+              this.Utils?.showNotification?.(`Erro (${errorMessage}). Exibindo dados locais.`, 'warning'); //
           }
-       } else {
+        } else {
           const offlineMsg = this.ApiClient ? "Modo offline." : "ApiClient indisponível."; //
           console.log(`App: Buscando registros do estado local. ${offlineMsg}`); //
           registros = this.AppState?.get('registros') || []; //
@@ -248,39 +249,40 @@ const App = {
           } else if (registros.length > 0 && !isCurrentlyOnline) { //
              this.Utils?.showNotification?.("Exibindo dados locais (offline).", "info", 3000); //
           }
-       }
+        }
     } catch (error) {
-       errorOccurred = true; //
-       errorMessage = error.message || "Erro desconhecido"; //
-       console.error('App: Erro ao buscar/processar registros:', errorMessage, error); //
-       registros = this.AppState?.get('registros') || []; //
-       this.Utils?.showNotification?.(`Erro ao buscar (${errorMessage}). Exibindo dados locais.`, 'warning'); //
+        errorOccurred = true; //
+        errorMessage = error.message || "Erro desconhecido"; //
+        console.error('App: Erro ao buscar/processar registros:', errorMessage, error); //
+        registros = this.AppState?.get('registros') || []; //
+        this.Utils?.showNotification?.(`Erro ao buscar (${errorMessage}). Exibindo dados locais.`, 'warning'); //
     } finally {
-       // --- CORREÇÃO: Remove a linha de loading placeholder ---
-       const loadingRow = tableBody.querySelector('#loading-row-placeholder'); //
-       if (loadingRow) loadingRow.remove(); //
-       // --- FIM DA CORREÇÃO ---
+        // --- Remove a linha de loading placeholder ---
+        const loadingRow = tableBody.querySelector('#loading-row-placeholder'); //
+        if (loadingRow) loadingRow.remove(); //
+        // --- Fim Remoção Placeholder ---
+        // NENHUM Utils.hideLoading() é necessário aqui, pois o ApiClient deve gerenciar o loader global.
     }
 
     // Exibir registros ou mensagem de erro/vazio
     if (!registros || registros.length === 0) { //
-        const colspan = 6; //
-        let message = ''; //
-        if (errorOccurred) { //
-           message = `<div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i> Falha ao carregar: ${this.Utils?.sanitizeString(errorMessage)}</div>`; //
-        } else {
-           message = `<div class="alert alert-secondary mb-0"><i class="bi bi-info-circle me-2"></i> Nenhum registro encontrado. <button class="btn btn-sm btn-link p-0 ms-2" id="btnNovoRegistroFromEmpty">Criar Novo</button></div>`; //
-        }
-         // Adiciona a mensagem APÓS limpar a tabela ou placeholder
-         tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-3">${message}</td></tr>`; //
-         document.getElementById('btnNovoRegistroFromEmpty')?.addEventListener('click', () => this.FormHandler?.newRegistro()); //
+      const colspan = 6; //
+      let message = ''; //
+      if (errorOccurred) { //
+          message = `<div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i> Falha ao carregar: ${this.Utils?.sanitizeString(errorMessage)}</div>`; //
+      } else {
+          message = `<div class="alert alert-secondary mb-0"><i class="bi bi-info-circle me-2"></i> Nenhum registro encontrado. <button class="btn btn-sm btn-link p-0 ms-2" id="btnNovoRegistroFromEmpty">Criar Novo</button></div>`; //
+      }
+       // Adiciona a mensagem APÓS limpar a tabela ou placeholder
+       tableBody.innerHTML = `<tr><td colspan="${colspan}" class="text-center py-3">${message}</td></tr>`; //
+       document.getElementById('btnNovoRegistroFromEmpty')?.addEventListener('click', () => this.FormHandler?.newRegistro()); //
     } else {
         // Ordenar e exibir registros (como antes)
         const registrosOrdenados = this.Utils?.ordenarPor(registros, 'dataCriacao', false) || registros; //
         registrosOrdenados.forEach(registro => { //
            if (!registro || !registro.id) { //
-              console.warn("App: Registro inválido ou sem ID encontrado:", registro); //
-              return; //
+             console.warn("App: Registro inválido ou sem ID encontrado:", registro); //
+             return; //
            }
            this.addRegistroRow(tableBody, registro); //
         });
@@ -307,7 +309,7 @@ const App = {
       const statusClasses = { //
            'Pendente': 'bg-secondary', 'Pré-Registrado': 'bg-warning text-dark', //
            'Em Andamento': 'bg-info text-dark', 'Concluído': 'bg-success', 'Cancelado': 'bg-danger', //
-       };
+      };
       const statusBadge = `<span class="badge ${statusClasses[statusText] || 'bg-light text-dark'}">${sanitize(statusText)}</span>`; //
 
 
@@ -338,8 +340,8 @@ const App = {
              if (!this.ApiClient || !this.AppState?.get('online')) { //
                  this.Utils?.showNotification?.("Exclusão só é possível online.", "warning"); return; //
              }
-             // --- CORREÇÃO: Chamada a showLoading com 1 argumento ---
-             this.Utils?.showLoading?.(`Excluindo registro ${id}...`); //
+             // A chamada ao ApiClient (ex: excluirRegistro) deve gerenciar o loader global
+             // this.Utils?.showLoading?.(`Excluindo registro ${id}...`); // <-- REMOVIDO/NÃO PRESENTE NA VERSÃO FORNECIDA
              try {
                  const result = await this.ApiClient.excluirRegistro(id); //
                  if(result && result.success !== false) { //
@@ -355,7 +357,7 @@ const App = {
                  console.error(`App: Erro ao excluir registro ${id}:`, error); //
                  this.Utils?.showNotification?.(`Erro ao excluir registro: ${error.message}`, 'error'); //
              } finally {
-                this.Utils?.hideLoading?.(); //
+                 // this.Utils?.hideLoading?.(); // <-- REMOVIDO/NÃO PRESENTE NA VERSÃO FORNECIDA
              }
           }
       });
@@ -407,21 +409,21 @@ const App = {
     }
 
     if (!canAttemptSync) { //
-      console.log('App: Sincronização não será tentada (offline ou forçado offline).'); //
-      return false; //
+       console.log('App: Sincronização não será tentada (offline ou forçado offline).'); //
+       return false; //
     }
     if (!this.ApiClient || typeof this.ApiClient.syncOfflineRequests !== 'function') { //
-      console.warn("App: ApiClient ou syncOfflineRequests indisponível."); //
-      return false; //
+       console.warn("App: ApiClient ou syncOfflineRequests indisponível."); //
+       return false; //
     }
     if (!this.Config?.API_URL) { //
-      console.warn('App: API URL não configurada. Não é possível sincronizar.'); //
-      return false; //
+       console.warn('App: API URL não configurada. Não é possível sincronizar.'); //
+       return false; //
     }
 
     console.log(`App: Verificando ${forceSync ? 'e forçando ' : ''}sincronização...`); //
-    // --- CORREÇÃO: Chamada a showLoading com 1 argumento ---
-    this.Utils?.showLoading?.("Sincronizando dados..."); //
+    // A chamada ApiClient.syncOfflineRequests deve gerenciar o loader global
+    // this.Utils?.showLoading?.("Sincronizando dados..."); // <-- REMOVIDO/NÃO PRESENTE NA VERSÃO FORNECIDA
     try {
       const syncResult = await this.ApiClient.syncOfflineRequests(); //
       if (syncResult) { //
@@ -437,7 +439,7 @@ const App = {
         } else if (syncResult.pendingCount === 0 && syncResult.syncedCount === 0 && syncResult.errorCount === 0 && syncResult.failedTemporarily === 0) { //
            console.log("App: Nenhuma ação pendente para sincronizar."); //
         }
-        this.Utils?.hideLoading?.(); //
+        // this.Utils?.hideLoading?.(); // <-- REMOVIDO/NÃO PRESENTE NA VERSÃO FORNECIDA
         return syncResult.success || (syncResult.pendingCount === 0); //
       } else {
          throw new Error("syncOfflineRequests retornou resultado inválido."); //
@@ -445,7 +447,7 @@ const App = {
     } catch (error) {
       console.error(`App: Erro durante a sincronização:`, error); //
       this.Utils?.showNotification?.(`Erro ao sincronizar: ${error.message}`, 'error'); //
-      this.Utils?.hideLoading?.(); //
+      // this.Utils?.hideLoading?.(); // <-- REMOVIDO/NÃO PRESENTE NA VERSÃO FORNECIDA
       return false; //
     }
   }
