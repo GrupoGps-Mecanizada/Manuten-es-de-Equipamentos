@@ -345,12 +345,9 @@
     // Esconde o spinner APENAS se o contador for zero
     if (_spinnerCount === 0) {
       spinner.style.display = 'none';
-      console.log('%cDEBUG: Spinner display set to none (Counter is 0).', 'color: green;'); // Log para debug
-    } else {
-      console.log(`%cDEBUG: Spinner NOT hidden, counter is still ${_spinnerCount}.`, 'color: red;'); // Log para debug
+      spinner.classList.add('hidden'); // Adicione esta linha
+      console.log('%cDEBUG: Spinner display set to none (Counter is 0).', 'color: green;');
     }
-  }
-
 
   /**
    * Mostra uma tela (seção com class .tela-sistema) e esconde as outras.
