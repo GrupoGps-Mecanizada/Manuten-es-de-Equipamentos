@@ -407,6 +407,10 @@ const App = {
    * USA O CONTADOR DO UTILS para gerenciar show/hideLoading.
    */
   checkConnectivityAndSync: async function(forceSync = false) {
+    console.log(`App: Verificando sincronização DESATIVADA para debug...`);
+    this.Utils?.hideLoading?.(); // Garante que o spinner seja oculto
+    return false; // Retorna imediatamente sem tentar sincronizar
+    
     const wasOnline = this.AppState?.get('apiOnline') === true; // Usa apiOnline
     const canAttemptSync = (navigator.onLine && this.AppState?.get('forceOffline') !== true) || forceSync;
 
