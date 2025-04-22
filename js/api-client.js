@@ -1,41 +1,29 @@
-// ==========================================
+// ==================================================
 // === CLIENT-SIDE JAVASCRIPT (api-client.js) ===
-// ==========================================
+// === VERSÃO USANDO FETCH DIRETO (SEM IFRAME) ===
+// ==================================================
 
 /**
  * Cliente para comunicação com a API do Google Apps Script (Módulo)
- * ATUALIZADO para usar Iframe Proxy com inicialização via Polling.
+ * Usa fetch() para chamadas diretas ao Web App publicado.
  */
 ModuleLoader.register('apiClient', function() {
 
-  // --- Variáveis de Módulo para Iframe ---
-  let apiFrame = null; // Referência ao elemento iframe
-  let pendingRequests = {}; // Objeto para armazenar requisições pendentes { requestId: { resolve, reject, action } }
-  let nextRequestId = 1; // Contador para IDs únicos de requisição
-  let isInitializing = false; // Flag para evitar inicializações múltiplas do iframe
-  let initializationPromise = null; // Armazena a Promise da inicialização em andamento
-  // Removido: frameLoadTimeoutId (timeout agora é geral)
-  let messageListener = null; // Referência ao listener de mensagens para poder removê-lo
-
   /**
-   * Obtém a URL da API do Config global, com fallback para localStorage.
+   * Obtém a URL da API do Config global. Essencial para fetch.
    */
   function getApiUrl() {
-      let url = window.CONFIG?.API_URL;
+      const url = window.CONFIG?.API_URL;
       if (!url) {
-          console.warn("ApiClient: API_URL não encontrada no CONFIG global, tentando localStorage...");
-          url = window.Utils?.obterLocalStorage?.('API_URL');
-      }
-      if (!url) {
-          console.error("ApiClient: API_URL não configurada no CONFIG nem no localStorage!");
+          console.error("ApiClient (Fetch): API_URL não configurada no CONFIG!");
           window.Utils?.showNotification?.("Erro crítico: URL da API não encontrada.", "error");
-          return null; // Retorna null se não encontrar
+          return null;
       }
       // Validação básica da URL
       try {
           new URL(url);
       } catch (e) {
-           console.error(`ApiClient: API_URL inválida: "${url}"`, e);
+           console.error(`ApiClient (Fetch): API_URL inválida: "${url}"`, e);
            window.Utils?.showNotification?.(`Erro: URL da API inválida: ${url}`, "error");
            return null;
       }
@@ -43,237 +31,98 @@ ModuleLoader.register('apiClient', function() {
   }
 
   /**
-   * Limpa o estado do iframe e listeners em caso de falha ou reset.
-   */
-  function cleanupApiFrame() {
-      console.log("ApiClient: Limpando recursos do iframe...");
-      // Limpa timeouts/intervals se existirem (embora o novo init deva cuidar disso)
-      // if (frameLoadTimeoutId) clearTimeout(frameLoadTimeoutId); // Removido
-      if (messageListener && window.removeEventListener) {
-           window.removeEventListener('message', messageListener);
-           messageListener = null;
-      }
-      if (apiFrame && apiFrame.parentNode) {
-          apiFrame.parentNode.removeChild(apiFrame);
-      }
-      apiFrame = null; // Importante resetar
-      isInitializing = false; // Importante resetar
-      initializationPromise = null; // Importante resetar
-
-      // Rejeita todas as requisições que estavam pendentes durante a falha
-      Object.values(pendingRequests).forEach(req => {
-          if (typeof req.reject === 'function') {
-              req.reject(new Error("Comunicação com a API interrompida durante inicialização/limpeza."));
-          }
-      });
-      pendingRequests = {};
-  }
-
-
-  /**
-   * Inicializa o iframe da API usando Polling para verificar se está pronto.
-   * Retorna uma Promise que resolve com o elemento iframe pronto.
-   */
-  function initApiFrame() {
-      if (apiFrame && !isInitializing) return Promise.resolve(apiFrame); // Já inicializado e não em processo
-      if (isInitializing) return initializationPromise; // Inicialização em andamento
-
-      const apiUrl = getApiUrl();
-      if (!apiUrl) {
-          return Promise.reject(new Error('URL da API não configurada. Não é possível inicializar o frame.'));
-      }
-
-      isInitializing = true; // Marca que está inicializando
-      console.log("ApiClient: Iniciando inicialização do frame da API (Polling)...");
-
-      initializationPromise = new Promise((resolve, reject) => {
-          cleanupApiFrame(); // Limpa qualquer estado anterior antes de começar
-
-          // Cria o iframe
-          apiFrame = document.createElement('iframe');
-          apiFrame.style.display = 'none';
-          apiFrame.src = apiUrl;
-          apiFrame.setAttribute('aria-hidden', 'true');
-          apiFrame.setAttribute('title', 'API Communication Proxy');
-
-          let checkIntervalId = null;
-          let initializationTimeoutId = null;
-          let checkRequestId = -1; // ID da requisição de check_ready atual
-
-          // Handler para mensagens (focado na resposta do check_ready)
-          messageListener = (event) => {
-               // Verificação básica de segurança e formato da resposta
-              if (!event.data || typeof event.data !== 'object' || event.data.requestId !== checkRequestId) {
-                  // Ignora mensagens que não são a resposta para o ÚLTIMO check_ready enviado
-                  return;
-              }
-               // Verifica se a origem é a esperada (do iframe)
-               let expectedOrigin = null;
-               try { expectedOrigin = new URL(apiUrl).origin; } catch (e) { /* já tratado antes */ return; }
-               if (event.origin !== expectedOrigin) {
-                  console.warn("ApiClient: Resposta de check_ready ignorada - origem inesperada:", event.origin);
-                  return;
-               }
-
-              // Verifica se a resposta é do nosso ping e se o status é 'success' e contém a resposta esperada
-              if (event.data.status === 'success' && event.data.response?.status === 'proxy_ready') {
-                  console.log(`ApiClient: Resposta 'proxy_ready' recebida do iframe. Inicialização bem-sucedida.`);
-                  // Limpeza e resolução
-                  if (checkIntervalId) clearInterval(checkIntervalId); // Para o polling
-                  if (initializationTimeoutId) clearTimeout(initializationTimeoutId); // Para o timeout geral
-                  window.removeEventListener('message', messageListener); // Remove este listener específico
-                  messageListener = null;
-                  isInitializing = false; // Marca como não inicializando mais
-                  resolve(apiFrame); // Resolve a promise com o frame pronto
-              }
-          };
-
-          window.addEventListener('message', messageListener);
-
-          // Define a função de erro para o iframe (caso não carregue)
-          apiFrame.onerror = (error) => {
-              console.error("ApiClient: Erro ao carregar o iframe da API:", error);
-              if (checkIntervalId) clearInterval(checkIntervalId);
-              if (initializationTimeoutId) clearTimeout(initializationTimeoutId);
-              cleanupApiFrame();
-              reject(new Error("Erro ao carregar o iframe da API. Verifique a URL e a rede."));
-          };
-
-          // Adiciona o iframe ao DOM *antes* de iniciar o polling
-          document.body.appendChild(apiFrame);
-
-          // Tenta enviar 'check_ready' periodicamente após um pequeno delay inicial
-          const initialDelayMs = 500; // Espera um pouco antes de começar a perguntar
-          setTimeout(() => {
-              const checkIntervalMs = 750; // Verifica a cada 750ms (um pouco mais espaçado)
-              checkIntervalId = setInterval(() => {
-                  if (apiFrame && apiFrame.contentWindow) {
-                      checkRequestId = `check_${nextRequestId++}`; // ID único para cada check
-                      console.debug(`ApiClient: Enviando check_ready (ID: ${checkRequestId}) para o iframe...`);
-                      // Define a origem de destino corretamente
-                      let targetOrigin = '*'; // Default seguro
-                       try { targetOrigin = new URL(apiUrl).origin; } catch(e){ console.error("URL inválida para targetOrigin no check_ready"); }
-
-                      apiFrame.contentWindow.postMessage({
-                          action: 'check_ready',
-                          requestId: checkRequestId
-                      }, targetOrigin); // Envia para a origem esperada do iframe
-                  } else if (!apiFrame) {
-                      // Se o apiFrame foi removido (ex: por erro), para o interval
-                      console.warn("ApiClient: Iframe não existe mais, parando polling de check_ready.");
-                      if (checkIntervalId) clearInterval(checkIntervalId);
-                      if (initializationTimeoutId) clearTimeout(initializationTimeoutId);
-                       // Não rejeita aqui, pois o onerror ou timeout geral tratará
-                  } else {
-                      console.warn("ApiClient: Tentando enviar check_ready, mas contentWindow não está pronto ainda.");
-                  }
-              }, checkIntervalMs);
-          }, initialDelayMs);
-
-          // Timeout geral para a inicialização (polling)
-          const initializationTimeoutMs = 20000; // 20 segundos (aumentado)
-          initializationTimeoutId = setTimeout(() => {
-              console.error(`ApiClient: Timeout (${initializationTimeoutMs}ms) esperando pela resposta 'proxy_ready' do iframe via polling.`);
-              if (checkIntervalId) clearInterval(checkIntervalId);
-              cleanupApiFrame(); // Limpa tudo
-              reject(new Error(`Timeout (${initializationTimeoutMs/1000}s) ao inicializar comunicação com a API.`));
-          }, initializationTimeoutMs);
-
-      }).catch(err => {
-          // Garante limpeza e reset de flags em caso de erro na Promise
-          console.error("ApiClient: Falha final na inicialização do Iframe (Polling):", err);
-          cleanupApiFrame();
-          // isInitializing e initializationPromise já são resetados em cleanupApiFrame
-          throw err; // Re-lança para quem chamou
-      });
-
-      return initializationPromise;
-  }
-
-
-  /**
-   * Envia uma requisição para a API através do iframe proxy.
-   * @param {string} action - O nome da ação/função a ser executada na API (Code.gs).
+   * Envia uma requisição para a API usando fetch.
+   * @param {string} action - O nome da ação/função a ser executada na API.
    * @param {object} [data={}] - Os dados a serem enviados com a requisição.
-   * @returns {Promise<any>} Uma Promise que resolve com a resposta da API ou rejeita em caso de erro/timeout.
+   * @returns {Promise<any>} Uma Promise que resolve com a resposta da API ou rejeita em caso de erro.
    */
   async function request(action, data = {}) {
     const utils = window.Utils;
-    let requestId = -1; // Inicializa fora do try
+    const apiUrl = getApiUrl();
+
+    if (!apiUrl) {
+      // Se não tem URL, tenta salvar offline imediatamente
+      if (typeof saveOfflineRequest === 'function') {
+        saveOfflineRequest(action, data);
+      }
+      throw new Error("URL da API não configurada.");
+    }
+
+    // Mostra loading, se disponível
+    utils?.showLoading?.(`Processando ${action}...`);
+
+    // Monta o payload que será enviado no corpo da requisição POST
+    const payload = {
+      action: action,
+      data: data
+    };
+
+    const requestOptions = {
+      method: 'POST',
+      // mode: 'cors', // Apps Script geralmente lida com CORS, mas pode ser necessário ajustar
+      // cache: 'no-cache', // Para evitar cache em requisições POST
+      // redirect: 'follow', // Seguir redirecionamentos
+      // referrerPolicy: 'no-referrer', // Política de referência
+      headers: {
+        // Indica que estamos enviando JSON. Essencial para o e.postData.contents no Apps Script.
+        'Content-Type': 'application/json',
+        // IMPORTANTE: Para evitar que o Apps Script tente interpretar como formulário,
+        // enviamos um header text/plain que ele ignora, forçando a leitura do postData.contents
+        // Veja: https://developers.google.com/apps-script/guides/web#request_parameters
+         'Accept': 'application/json' // Indica que esperamos JSON de volta
+      },
+      body: JSON.stringify(payload) // Converte o payload para string JSON
+    };
 
     try {
-      // Mostra loading (se a função existir)
-      utils?.showLoading?.(`Processando ${action}...`);
+      console.debug(`ApiClient (Fetch): Enviando ação '${action}' para ${apiUrl}`);
+      const response = await fetch(apiUrl, requestOptions);
 
-      // 1. Garante inicialização do iframe (agora usando polling)
-      const currentApiFrame = await initApiFrame(); // Espera o frame estar pronto
-
-      // 2. Gera ID e armazena Promise de resposta
-      requestId = nextRequestId++;
-      console.debug(`ApiClient (Iframe): Enviando ação '${action}' (ID: ${requestId})`);
-
-      const resultPromise = new Promise((resolve, reject) => {
-        pendingRequests[requestId] = { resolve, reject, action };
-
-        // 3. Envia mensagem ao iframe (contentWindow deve estar pronto agora)
-        const apiUrl = currentApiFrame.src; // Usa a URL do frame obtido
-        let targetOrigin = '*'; // Default seguro
+      // Verifica se a resposta HTTP foi bem-sucedida (status 2xx)
+      if (!response.ok) {
+        // Tenta ler uma mensagem de erro do corpo, se houver
+        let errorBody = await response.text(); // Lê como texto primeiro
+        let errorMessage = `Erro HTTP ${response.status}: ${response.statusText}`;
         try {
-            targetOrigin = new URL(apiUrl).origin;
+            // Tenta parsear como JSON, pode conter mais detalhes do Apps Script
+            const errorJson = JSON.parse(errorBody);
+            errorMessage = errorJson.message || errorMessage;
         } catch (e) {
-            console.error("ApiClient: URL da API inválida ao obter origem para postMessage. Usando '*'.", e);
+             // Se não for JSON, usa o texto como parte do erro (limitado)
+             if(errorBody && errorBody.length < 200) errorMessage += ` - ${errorBody}`;
         }
+        console.error(`ApiClient (Fetch): Falha na requisição para ${action}. Status: ${response.status}. Mensagem: ${errorMessage}`);
+        throw new Error(errorMessage); // Lança erro com a mensagem
+      }
 
-        // Verifica contentWindow novamente por segurança antes de enviar
-        if (currentApiFrame.contentWindow) {
-            currentApiFrame.contentWindow.postMessage({
-              requestId: requestId,
-              action: action,
-              data: data
-            }, targetOrigin);
-        } else {
-            // Isso não deveria acontecer se initApiFrame resolveu corretamente, mas é uma segurança extra
-            console.error(`ApiClient (Iframe): contentWindow inacessível após inicialização para enviar ação '${action}' (ID: ${requestId})`);
-            reject(new Error(`Falha ao enviar mensagem para a API (contentWindow)`));
-            delete pendingRequests[requestId];
-            return; // Sai da função da Promise
-        }
+      // Se a resposta foi OK, tenta parsear o corpo como JSON
+      const result = await response.json();
+      console.debug(`ApiClient (Fetch): Resposta recebida com sucesso para ação '${action}'`, result);
 
-        // 4. Timeout da requisição ESPECÍFICA (diferente do timeout de inicialização)
-        const requestTimeoutMs = 30000; // 30 segundos
-        setTimeout(() => {
-          if (pendingRequests[requestId]) {
-            const pendingAction = pendingRequests[requestId].action;
-            console.error(`ApiClient (Iframe): Timeout (${requestTimeoutMs/1000}s) na requisição para ação '${pendingAction}' (ID: ${requestId})`);
-            if (typeof pendingRequests[requestId].reject === 'function') {
-                pendingRequests[requestId].reject(new Error(`Timeout na requisição ${pendingAction} (${requestTimeoutMs/1000}s)`));
-            }
-            delete pendingRequests[requestId];
-          }
-        }, requestTimeoutMs);
-      });
-
-      // 5. Aguarda e retorna o resultado
-      const result = await resultPromise;
-      console.debug(`ApiClient (Iframe): Resposta recebida com sucesso para ação '${action}' (ID: ${requestId})`);
+      // Verifica se o Apps Script retornou um erro lógico interno
+      if (result && result.success === false) {
+          console.warn(`ApiClient (Fetch): Ação '${action}' retornou erro lógico do servidor:`, result.message);
+          throw new Error(result.message || `Erro na execução da ação ${action} no servidor.`);
+      }
 
       utils?.hideLoading?.(); // Esconde loading no sucesso
-      return result;
+      return result; // Retorna o resultado parseado
 
     } catch (error) {
-      // Captura erros da inicialização (initApiFrame) ou da requisição (resultPromise)
-      console.error(`ApiClient (Iframe): Erro na requisição para ação '${action}'${requestId > 0 ? ` (ID: ${requestId})` : ''}:`, error.message || error);
+      // Captura erros de rede (fetch falhou) ou erros lançados acima
+      console.error(`ApiClient (Fetch): Erro na requisição para ação '${action}':`, error.message || error);
       // Tenta salvar offline se a função existir
       if (typeof saveOfflineRequest === 'function') {
           saveOfflineRequest(action, data);
       }
       utils?.hideLoading?.(); // Garante esconder loading no erro
-      throw error; // Propaga o erro para a função chamadora (ex: App.js)
+      throw error; // Propaga o erro
     }
   }
 
 
-  // ========= Funções de Ações Específicas (sem alterações) =========
+  // ========= Funções de Ações Específicas (usam a nova função 'request') =========
+  // Nenhuma alteração necessária aqui, pois elas já chamavam 'request'
 
   async function salvarRegistro(registro) {
     if (!registro || !registro.id) {
@@ -285,11 +134,13 @@ ModuleLoader.register('apiClient', function() {
 
   async function listarRegistros() {
     const result = await request('listarRegistros');
-    if (result && Array.isArray(result.registros)) {
+    // A função 'request' já trata erros HTTP e JSON.
+    // Precisamos apenas validar a estrutura esperada.
+    if (result && result.success === true && Array.isArray(result.registros)) {
       return result.registros;
     }
     console.error("ApiClient.listarRegistros: Resposta inesperada da API:", result);
-    throw new Error('Formato de resposta inválido ao listar registros (via iframe)');
+    throw new Error(result?.message || 'Formato de resposta inválido ao listar registros.');
   }
 
   async function obterRegistro(id) {
@@ -299,7 +150,7 @@ ModuleLoader.register('apiClient', function() {
        return result.registro !== undefined ? result.registro : null;
     }
     console.error("ApiClient.obterRegistro: Resposta inesperada da API:", result);
-    throw new Error(result?.message || `Falha ao obter registro ${id} (via iframe)`);
+    throw new Error(result?.message || `Falha ao obter registro ${id}.`);
   }
 
   async function excluirRegistro(id) {
@@ -308,41 +159,45 @@ ModuleLoader.register('apiClient', function() {
   }
 
   async function uploadImagem(photoObject) {
+    // Validação
     if (!photoObject?.dataUrl || !photoObject?.name || !photoObject?.type || !photoObject?.registroId || !photoObject?.id) {
       console.error("ApiClient.uploadImagem: Dados da imagem incompletos.", photoObject);
       throw new Error("Dados da imagem incompletos para upload.");
     }
+    // Payload
     const payload = {
       fileName: `${photoObject.registroId}_${photoObject.id}_${photoObject.name}`,
       mimeType: photoObject.type,
-      content: photoObject.dataUrl,
+      // IMPORTANTE: Envie apenas o base64, sem o prefixo 'data:image/png;base64,'
+      content: photoObject.dataUrl.includes(',') ? photoObject.dataUrl.split(',')[1] : photoObject.dataUrl,
       registroId: photoObject.registroId,
       photoId: photoObject.id
     };
-    console.warn("ApiClient (Iframe): Upload de imagem via iframe pode ser lento/instável para arquivos grandes.");
+    console.log("ApiClient (Fetch): Enviando uploadImagem..."); // Menos warning que com iframe
     return request('uploadImagem', payload);
   }
 
   async function ping() {
-    console.log("ApiClient (Iframe): Chamando ação 'ping'");
+    console.log("ApiClient (Fetch): Chamando ação 'ping'");
     return request('ping');
   }
 
-
   // ========= Lógica Offline (sem alterações) =========
+  // A lógica para salvar e sincronizar requisições offline permanece a mesma,
+  // pois ela intercepta os erros da função 'request' antes de serem propagados.
 
   function saveOfflineRequest(action, data) {
     const utils = window.Utils;
     if (action === 'uploadImagem') {
-      console.warn(`ApiClient (Iframe): Upload da imagem (${data?.fileName}) falhou e NÃO será salvo offline.`);
+      console.warn(`ApiClient (Fetch): Upload da imagem (${data?.fileName}) falhou e NÃO será salvo offline.`);
       utils?.showNotification?.(`Falha no upload da imagem. Tente novamente com conexão.`, 'error', 6000);
       return;
     }
     if (!utils?.salvarLocalStorage || !utils?.obterLocalStorage || !utils?.gerarId) {
-      console.error("ApiClient (Iframe): Funções Utils não disponíveis para salvar requisição offline.");
+      console.error("ApiClient (Fetch): Funções Utils não disponíveis para salvar requisição offline.");
       return;
     }
-    console.log(`ApiClient (Iframe): Salvando requisição offline para ação '${action}'...`);
+    console.log(`ApiClient (Fetch): Salvando requisição offline para ação '${action}'...`);
     try {
         const offlineRequests = utils.obterLocalStorage('offlineRequests') || [];
         const requestId = `offline_${utils.gerarId()}`;
@@ -353,7 +208,7 @@ ModuleLoader.register('apiClient', function() {
         console.log(`Requisição offline ID ${requestId} salva. Pendentes: ${offlineRequests.length}`);
         utils.showNotification?.(`Sem conexão ou erro. Ação (${action}) salva para tentar mais tarde.`, 'warning', 5000);
     } catch (e) {
-        console.error("ApiClient (Iframe): Erro ao salvar requisição offline:", e);
+        console.error("ApiClient (Fetch): Erro ao salvar requisição offline:", e);
         utils?.showNotification?.(`Erro ao salvar ação (${action}) offline. Verifique o console.`, 'error');
     }
   }
@@ -402,7 +257,7 @@ ModuleLoader.register('apiClient', function() {
 
       const requestsToProcess = offlineRequests.slice(0, batchSize);
       const remainingForLater = offlineRequests.slice(batchSize);
-      console.log(`ApiClient.sync: Tentando sincronizar ${requestsToProcess.length} de ${totalPendingInitial} via Iframe...`);
+      console.log(`ApiClient.sync (Fetch): Tentando sincronizar ${requestsToProcess.length} de ${totalPendingInitial}...`);
 
       let successCount = 0;
       const failedRequestsToKeep = [];
@@ -411,6 +266,7 @@ ModuleLoader.register('apiClient', function() {
       for (const req of requestsToProcess) {
         try {
           console.log(`ApiClient.sync: Enviando req offline ID ${req.id} (Ação: ${req.action})...`);
+          // Tenta reenviar usando a função 'request' (que agora usa fetch)
           await request(req.action, req.data);
           console.log(`ApiClient.sync: Req offline ID ${req.id} sincronizada.`);
           successCount++;
@@ -446,12 +302,12 @@ ModuleLoader.register('apiClient', function() {
 
   /** Função de inicialização do módulo (chamada pelo ModuleLoader). */
   function init() {
-    console.log('ApiClient (Iframe Proxy - Polling) inicializado via ModuleLoader.');
-    // A inicialização do iframe via polling acontece na primeira chamada a `request`
+    console.log('ApiClient (Fetch) inicializado via ModuleLoader.');
+    // Nenhuma inicialização de iframe necessária aqui.
   }
 
   // --- Objeto Retornado pelo Módulo ---
-  console.log("ApiClient (Iframe): Retornando interface pública do módulo.");
+  console.log("ApiClient (Fetch): Retornando interface pública do módulo.");
   return {
     init,
     salvarRegistro,
@@ -462,6 +318,7 @@ ModuleLoader.register('apiClient', function() {
     ping,
     syncOfflineRequests,
     clearOfflineRequests,
+    // request: request, // Pode expor a função request genérica se útil
   };
 
 }); // Fim do ModuleLoader.register
