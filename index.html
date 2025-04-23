@@ -2672,45 +2672,71 @@
 
          // Função para adicionar imagem ao preview (Atualizada para incluir ID e botão de remover correto)
          function adicionarImagemPreview(src, tipo, fileId = null) { // Adicionado fileId opcional
-             const container = document.getElementById(`imagens-preview-${tipo}`);
-             if (!container) return;
-           const imgContainer = document.createElement('div');
-           imgContainer.className = 'image-container position-relative';
-           imgContainer.dataset.fileId = fileId || src; // Usa ID do arquivo ou URL/base64 como identificador
-
-           const img = document.createElement('img');
-           img.src = src; // Pode ser URL ou base64
-           img.alt = 'Imagem';
-           img.className = 'img-thumbnail photo-preview-img'; // Adicionado classe para seleção
-           img.style.cursor = 'pointer';
-           img.onclick = () => window.open(src, '_blank'); // Abre em nova aba ao clicar
-
-           const deleteBtn = document.createElement('button');
-           deleteBtn.type = 'button'; // Importante para não submeter forms
-           // Usar classes Bootstrap para estilo e acessibilidade do botão de fechar
-           deleteBtn.className = 'btn-close delete-btn';
-           deleteBtn.style.position = 'absolute'; // Ajuste fino da posição
-           deleteBtn.style.top = '5px';
-           deleteBtn.style.right = '5px';
-           deleteBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // Fundo para contraste
-           deleteBtn.style.borderRadius = '50%'; // Circular
-           deleteBtn.style.padding = '0.25rem'; // Padding interno
-           deleteBtn.setAttribute('aria-label', 'Remover Imagem');
-           deleteBtn.title = 'Remover Imagem';
-           deleteBtn.onclick = function(e) {
-               e.stopPropagation(); // Evita abrir imagem ao clicar no X
-               const imageIdentifier = imgContainer.dataset.fileId;
-               imgContainer.remove(); // Remove o elemento do DOM
-
-               // Remove da lista correspondente
-               if (tipo === 'pre') {
-                   imagenesPreUpload = imagenesPreUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
-               } else {
-                   imagenesPosUpload = imagenesPosUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
-               }
-               // TODO: Adicionar chamada à API para excluir imagem do Drive se necessário (requer backend)
-               console.log("Imagem removida (localmente):", imageIdentifier);
-           };
+            const container = document.getElementById(`imagens-preview-${tipo}`);
+            if (!container) return;
+            
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'image-container position-relative';
+            imgContainer.dataset.fileId = fileId || src; // Usa ID do arquivo ou URL/base64 como identificador
+        
+            const img = document.createElement('img');
+            img.src = src; // Pode ser URL ou base64
+            img.alt = 'Imagem';
+            img.className = 'img-thumbnail photo-preview-img'; // Adicionado classe para seleção
+            img.style.cursor = 'pointer';
+            img.onclick = () => window.open(src, '_blank'); // Abre em nova aba ao clicar
+        
+            const deleteBtn = document.createElement('button');
+            deleteBtn.type = 'button'; // Importante para não submeter forms
+            // Usar classes Bootstrap para estilo e acessibilidade do botão de fechar
+            deleteBtn.className = 'btn-close delete-btn';
+            deleteBtn.style.position = 'absolute'; // Ajuste fino da posição
+            deleteBtn.style.top = '5px';
+            deleteBtn.style.right = '5px';
+            deleteBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // Fundo para contraste
+            deleteBtn.style.borderRadius = '50%'; // Circular
+            deleteBtn.style.padding = '0.25rem'; // Padding interno
+            deleteBtn.setAttribute('aria-label', 'Remover Imagem');
+            deleteBtn.title = 'Remover Imagem';
+            deleteBtn.onclick = function(e) {
+                e.stopPropagation(); // Evita abrir imagem ao clicar no X
+                const imageIdentifier = imgContainer.dataset.fileId;
+                imgContainer.remove(); // Remove o elemento do DOM
+        
+                // Remove da lista correspondente
+                if (tipo === 'pre') {
+                    imagenesPreUpload = imagenesPreUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
+                } else {
+                    imagenesPosUpload = imagenesPosUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
+                }
+                // TODO: Adicionar chamada à API para excluir imagem do Drive se necessário (requer backend)
+                console.log("Imagem removida (localmente):", imageIdentifier);
+            };
+        
+            // Botão Anotar (Adiciona APENAS se a ferramenta estiver integrada)
+            if (typeof ImageAnnotator !== 'undefined') {
+                const btnAnnotate = document.createElement('button');
+                btnAnnotate.type = 'button';
+                btnAnnotate.className = 'btn btn-sm btn-info btn-annotate'; // Mantém estilo original
+                btnAnnotate.style.position = 'absolute'; // Posicionamento
+                btnAnnotate.style.top = '5px';
+                btnAnnotate.style.left = '5px';
+                btnAnnotate.innerHTML = '<i class="bi bi-pencil-square"></i>';
+                btnAnnotate.title = 'Anotar imagem';
+                btnAnnotate.dataset.imgSrc = src; // Guarda a URL original
+                btnAnnotate.dataset.originalId = fileId || src; // Identificador original
+                btnAnnotate.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    // Passa o container da imagem e o tipo para a função de abrir
+                    abrirEditorAnotacao(src, tipo, imgContainer);
+                });
+                imgContainer.appendChild(btnAnnotate); // Adiciona botão de anotar
+            }
+        
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(deleteBtn); // Adiciona botão de deletar
+            container.appendChild(imgContainer);
+        }
 
             // Botão Anotar (Adiciona APENAS se a ferramenta estiver integrada)
             if (typeof ImageAnnotator !== 'undefined') {
