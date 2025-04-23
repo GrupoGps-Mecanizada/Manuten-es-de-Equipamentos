@@ -44,7 +44,7 @@ ModuleLoader.register('apiClient', function () {
     const fetchOptions = {
       method: method.toUpperCase(),
       mode: 'cors', // Essencial para cross-origin
-      credentials: 'include', // Importante se precisar de autenticação Google
+      credentials: 'omit', // Importante se precisar de autenticação Google
       headers: {},
       redirect: 'follow',
       //signal: controller.signal // Para timeout, se necessário
