@@ -1,222 +1,223 @@
-// ==================================================
-// === CLIENT‑SIDE JAVASCRIPT (api‑client.js) =======
-// === VERSÃO FETCH DIRETO (SEM IFRAME) ============
-// ==================================================
-
 /**
- * Cliente para comunicação com a API do Google Apps Script.
- * Usa fetch() direto, com fallback para fila offline.
+ * api-client.js
+ * Módulo para comunicação com a API Google Apps Script.
+ * Versão corrigida e modularizada.
  */
 ModuleLoader.register('apiClient', function () {
 
-  // --------------------------------------------------
-  // Utilitário: obtém a URL da API do objeto global CONFIG
-  // --------------------------------------------------
+  const Utils = window.Utils; // Assume que Utils está global
+  const AppState = ModuleLoader.get('state'); // Assume que State foi inicializado
+
+  /**
+   * Obtém a URL da API do objeto global CONFIG ou do estado.
+   * @returns {string|null} URL da API ou null se não configurada.
+   */
   function getApiUrl() {
-    const url = window.CONFIG?.API_URL;
-    if (!url) {
-      console.error('ApiClient: API_URL não configurada no CONFIG!');
-      window.Utils?.showNotification?.('Erro crítico: URL da API não encontrada.', 'error');
-      return null;
-    }
-    try { new URL(url); } catch (e) {
-      console.error(`ApiClient: API_URL inválida: "${url}"`, e);
-      window.Utils?.showNotification?.(`Erro: URL da API inválida: ${url}`, 'error');
+    const url = window.CONFIG?.API_URL || AppState?.get('config')?.API_URL;
+    if (!url || typeof url !== 'string' || !url.startsWith('https://script.google.com/')) {
+      console.error('ApiClient: API_URL inválida ou não configurada!');
+      Utils?.showNotification?.('Erro crítico: URL da API inválida ou ausente.', 'error');
       return null;
     }
     return url;
   }
 
-  // --------------------------------------------------
-  // request(action, data) – faz o POST com fetch()
-  // --------------------------------------------------
-  async function request(action, data = {}) {
-    const utils  = window.Utils; // Mantido caso Utils seja usado para outra coisa
-    const apiUrl = getApiUrl();
-    if (!apiUrl) {
-      // Tenta salvar offline antes de lançar o erro se a função existir
-      if (typeof saveOfflineRequest === 'function') saveOfflineRequest(action, data);
-      throw new Error('API_URL ausente.');
+  /**
+   * Realiza uma requisição para a API Google Apps Script.
+   * @param {string} action - A ação a ser executada no backend.
+   * @param {object} params - Parâmetros adicionais para a requisição.
+   * @param {string} [method='GET'] - Método HTTP ('GET' ou 'POST').
+   * @returns {Promise<object>} - Promessa com o resultado da API.
+   */
+  async function request(action, params = {}, method = 'GET') {
+    const apiUrlBase = getApiUrl();
+    if (!apiUrlBase) {
+      // Se não tem URL, não tenta offline, apenas falha.
+      // A lógica offline pode ser gerenciada em um nível superior (App.js).
+      return Promise.resolve({ success: false, message: "URL da API não configurada." });
     }
 
-    // utils?.showLoading?.(`Processando ${action}…`); // <-- LINHA COMENTADA/REMOVIDA
+    const isPost = method.toUpperCase() === 'POST';
+    let requestUrl = apiUrlBase;
+    const allParams = { ...params, action, origin: window.location.origin }; // Adiciona action e origin
 
-    const payload = { action, data };
-
-    const requestOptions = {
-      method : 'POST',
-      headers: {
-        'Content-Type': 'text/plain', // Simple-request
-        'Accept'      : 'application/json'
-      },
-      body   : JSON.stringify(payload)
+    const fetchOptions = {
+      method: method.toUpperCase(),
+      mode: 'cors', // Essencial para cross-origin
+      credentials: 'include', // Importante se precisar de autenticação Google
+      headers: {},
+      redirect: 'follow',
+      //signal: controller.signal // Para timeout, se necessário
     };
 
-    try { // O try agora envolve apenas a lógica da requisição
-      console.debug(`ApiClient: enviando '${action}' → ${apiUrl}`);
-      const response = await fetch(apiUrl, requestOptions);
+    if (isPost) {
+      // Para POST, envia dados no corpo como JSON
+      fetchOptions.body = JSON.stringify(allParams);
+      fetchOptions.headers['Content-Type'] = 'application/json'; // CORREÇÃO: Usar JSON para POST
+    } else {
+      // Para GET, adiciona parâmetros à URL
+      const urlObj = new URL(apiUrlBase);
+      Object.entries(allParams).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          // Codifica objetos como JSON na URL (se necessário pelo backend)
+          const paramValue = typeof value === 'object' ? JSON.stringify(value) : String(value);
+          urlObj.searchParams.append(key, paramValue);
+        }
+      });
+      requestUrl = urlObj.toString();
+    }
+
+    console.debug(`ApiClient: ${fetchOptions.method} ${action} → ${requestUrl}`);
+    // Não usar showLoading/hideLoading aqui, deixa para quem chama (App.js etc.)
+
+    try {
+      const response = await fetch(requestUrl, fetchOptions);
+      const responseBodyText = await response.text(); // Lê como texto primeiro
 
       if (!response.ok) {
-        const raw = await response.text();
-        let msg = `HTTP ${response.status} – ${response.statusText}`;
-        try { msg = JSON.parse(raw).message || msg; } catch {}
-        throw new Error(msg); // Vai para o catch e depois finally
-      }
-
-      const result = await response.json(); // Pode lançar erro se não for JSON
-      if (result?.success === false) {
-         throw new Error(result.message || `Erro em ${action}`); // Vai para o catch e depois finally
-      }
-
-      // Se chegou aqui, a requisição foi bem-sucedida E o resultado esperado
-      return result; // Sai do try, executa o finally
-
-    } catch (err) {
-      // Captura erros do fetch, response.ok, response.json(), result.success === false
-      console.error(`ApiClient: erro em '${action}':`, err);
-      // Tenta salvar offline em caso de erro
-      if (typeof saveOfflineRequest === 'function') saveOfflineRequest(action, data);
-      throw err; // Re-lança o erro, mas o finally será executado antes
-
-    } finally {
-       // utils?.hideLoading?.(); // <-- LINHA COMENTADA/REMOVIDA
-       // console.debug(`ApiClient: finalizando '${action}' (finally)`); // Log opcional também comentado
-    }
-  }
-
-  // --------------------------------------------------
-  // Ações específicas (thin‑wrappers em torno de request)
-  // --------------------------------------------------
-  const salvarRegistro = registro => {
-    if (!registro?.id) throw new Error('Dados/ID inválidos para salvarRegistro');
-    return request('salvarRegistro', registro);
-  };
-
-  const listarRegistros = async () => {
-    // A função request chamada aqui agora NÃO mostrará mais o loading
-    const r = await request('listarRegistros');
-    if (r?.success && Array.isArray(r.registros)) return r.registros;
-    throw new Error(r?.message || 'Formato inesperado em listarRegistros');
-  };
-
-  const obterRegistro = id => {
-    if (!id) throw new Error('ID não fornecido para obterRegistro');
-    // A função request chamada aqui agora NÃO mostrará mais o loading
-    return request('obterRegistro', { id }).then(r => r.registro ?? null);
-  };
-
-  const excluirRegistro = id => {
-    if (!id) throw new Error('ID não fornecido para excluirRegistro');
-    // A função request chamada aqui agora NÃO mostrará mais o loading
-    return request('excluirRegistro', { id });
-  };
-
-  const uploadImagem = photo => {
-    if (!photo?.dataUrl || !photo?.name || !photo?.type || !photo?.registroId || !photo?.id)
-      throw new Error('Dados de imagem incompletos em uploadImagem');
-
-    // A função request chamada aqui agora NÃO mostrará mais o loading
-    return request('uploadImagem', {
-      fileName   : `${photo.registroId}_${photo.id}_${photo.name}`,
-      mimeType   : photo.type,
-      content    : photo.dataUrl.includes(',') ? photo.dataUrl.split(',')[1] : photo.dataUrl,
-      registroId : photo.registroId,
-      photoId    : photo.id
-    });
-  };
-
-  const ping = () => {
-    // A função request chamada aqui agora NÃO mostrará mais o loading
-    return request('ping');
-  }
-
-  // --------------------------------------------------
-  // Offline queue  (saveOfflineRequest, sync, clear)
-  // --------------------------------------------------
-  function saveOfflineRequest(action, data) {
-    const u = window.Utils;
-    // Não salva uploads na fila, mas mostra notificação se Utils existir
-    if (action === 'uploadImagem') {
-        u?.showNotification?.(`Upload de imagem (${data?.fileName}) não pode ser feito offline.`, 'info', 5000);
-        return;
-    }
-    try {
-      const list = window.Utils.obterLocalStorage('offlineRequests') || [];
-      const id   = `offline_${u.gerarId()}`;
-      list.push({ id, action, data, retries:0, t:new Date().toISOString() });
-      u.salvarLocalStorage('offlineRequests', list);
-      // Mostra notificação usando Utils, se disponível
-      u?.showNotification?.(`Ação (${action}) salva offline.`, 'warning', 4000);
-    } catch(e) { console.error('saveOfflineRequest erro:', e); }
-  }
-
-  async function syncOfflineRequests() {
-    const u = window.Utils;
-    let list = u.obterLocalStorage('offlineRequests') || [];
-    if (!list.length || !navigator.onLine) return { success:false, pending:list.length };
-
-    const BATCH = (window.CONFIG?.SYNC?.BATCH_SIZE) || 3;
-    const MAXR  = (window.CONFIG?.SYNC?.MAX_RETRIES) || 3;
-
-    let success = 0, dropped = 0, tempFail = 0;
-    const nowBatch = list.slice(0, BATCH);
-    const rest     = list.slice(BATCH);
-
-    // Nenhuma notificação de loading global para o processo de sync aqui
-    console.log(`Sync: Iniciando processamento de ${nowBatch.length} itens.`);
-
-    for (const req of nowBatch) {
-      try {
-        console.log(`Sync: Tentando sincronizar ${req.action} (${req.id})`);
-        // A chamada request interna NÃO mostrará mais loading individual
-        await request(req.action, req.data);
-        console.log(`Sync: Sucesso para ${req.action} (${req.id})`);
-        success++;
-      }
-      catch(err){
-        console.warn(`Sync: Falha para ${req.action} (${req.id}), retries: ${req.retries + 1}`, err.message);
-        req.retries++;
-        if (req.retries < MAXR) {
-          tempFail++;
-          rest.push(req); // Devolve para a fila para tentar depois
-        } else {
-          console.error(`Sync: Item ${req.action} (${req.id}) descartado após ${MAXR} tentativas.`);
-          dropped++;
+        let errorDetail = `Erro ${response.status}: ${response.statusText}`;
+        try {
+          const errorJson = JSON.parse(responseBodyText);
+          if (errorJson && errorJson.message) {
+            errorDetail += ` - ${errorJson.message}`;
+          } else if (responseBodyText.length < 300) {
+            errorDetail += ` - (Detalhe: ${responseBodyText})`;
+          }
+        } catch (e) {
+           if (responseBodyText.length < 300) {
+               errorDetail += ` - (Resposta não JSON: ${responseBodyText})`;
+           }
         }
+        console.error('ApiClient: Erro na API:', action, 'Status:', response.status, 'Detalhe:', errorDetail);
+        // Lança o erro para ser tratado pelo chamador
+        throw new Error(errorDetail);
       }
-    }
-    // Salva o restante da fila
-    u.salvarLocalStorage('offlineRequests', rest);
-    console.log(`Sync: Finalizado. Synced: ${success}, Failed Temp: ${tempFail}, Dropped: ${dropped}, Pending: ${rest.length}`);
 
-    // Retorna o resultado do batch
-    return { success:true, synced:success, dropped, tempFail, pending:rest.length };
+      // Tenta parsear como JSON
+      try {
+        const result = JSON.parse(responseBodyText);
+        if (result && result.success === false) {
+           console.warn(`ApiClient: Backend retornou erro para "${action}":`, result.message);
+           // Não lança erro aqui, mas retorna o objeto com success: false
+        }
+        return result; // Retorna o objeto JSON parseado
+      } catch (jsonError) {
+        console.error('ApiClient: Erro ao parsear resposta JSON:', responseBodyText, jsonError);
+        throw new Error('Resposta inválida do servidor (não JSON).');
+      }
+
+    } catch (error) {
+      console.error(`ApiClient: Erro na requisição ${fetchOptions.method} para ${action}:`, error);
+      // Apenas propaga o erro, quem chamou decide como tratar (ex: offline, notificação)
+      throw error; // Propaga o erro para ser tratado pelo chamador
+    }
   }
 
-  const clearOfflineRequests = () => {
-    window.Utils?.salvarLocalStorage('offlineRequests', []);
-    console.log('Fila offline limpa.');
-    return true;
+  // --- Funções Wrapper (simplificam chamadas comuns) ---
+
+  const listarManutencoes = (status, placa, limite) => {
+    return request('listarManutencoes', { status, placa, limite }, 'GET');
   };
 
-  // --------------------------------------------------
-  // init (chamado pelo ModuleLoader)
-  // --------------------------------------------------
-  function init() {
-    console.log('ApiClient (Fetch) inicializado');
-    // Não há mais chamadas de loading/hideLoading aqui
+  const obterManutencao = (id) => {
+    return request('obterManutencao', { id }, 'GET');
+  };
+
+  const salvarManutencao = (dadosManutencao) => {
+    // Envia os dados como objeto dentro de 'dados'
+    return request('salvarManutencao', { dados: dadosManutencao }, 'POST');
+  };
+
+  const uploadImagem = (idManutencao, imagemBase64, tipo, idOriginalParaSubstituir = null) => {
+    return request('uploadImagem', { id: idManutencao, imagem: imagemBase64, tipo, idOriginalParaSubstituir }, 'POST');
+  };
+
+  const excluirManutencao = (id) => {
+     return request('excluirManutencao', { id }, 'POST');
   }
 
-  // Interface pública
+  const excluirImagem = (idManutencao, idImagem, tipo) => {
+      return request('excluirImagem', { idManutencao, idImagem, tipo }, 'POST');
+  }
+
+  const atualizarStatusManutencao = (id, status) => {
+      return request('atualizarStatusManutencao', { id, status }, 'POST');
+  }
+
+  const obterConfiguracoesIniciais = () => {
+      return request('obterConfiguracoesIniciais', {}, 'GET');
+  }
+
+  const obterDadosDashboard = () => {
+      return request('obterDadosDashboard', {}, 'GET');
+  }
+
+  const obterManutencoesPorPeriodo = (dias) => {
+      return request('obterManutencoesPorPeriodo', { dias }, 'GET');
+  }
+
+  const gerarPDFTextoBackend = (id) => {
+      return request('gerarPDFTextoBackend', { id }, 'GET');
+  }
+
+  const gerarRelatorioAvancado = (id, formato, opcoes = {}) => {
+      // Opções precisam ser stringificadas para GET
+      return request('gerarRelatorioAvancado', { id, formato, opcoes: JSON.stringify(opcoes) }, 'GET');
+  }
+
+   const salvarConfiguracao = (chave, valor) => {
+       return request('salvarConfiguracao', { chave, valor }, 'POST');
+   }
+
+   const configurarGatilhoAutomatico = () => {
+       return request('configurarGatilhoAutomatico', {}, 'POST');
+   }
+
+   const enviarEmailNotificacao = (id, destinatarios, tipo) => {
+        // Envia destinatários como array (stringify feito no backend se necessário)
+        return request('enviarEmailNotificacao', { id, destinatarios, tipo }, 'POST');
+   }
+
+   const integrarComPlanilhaTurnos = (idPlanilha) => {
+        return request('integrarComPlanilhaTurnos', { idPlanilha }, 'POST');
+   }
+
+   const obterConfiguracoesGerais = () => {
+        return request('obterConfiguracoesGerais', {}, 'GET');
+   }
+
+   const obterVersaoApp = () => {
+        return request('obterVersaoApp', {}, 'GET');
+   }
+
+   const ping = () => {
+       return request('ping', {}, 'GET');
+   }
+
+
+  // Interface pública do módulo
   return {
-    init,
-    salvarRegistro,
-    listarRegistros,
-    obterRegistro,
-    excluirRegistro,
+    request, // Exporta a função base se necessário
+    // Exporta as funções wrapper
+    listarManutencoes,
+    obterManutencao,
+    salvarManutencao,
     uploadImagem,
-    ping,
-    syncOfflineRequests,
-    clearOfflineRequests
+    excluirManutencao,
+    excluirImagem,
+    atualizarStatusManutencao,
+    obterConfiguracoesIniciais,
+    obterDadosDashboard,
+    obterManutencoesPorPeriodo,
+    gerarPDFTextoBackend,
+    gerarRelatorioAvancado,
+    salvarConfiguracao,
+    configurarGatilhoAutomatico,
+    enviarEmailNotificacao,
+    integrarComPlanilhaTurnos,
+    obterConfiguracoesGerais,
+    obterVersaoApp,
+    ping
+    // Não exporta init, pois é chamado pelo ModuleLoader
   };
 });
