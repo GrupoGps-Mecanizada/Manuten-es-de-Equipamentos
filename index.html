@@ -1,8 +1,4 @@
-< !DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport"
-content="width=device-width, initial-scale=1.0"><title>Sistema de Manutenção de Equipamentos</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css"
-rel="stylesheet"><link rel="stylesheet"
-
-href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css"><style> :root {
+< !DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Sistema de Manutenção de Equipamentos</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css"><style> :root {
     --primary-color: #0d6efd;
     --secondary-color: #6c757d;
     --success-color: #198754;
@@ -328,194 +324,8 @@ body {
     /* Espaço menor para ícone */
 }
 
-</style></head><body><nav class="navbar navbar-expand-lg navbar-dark mb-4"><div class="container"><a class="navbar-brand" href="#"><i class="bi bi-tools me-2"></i>Sistema de Manutenção </a><button class="navbar-toggler" type="button"
-data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarNav"><ul class="navbar-nav ms-auto"><li class="nav-item"><a class="nav-link active" href="#"
-id="nav-dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard </a></li><li class="nav-item"><a class="nav-link"
-href="#" id="nav-lista"><i class="bi bi-list-ul me-1"></i>Lista </a></li><li class="nav-item"><a class="nav-link"
-href="#" id="nav-novo"><i class="bi bi-plus-circle me-1"></i>Nova Manutenção </a></li><li class="nav-item"><a class="nav-link" href="#"
-id="nav-ferramentas"><i class="bi bi-tools me-1"></i>Ferramentas </a></li></ul></div></div></nav><div class="container"><div id="conteudo-principal"><div id="tela-dashboard" class="view-content"><h2 class="mb-4">Dashboard de Manutenções</h2><div class="row mb-4"><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Equipamentos</div><div class="stat-value"
-id="total-equipamentos">0</div><div>Total cadastrado</div></div></div><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Aguardando</div><div class="stat-value text-warning"
-id="total-aguardando">0</div><div>Manutenções pendentes</div></div></div><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Em Manutenção</div><div class="stat-value text-primary"
-id="total-em-manutencao">0</div><div>Em andamento</div></div></div><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Concluídas</div><div class="stat-value text-success"
-id="total-concluidas">0</div><div>Finalizadas</div></div></div></div><div class="row"><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-wrench me-2"></i>Manutenções Recentes </div><div class="card-body p-0"><ul class="list-group list-group-flush"
-id="manutencoes-recentes"></ul></div></div></div><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-activity me-2"></i>Atividade Recente </div><div class="card-body p-0 recent-activity"><ul class="list-group list-group-flush"
-id="atividade-recente"></ul></div></div></div></div><div class="row"><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-bar-chart me-2"></i>Manutenções por Tipo de Equipamento </div><div class="card-body" id="grafico-tipos"
-style="min-height: 300px;"></div></div></div><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-pie-chart me-2"></i>Manutenções por Categoria </div><div class="card-body"
-id="grafico-categorias"
-style="min-height: 300px;"></div></div></div></div><div class="row"><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-clock-history me-2"></i>Tempo Médio de Manutenção </div><div class="card-body" id="grafico-tempo-medio"
-style="min-height: 300px;"></div></div></div><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-calendar-check me-2"></i>Manutenções por Período </div><div class="card-body"><div class="d-flex justify-content-end mb-3"><select id="filtro-periodo-grafico"
-class="form-select form-select-sm"
-style="width: auto;"><option value="7">Últimos 7 dias</option><option value="30"
-selected>Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="365">Último ano</option></select></div><div id="grafico-periodo"
-style="min-height: 250px;"></div></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-truck me-2"></i>Status dos Equipamentos </div><div class="card-body"><div class="row"
-id="status-equipamentos"></div></div></div></div><div id="tela-lista" class="view-content"
-style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4"><h2>Lista de Manutenções</h2><button class="btn btn-primary"
-id="btn-nova-manutencao"><i class="bi bi-plus-circle me-1"></i>Nova Manutenção </button></div><div class="card mb-4"><div class="card-body"><div class="row g-3"><div class="col-md-3"><select class="form-select"
-id="filtro-status"><option value>Todos os Status</option><option value="Aguardando Manutenção">Aguardando</option><option value="Em Manutenção">Em Manutenção</option><option value="Manutenção Concluída">Concluídas</option><option value="Equipamento Disponível">Disponíveis</option></select></div><div class="col-md-3"><input type="text"
-class="form-control" id="filtro-placa"
-placeholder="Filtrar por Placa"></div><div class="col-md-3"><button class="btn btn-primary w-100"
-id="btn-filtrar"><i class="bi bi-search me-1"></i>Filtrar </button></div><div class="col-md-3"><button class="btn btn-outline-secondary w-100"
-id="btn-limpar-filtro"><i class="bi bi-x-circle me-1"></i>Limpar </button></div></div></div></div><div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Placa</th><th>Tipo</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody id="lista-manutencoes"></tbody></table></div><div id="sem-registros" class="text-center py-4"
-style="display: none;"><i class="bi bi-exclamation-circle fs-1 text-muted"></i><p class="mt-2 text-muted">Nenhum registro encontrado</p></div></div></div></div><div id="tela-pre-manutencao" class="view-content"
-style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4"><h2>Registro de Pré-Manutenção</h2><button class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Voltar </button></div><form id="form-pre-manutencao"><input type="hidden" id="pre-id" name="id"><div class="card mb-4"><div class="card-header"><i class="bi bi-truck me-2"></i>Informações do Equipamento </div><div class="card-body"><div class="row g-3"><div class="col-md-6"><label for="pre-tipo-equipamento"
-class="form-label">Tipo de Equipamento*</label><select class="form-select"
-id="pre-tipo-equipamento"
-name="tipoEquipamento"
-required><option value>Selecione...</option><option value="Caminhão Alta Pressão">Caminhão Alta Pressão</option><option value="Caminhão Auto Vácuo">Caminhão Auto Vácuo</option><option value="Caminhão Hiper Vácuo">Caminhão Hiper Vácuo</option><option value="Caminhão Conjugado">Caminhão Conjugado</option><option value="Caminhão Brook">Caminhão Brook</option><option value="Aspirador de Pó">Aspirador de Pó</option><option value="Outro Tipo">Outro Tipo</option></select></div><div class="col-md-6"><label for="pre-placa-select"
-class="form-label">Equipamento/Placa*</label><select class="form-select"
-id="pre-placa-select"
-style="display: none;"><option value>Selecione o Equipamento...</option></select><input type="text"
-class="form-control mt-2"
-id="pre-placa-outro-valor"
-style="display: none;"
-placeholder="Digite a placa ou nome do equipamento"><input type="hidden" id="pre-placa"
-name="placa" required><input type="hidden" id="pre-modelo"
-name="modelo"></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-exclamation-triangle me-2"></i>Detalhes do Problema </div><div class="card-body"><div class="row g-3"><div class="col-md-6"><label for="pre-categoria-problema"
-class="form-label">Categoria do Problema*</label><select class="form-select"
-id="pre-categoria-problema"
-name="categoriaProblema"
-required><option value>Selecione...</option></select></div><div class="col-md-6"><label for="pre-urgencia"
-class="form-label">Urgência*</label><select class="form-select"
-id="pre-urgencia" name="urgencia"
-required><option value>Selecione...</option></select></div><div class="col-12"
-id="motivo-outro-container"
-style="display: none;"><label for="pre-motivo-outro"
-class="form-label">Especifique o Problema*</label><input type="text"
-class="form-control"
-id="pre-motivo-outro"
-name="motivoOutro"></div><div class="col-12"><label for="pre-descricao-problema"
-class="form-label">Descrição do Problema*</label><textarea class="form-control"
-id="pre-descricao-problema"
-name="descricaoProblema" rows="3"
-required></textarea></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-check-square me-2"></i>Checklist Pré-Manutenção </div><div class="card-body"><div id="pre-checklist-container"></div><div class="mb-3"><label for="pre-observacoes"
-class="form-label">Observações Adicionais</label><textarea class="form-control"
-id="pre-observacoes"
-name="observacoesPre"
-rows="3"></textarea></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-camera me-2"></i>Registro Fotográfico </div><div class="card-body"><div class="mb-3"><div class="d-flex gap-2 mb-3 flex-wrap"><button type="button"
-class="btn btn-primary"
-id="btn-abrir-camera-pre"><i class="bi bi-camera-fill me-1"></i>Abrir Câmera </button><button type="button"
-class="btn btn-outline-secondary"
-id="btn-selecionar-imagem-pre"><i class="bi bi-image me-1"></i>Da Galeria </button><input type="file"
-id="input-imagem-pre"
-accept="image/*" multiple style="display: none;"></div><div id="camera-container-pre"
-class="camera-container"
-style="display: none;"><video id="camera-preview-pre" autoplay playsinline></video><div class="camera-controls"><button type="button"
-class="btn btn-primary"
-id="btn-capturar-pre"><i class="bi bi-camera-fill me-1"></i>Capturar </button><button type="button"
-class="btn btn-danger"
-id="btn-fechar-camera-pre"><i class="bi bi-x-circle me-1"></i>Fechar </button></div></div><div id="imagens-preview-pre"
-class="d-flex flex-wrap gap-2 mt-3"></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-person me-2"></i>Responsável pelo Registro </div><div class="card-body"><div class="mb-3"><label for="pre-responsavel"
-class="form-label">Nome do Responsável*</label><input type="text"
-class="form-control"
-id="pre-responsavel" name="responsavel"
-required></div></div></div><div class="d-flex justify-content-between mb-4"><button type="button"
-class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Cancelar </button><button type="submit"
-class="btn btn-primary"><i class="bi bi-save me-1"></i>Salvar e Avançar </button></div></form></div><div id="tela-pos-manutencao" class="view-content"
-style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4"><h2>Registro de Pós-Manutenção</h2><button class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Voltar </button></div><form id="form-pos-manutencao"><input type="hidden" id="pos-id" name="id"><div class="card mb-4"><div class="card-header"><i class="bi bi-truck me-2"></i>Resumo do Equipamento </div><div class="card-body"><div class="row g-3"><div class="col-md-6"><p class="form-label">Placa/Equipamento</p><p class="form-control-plaintext"
-id="pos-placa-display"></p></div><div class="col-md-6"><p class="form-label">Tipo de Equipamento</p><p class="form-control-plaintext"
-id="pos-tipo-display"></p></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-check-square me-2"></i>Checklist Pós-Manutenção </div><div class="card-body"><div id="pos-checklist-container"></div><div class="mb-3"><label for="pos-observacoes"
-class="form-label">Observações da Manutenção</label><textarea class="form-control"
-id="pos-observacoes"
-name="observacoesPos"
-rows="3"></textarea></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-camera me-2"></i>Registro Fotográfico Pós-Manutenção </div><div class="card-body"><div class="mb-3"><div class="d-flex gap-2 mb-3 flex-wrap"><button type="button"
-class="btn btn-primary"
-id="btn-abrir-camera-pos"><i class="bi bi-camera-fill me-1"></i>Abrir Câmera </button><button type="button"
-class="btn btn-outline-secondary"
-id="btn-selecionar-imagem-pos"><i class="bi bi-image me-1"></i>Da Galeria </button><input type="file"
-id="input-imagem-pos"
-accept="image/*" multiple style="display: none;"></div><div id="camera-container-pos"
-class="camera-container"
-style="display: none;"><video id="camera-preview-pos" autoplay playsinline></video><div class="camera-controls"><button type="button"
-class="btn btn-primary"
-id="btn-capturar-pos"><i class="bi bi-camera-fill me-1"></i>Capturar </button><button type="button"
-class="btn btn-danger"
-id="btn-fechar-camera-pos"><i class="bi bi-x-circle me-1"></i>Fechar </button></div></div><div id="imagens-preview-pos"
-class="d-flex flex-wrap gap-2 mt-3"></div></div></div></div><div class="d-flex justify-content-between mb-4"><button type="button" class="btn btn-outline-secondary"
-id="btn-voltar-pre"><i class="bi bi-arrow-left me-1"></i>Voltar para Pré-Manutenção </button><button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Finalizar Manutenção </button></div></form></div><div id="tela-visualizacao" class="view-content"
-style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2"><h2>Detalhes da Manutenção</h2><div class="btn-group flex-wrap"><button class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Voltar </button><button class="btn btn-outline-primary"
-id="btn-editar-manutencao"><i class="bi bi-pencil me-1"></i>Editar </button><div class="dropdown d-inline-block"><button class="btn btn-outline-primary dropdown-toggle"
-type="button" id="btnRelatorioOpcoes"
-data-bs-toggle="dropdown"
-aria-expanded="false"><i class="bi bi-file-earmark me-1"></i>Relatórios </button><ul class="dropdown-menu"
-aria-labelledby="btnRelatorioOpcoes"><li><a class="dropdown-item" href="#"
-id="btn-gerar-pdf-basico">Relatório PDF Básico</a></li><li><a class="dropdown-item" href="#"
-id="btn-gerar-pdf-avancado">Relatório PDF Avançado</a></li><li><a class="dropdown-item" href="#"
-id="btn-gerar-excel">Exportar para Excel</a></li><li><a class="dropdown-item" href="#"
-id="btn-gerar-csv">Exportar para CSV</a></li></ul></div></div></div><div id="detalhes-manutencao"><div class="card mb-4"><div class="card-header"><i class="bi bi-info-circle me-2"></i>Informações Gerais </div><div class="card-body"><div class="row"><div class="col-md-3 mb-3"><h6 class="text-muted">ID da Manutenção</h6><p id="view-id"></p></div><div class="col-md-3 mb-3"><h6 class="text-muted">Data de Abertura</h6><p id="view-data-criacao"></p></div><div class="col-md-3 mb-3"><h6 class="text-muted">Status</h6><p><span class="badge"
-id="view-status"></span></p></div><div class="col-md-3 mb-3"><h6 class="text-muted">Responsável</h6><p id="view-responsavel"></p></div></div><hr><div class="row"><div class="col-md-6 mb-3"><h6 class="text-muted">Placa do Equipamento</h6><p id="view-placa"></p></div><div class="col-md-6 mb-3"><h6 class="text-muted">Tipo de Equipamento</h6><p id="view-tipo-equipamento"></p></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-exclamation-triangle me-2"></i>Detalhes do Problema </div><div class="card-body"><div class="row"><div class="col-md-6 mb-3"><h6 class="text-muted">Categoria do Problema</h6><p id="view-categoria-problema"></p></div><div class="col-md-6 mb-3"><h6 class="text-muted">Urgência</h6><p id="view-urgencia"></p></div></div><div class="row mb-3"
-id="view-motivo-outro-container"
-style="display: none;"><div class="col-12"><h6 class="text-muted">Especificação do Problema</h6><p id="view-motivo-outro"></p></div></div><div class="row"><div class="col-12"><h6 class="text-muted">Descrição do Problema</h6><p id="view-descricao-problema"
-style="white-space: pre-wrap;"></p></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-clipboard-check me-2"></i>Registro Pré-Manutenção </div><div class="card-body"><h6 class="mb-3">Checklist Pré-Manutenção</h6><div id="view-checklist-pre"
-class="mb-4"></div><h6 class="mb-2">Observações</h6><p id="view-observacoes-pre" class="mb-4"
-style="white-space: pre-wrap;"></p><h6 class="mb-2">Imagens</h6><div id="view-imagens-pre"
-class="d-flex flex-wrap gap-2"></div></div></div><div class="card mb-4" id="view-section-pos-manutencao"
-style="display: none;"><div class="card-header"><i class="bi bi-clipboard-check me-2"></i>Registro Pós-Manutenção </div><div class="card-body"><div class="row mb-3"><div class="col-md-6"><h6 class="mb-2">Data da Manutenção</h6><p id="view-data-manutencao"></p></div></div><h6 class="mb-3">Checklist Pós-Manutenção</h6><div id="view-checklist-pos"
-class="mb-4"></div><h6 class="mb-2">Observações</h6><p id="view-observacoes-pos" class="mb-4"
-style="white-space: pre-wrap;"></p><h6 class="mb-2">Imagens</h6><div id="view-imagens-pos"
-class="d-flex flex-wrap gap-2"></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Atualizar Status </div><div class="card-body"><div class="d-flex gap-2 flex-wrap"><button class="btn btn-outline-warning btn-status"
-data-status="Aguardando Manutenção"><i class="bi bi-hourglass me-1"></i>Aguardando </button><button class="btn btn-outline-primary btn-status"
-data-status="Em Manutenção"><i class="bi bi-tools me-1"></i>Em Manutenção </button><button class="btn btn-outline-success btn-status"
-data-status="Manutenção Concluída"><i class="bi bi-check-circle me-1"></i>Concluído </button><button class="btn btn-outline-info btn-status"
-data-status="Equipamento Disponível"><i class="bi bi-check-all me-1"></i>Disponível </button></div></div></div></div></div><div id="tela-ferramentas" class="view-content"
-style="display: none;"><h2 class="mb-4">Ferramentas e Integrações</h2><div class="row"><div class="col-md-6 mb-4"><div class="card h-100"><div class="card-header"><i class="bi bi-table me-2"></i>Integração com Planilha de Turnos </div><div class="card-body"><p class="card-text">Transfira automaticamente os dados de equipamentos em manutenção para a planilha de turnos. </p><div class="mb-3"><label for="id-planilha-turnos"
-class="form-label">ID da Planilha de Turnos</label><input type="text"
-class="form-control"
-id="id-planilha-turnos"
-placeholder="Cole o ID da planilha aqui"><div class="form-text">Para encontrar o ID,
-abra a planilha de turnos e copie o código da URL entre /d/ e /edit </div></div><div class="d-grid"><button class="btn btn-primary"
-id="btn-executar-integracao"><i class="bi bi-arrow-repeat me-1"></i>Executar Integração Agora </button></div><div class="mt-3 small"><div class="form-check form-switch"><input class="form-check-input"
-type="checkbox"
-id="integracao-automatica"
-checked><label class="form-check-label"
-for="integracao-automatica">Ativar integração automática diária </label></div></div></div><div class="card-footer text-muted small">A integração automática (se ativada) transfere dados todos os dias às 6h. </div></div></div><div class="col-md-6 mb-4"><div class="card h-100"><div class="card-header"><i class="bi bi-envelope me-2"></i>Notificações por E-mail </div><div class="card-body"><p class="card-text">Configure e-mails para receber atualizações e alertas sobre manutenções. </p><div class="mb-3"><label for="emails-notificacao"
-class="form-label">E-mails para Notificação</label><textarea class="form-control"
-id="emails-notificacao" rows="3"
-placeholder="exemplo@empresa.com, gerente@empresa.com"></textarea><div class="form-text">Separe múltiplos e-mails por vírgula ou ponto-e-vírgula </div></div><div class="d-grid"><button class="btn btn-primary"
-id="btn-salvar-emails"><i class="bi bi-save me-1"></i>Salvar Configuração de E-mails </button></div><div class="mt-3"><div class="form-text mb-2">Enviar e-mail de teste para verificar a configuração (usa a primeira manutenção encontrada): </div><div class="input-group"><select class="form-select"
-id="tipo-email-teste"><option value="nova">Nova Manutenção</option><option value="atualizacao">Atualização de Status</option><option value="conclusao">Conclusão</option><option value="alerta">Alerta Urgente</option></select><button class="btn btn-outline-secondary"
-id="btn-teste-email"><i class="bi bi-send me-1"></i>Enviar Teste </button></div></div></div><div class="card-footer text-muted small">Notificações automáticas são enviadas em eventos importantes de manutenção. </div></div></div><div class="col-md-6 mb-4"><div class="card h-100"><div class="card-header"><i class="bi bi-gear me-2"></i>Configurações do Sistema </div><div class="card-body"><p class="card-text">Configure e atualize parâmetros e tarefas automáticas do sistema. </p><div class="d-grid gap-2"><button class="btn btn-primary"
-id="btn-configurar-gatilhos"><i class="bi bi-clock-history me-1"></i>(Re)Configurar Tarefas Automáticas </button><button class="btn btn-outline-primary"
-id="btn-verificar-atualizacoes"><i class="bi bi-cloud-download me-1"></i>Verificar Atualizações </button></div><div class="mt-3"><div class="d-flex justify-content-between align-items-center mb-1"><span class="small">Versão do Sistema:</span><span class="badge bg-info"
-id="versao-sistema"><?=VERSAO_APP ?></span></div><div class="progress"
-style="height: 5px;"><div class="progress-bar"
-role="progressbar"
-style="width: 100%;"
-aria-valuenow="100"
-aria-valuemin="0"
-aria-valuemax="100"></div></div></div></div><div class="card-footer text-muted small">Mantenha o sistema atualizado e configure as tarefas automáticas. </div></div></div></div></div></div></div><div class="modal fade" id="cameraModal" tabindex="-1"
-aria-hidden="true"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Capturar Imagem</h5><button type="button" class="btn-close"
-data-bs-dismiss="modal"
-aria-label="Close"></button></div><div class="modal-body"><div class="camera-container"><video id="camera-modal-preview" autoplay playsinline></video><canvas id="camera-canvas"
-style="display: none;"></canvas></div></div><div class="modal-footer"><button type="button"
-class="btn btn-secondary"
-data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary"
-id="btn-capturar-modal"><i class="bi bi-camera-fill me-1"></i>Capturar </button></div></div></div></div><div class="modal fade"
-id="confirmModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Confirmação</h5><button type="button" class="btn-close"
-data-bs-dismiss="modal"
-aria-label="Close"></button></div><div class="modal-body"><p id="confirm-message">Tem certeza que deseja realizar esta ação?</p></div><div class="modal-footer"><button type="button"
-class="btn btn-secondary"
-data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary"
-id="confirm-yes">Confirmar</button></div></div></div></div><div class="modal fade" id="alertModal" tabindex="-1"
-aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title"
-id="alert-title">Aviso</h5><button type="button"
-class="btn-close" data-bs-dismiss="modal"
-aria-label="Close"></button></div><div class="modal-body"><p id="alert-message"
-style="white-space: pre-wrap;"></p></div><div class="modal-footer"><button type="button"
-class="btn btn-primary"
-data-bs-dismiss="modal">OK</button></div></div></div></div><div class="modal fade" id="choiceModal" tabindex="-1"
-aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Registro Salvo com Sucesso</h5><button type="button" class="btn-close"
-data-bs-dismiss="modal"
-aria-label="Close"></button></div><div class="modal-body"><p>O registro de pré-manutenção foi salvo com sucesso !</p><p>O que deseja fazer agora?</p></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary"
-id="btn-choice-lista"><i class="bi bi-list-ul me-1"></i>Ir para Lista </button><button type="button"
-class="btn btn-outline-primary"
-id="btn-choice-novo"><i class="bi bi-plus-circle me-1"></i>Novo Registro </button><button type="button" class="btn btn-primary"
-id="btn-choice-pos"><i class="bi bi-arrow-right me-1"></i>Continuar para Pós-Manutenção </button></div></div></div></div><div class="modal fade"
-id="modal-anotacao" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Anotar Imagem</h5><button type="button" class="btn-close"
-data-bs-dismiss="modal"
-aria-label="Fechar"></button></div><div class="modal-body"><div id="annotation-container"></div></div><div class="modal-footer"><button type="button"
-class="btn btn-secondary"
-data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary"
-id="btn-save-annotation">Salvar Anotação</button></div></div></div></div><footer class="footer-dev">&lt;/>Desenvolvido por Warlison Abreu </footer><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script>
+</style></head><body><nav class="navbar navbar-expand-lg navbar-dark mb-4"><div class="container"><a class="navbar-brand" href="#"><i class="bi bi-tools me-2"></i>Sistema de Manutenção </a><button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button><div class="collapse navbar-collapse" id="navbarNav"><ul class="navbar-nav ms-auto"><li class="nav-item"><a class="nav-link active" href="#" id="nav-dashboard"><i class="bi bi-speedometer2 me-1"></i>Dashboard </a></li><li class="nav-item"><a class="nav-link" href="#" id="nav-lista"><i class="bi bi-list-ul me-1"></i>Lista </a></li><li class="nav-item"><a class="nav-link" href="#" id="nav-novo"><i class="bi bi-plus-circle me-1"></i>Nova Manutenção </a></li><li class="nav-item"><a class="nav-link" href="#" id="nav-ferramentas"><i class="bi bi-tools me-1"></i>Ferramentas </a></li></ul></div></div></nav><div class="container"><div id="conteudo-principal"><div id="tela-dashboard" class="view-content"><h2 class="mb-4">Dashboard de Manutenções</h2><div class="row mb-4"><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Equipamentos</div><div class="stat-value" id="total-equipamentos">0</div><div>Total cadastrado</div></div></div><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Aguardando</div><div class="stat-value text-warning" id="total-aguardando">0</div><div>Manutenções pendentes</div></div></div><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Em Manutenção</div><div class="stat-value text-primary" id="total-em-manutencao">0</div><div>Em andamento</div></div></div><div class="col-md-3 col-sm-6"><div class="stat-card bg-light"><div class="stat-title">Concluídas</div><div class="stat-value text-success" id="total-concluidas">0</div><div>Finalizadas</div></div></div></div><div class="row"><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-wrench me-2"></i>Manutenções Recentes </div><div class="card-body p-0"><ul class="list-group list-group-flush" id="manutencoes-recentes"></ul></div></div></div><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-activity me-2"></i>Atividade Recente </div><div class="card-body p-0 recent-activity"><ul class="list-group list-group-flush" id="atividade-recente"></ul></div></div></div></div><div class="row"><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-bar-chart me-2"></i>Manutenções por Tipo de Equipamento </div><div class="card-body" id="grafico-tipos" style="min-height: 300px;"></div></div></div><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-pie-chart me-2"></i>Manutenções por Categoria </div><div class="card-body" id="grafico-categorias" style="min-height: 300px;"></div></div></div></div><div class="row"><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-clock-history me-2"></i>Tempo Médio de Manutenção </div><div class="card-body" id="grafico-tempo-medio" style="min-height: 300px;"></div></div></div><div class="col-md-6"><div class="card mb-4"><div class="card-header"><i class="bi bi-calendar-check me-2"></i>Manutenções por Período </div><div class="card-body"><div class="d-flex justify-content-end mb-3"><select id="filtro-periodo-grafico" class="form-select form-select-sm" style="width: auto;"><option value="7">Últimos 7 dias</option><option value="30" selected>Últimos 30 dias</option><option value="90">Últimos 90 dias</option><option value="365">Último ano</option></select></div><div id="grafico-periodo" style="min-height: 250px;"></div></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-truck me-2"></i>Status dos Equipamentos </div><div class="card-body"><div class="row" id="status-equipamentos"></div></div></div></div><div id="tela-lista" class="view-content" style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4"><h2>Lista de Manutenções</h2><button class="btn btn-primary" id="btn-nova-manutencao"><i class="bi bi-plus-circle me-1"></i>Nova Manutenção </button></div><div class="card mb-4"><div class="card-body"><div class="row g-3"><div class="col-md-3"><select class="form-select" id="filtro-status"><option value="">Todos os Status</option><option value="Aguardando Manutenção">Aguardando</option><option value="Em Manutenção">Em Manutenção</option><option value="Manutenção Concluída">Concluídas</option><option value="Equipamento Disponível">Disponíveis</option></select></div><div class="col-md-3"><input type="text" class="form-control" id="filtro-placa" placeholder="Filtrar por Placa"></div><div class="col-md-3"><button class="btn btn-primary w-100" id="btn-filtrar"><i class="bi bi-search me-1"></i>Filtrar </button></div><div class="col-md-3"><button class="btn btn-outline-secondary w-100" id="btn-limpar-filtro"><i class="bi bi-x-circle me-1"></i>Limpar </button></div></div></div></div><div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-hover mb-0"><thead><tr><th>Placa</th><th>Tipo</th><th>Data</th><th>Status</th><th>Ações</th></tr></thead><tbody id="lista-manutencoes"></tbody></table></div><div id="sem-registros" class="text-center py-4" style="display: none;"><i class="bi bi-exclamation-circle fs-1 text-muted"></i><p class="mt-2 text-muted">Nenhum registro encontrado</p></div></div></div></div><div id="tela-pre-manutencao" class="view-content" style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4"><h2>Registro de Pré-Manutenção</h2><button class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Voltar </button></div><form id="form-pre-manutencao"><input type="hidden" id="pre-id" name="id"><div class="card mb-4"><div class="card-header"><i class="bi bi-truck me-2"></i>Informações do Equipamento </div><div class="card-body"><div class="row g-3"><div class="col-md-6"><label for="pre-tipo-equipamento" class="form-label">Tipo de Equipamento*</label><select class="form-select" id="pre-tipo-equipamento" name="tipoEquipamento" required><option value="">Selecione...</option><option value="Caminhão Alta Pressão">Caminhão Alta Pressão</option><option value="Caminhão Auto Vácuo">Caminhão Auto Vácuo</option><option value="Caminhão Hiper Vácuo">Caminhão Hiper Vácuo</option><option value="Caminhão Conjugado">Caminhão Conjugado</option><option value="Caminhão Brook">Caminhão Brook</option><option value="Aspirador de Pó">Aspirador de Pó</option><option value="Outro Tipo">Outro Tipo</option></select></div><div class="col-md-6"><label for="pre-placa-select" class="form-label">Equipamento/Placa*</label><select class="form-select" id="pre-placa-select" style="display: none;"><option value="">Selecione o Equipamento...</option></select><input type="text" class="form-control mt-2" id="pre-placa-outro-valor" style="display: none;" placeholder="Digite a placa ou nome do equipamento"><input type="hidden" id="pre-placa" name="placa" required><input type="hidden" id="pre-modelo" name="modelo"></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-exclamation-triangle me-2"></i>Detalhes do Problema </div><div class="card-body"><div class="row g-3"><div class="col-md-6"><label for="pre-categoria-problema" class="form-label">Categoria do Problema*</label><select class="form-select" id="pre-categoria-problema" name="categoriaProblema" required><option value="">Selecione...</option></select></div><div class="col-md-6"><label for="pre-urgencia" class="form-label">Urgência*</label><select class="form-select" id="pre-urgencia" name="urgencia" required><option value="">Selecione...</option></select></div><div class="col-12" id="motivo-outro-container" style="display: none;"><label for="pre-motivo-outro" class="form-label">Especifique o Problema*</label><input type="text" class="form-control" id="pre-motivo-outro" name="motivoOutro"></div><div class="col-12"><label for="pre-descricao-problema" class="form-label">Descrição do Problema*</label><textarea class="form-control" id="pre-descricao-problema" name="descricaoProblema" rows="3" required></textarea></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-check-square me-2"></i>Checklist Pré-Manutenção </div><div class="card-body"><div id="pre-checklist-container"></div><div class="mb-3"><label for="pre-observacoes" class="form-label">Observações Adicionais</label><textarea class="form-control" id="pre-observacoes" name="observacoesPre" rows="3"></textarea></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-camera me-2"></i>Registro Fotográfico </div><div class="card-body"><div class="mb-3"><div class="d-flex gap-2 mb-3 flex-wrap"><button type="button" class="btn btn-primary" id="btn-abrir-camera-pre"><i class="bi bi-camera-fill me-1"></i>Abrir Câmera </button><button type="button" class="btn btn-outline-secondary" id="btn-selecionar-imagem-pre"><i class="bi bi-image me-1"></i>Da Galeria </button><input type="file" id="input-imagem-pre" accept="image/*" multiple style="display: none;"></div><div id="camera-container-pre" class="camera-container" style="display: none;"><video id="camera-preview-pre" autoplay playsinline></video><div class="camera-controls"><button type="button" class="btn btn-primary" id="btn-capturar-pre"><i class="bi bi-camera-fill me-1"></i>Capturar </button><button type="button" class="btn btn-danger" id="btn-fechar-camera-pre"><i class="bi bi-x-circle me-1"></i>Fechar </button></div></div><div id="imagens-preview-pre" class="d-flex flex-wrap gap-2 mt-3"></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-person me-2"></i>Responsável pelo Registro </div><div class="card-body"><div class="mb-3"><label for="pre-responsavel" class="form-label">Nome do Responsável*</label><input type="text" class="form-control" id="pre-responsavel" name="responsavel" required></div></div></div><div class="d-flex justify-content-between mb-4"><button type="button" class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Cancelar </button><button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Salvar e Avançar </button></div></form></div><div id="tela-pos-manutencao" class="view-content" style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4"><h2>Registro de Pós-Manutenção</h2><button class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Voltar </button></div><form id="form-pos-manutencao"><input type="hidden" id="pos-id" name="id"><div class="card mb-4"><div class="card-header"><i class="bi bi-truck me-2"></i>Resumo do Equipamento </div><div class="card-body"><div class="row g-3"><div class="col-md-6"><p class="form-label">Placa/Equipamento</p><p class="form-control-plaintext" id="pos-placa-display"></p></div><div class="col-md-6"><p class="form-label">Tipo de Equipamento</p><p class="form-control-plaintext" id="pos-tipo-display"></p></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-check-square me-2"></i>Checklist Pós-Manutenção </div><div class="card-body"><div id="pos-checklist-container"></div><div class="mb-3"><label for="pos-observacoes" class="form-label">Observações da Manutenção</label><textarea class="form-control" id="pos-observacoes" name="observacoesPos" rows="3"></textarea></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-camera me-2"></i>Registro Fotográfico Pós-Manutenção </div><div class="card-body"><div class="mb-3"><div class="d-flex gap-2 mb-3 flex-wrap"><button type="button" class="btn btn-primary" id="btn-abrir-camera-pos"><i class="bi bi-camera-fill me-1"></i>Abrir Câmera </button><button type="button" class="btn btn-outline-secondary" id="btn-selecionar-imagem-pos"><i class="bi bi-image me-1"></i>Da Galeria </button><input type="file" id="input-imagem-pos" accept="image/*" multiple style="display: none;"></div><div id="camera-container-pos" class="camera-container" style="display: none;"><video id="camera-preview-pos" autoplay playsinline></video><div class="camera-controls"><button type="button" class="btn btn-primary" id="btn-capturar-pos"><i class="bi bi-camera-fill me-1"></i>Capturar </button><button type="button" class="btn btn-danger" id="btn-fechar-camera-pos"><i class="bi bi-x-circle me-1"></i>Fechar </button></div></div><div id="imagens-preview-pos" class="d-flex flex-wrap gap-2 mt-3"></div></div></div></div><div class="d-flex justify-content-between mb-4"><button type="button" class="btn btn-outline-secondary" id="btn-voltar-pre"><i class="bi bi-arrow-left me-1"></i>Voltar para Pré-Manutenção </button><button type="submit" class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Finalizar Manutenção </button></div></form></div><div id="tela-visualizacao" class="view-content" style="display: none;"><div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2"><h2>Detalhes da Manutenção</h2><div class="btn-group flex-wrap"><button class="btn btn-outline-secondary btn-voltar"><i class="bi bi-arrow-left me-1"></i>Voltar </button><button class="btn btn-outline-primary" id="btn-editar-manutencao"><i class="bi bi-pencil me-1"></i>Editar </button><div class="dropdown d-inline-block"><button class="btn btn-outline-primary dropdown-toggle" type="button" id="btnRelatorioOpcoes" data-bs-toggle="dropdown" aria-expanded="false"><i class="bi bi-file-earmark me-1"></i>Relatórios </button><ul class="dropdown-menu" aria-labelledby="btnRelatorioOpcoes"><li><a class="dropdown-item" href="#" id="btn-gerar-pdf-basico">Relatório PDF Básico</a></li><li><a class="dropdown-item" href="#" id="btn-gerar-pdf-avancado">Relatório PDF Avançado</a></li><li><a class="dropdown-item" href="#" id="btn-gerar-excel">Exportar para Excel</a></li><li><a class="dropdown-item" href="#" id="btn-gerar-csv">Exportar para CSV</a></li></ul></div></div></div><div id="detalhes-manutencao"><div class="card mb-4"><div class="card-header"><i class="bi bi-info-circle me-2"></i>Informações Gerais </div><div class="card-body"><div class="row"><div class="col-md-3 mb-3"><h6 class="text-muted">ID da Manutenção</h6><p id="view-id"></p></div><div class="col-md-3 mb-3"><h6 class="text-muted">Data de Abertura</h6><p id="view-data-criacao"></p></div><div class="col-md-3 mb-3"><h6 class="text-muted">Status</h6><p><span class="badge" id="view-status"></span></p></div><div class="col-md-3 mb-3"><h6 class="text-muted">Responsável</h6><p id="view-responsavel"></p></div></div><hr><div class="row"><div class="col-md-6 mb-3"><h6 class="text-muted">Placa do Equipamento</h6><p id="view-placa"></p></div><div class="col-md-6 mb-3"><h6 class="text-muted">Tipo de Equipamento</h6><p id="view-tipo-equipamento"></p></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-exclamation-triangle me-2"></i>Detalhes do Problema </div><div class="card-body"><div class="row"><div class="col-md-6 mb-3"><h6 class="text-muted">Categoria do Problema</h6><p id="view-categoria-problema"></p></div><div class="col-md-6 mb-3"><h6 class="text-muted">Urgência</h6><p id="view-urgencia"></p></div></div><div class="row mb-3" id="view-motivo-outro-container" style="display: none;"><div class="col-12"><h6 class="text-muted">Especificação do Problema</h6><p id="view-motivo-outro"></p></div></div><div class="row"><div class="col-12"><h6 class="text-muted">Descrição do Problema</h6><p id="view-descricao-problema" style="white-space: pre-wrap;"></p></div></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-clipboard-check me-2"></i>Registro Pré-Manutenção </div><div class="card-body"><h6 class="mb-3">Checklist Pré-Manutenção</h6><div id="view-checklist-pre" class="mb-4"></div><h6 class="mb-2">Observações</h6><p id="view-observacoes-pre" class="mb-4" style="white-space: pre-wrap;"></p><h6 class="mb-2">Imagens</h6><div id="view-imagens-pre" class="d-flex flex-wrap gap-2"></div></div></div><div class="card mb-4" id="view-section-pos-manutencao" style="display: none;"><div class="card-header"><i class="bi bi-clipboard-check me-2"></i>Registro Pós-Manutenção </div><div class="card-body"><div class="row mb-3"><div class="col-md-6"><h6 class="mb-2">Data da Manutenção</h6><p id="view-data-manutencao"></p></div></div><h6 class="mb-3">Checklist Pós-Manutenção</h6><div id="view-checklist-pos" class="mb-4"></div><h6 class="mb-2">Observações</h6><p id="view-observacoes-pos" class="mb-4" style="white-space: pre-wrap;"></p><h6 class="mb-2">Imagens</h6><div id="view-imagens-pos" class="d-flex flex-wrap gap-2"></div></div></div><div class="card mb-4"><div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Atualizar Status </div><div class="card-body"><div class="d-flex gap-2 flex-wrap"><button class="btn btn-outline-warning btn-status" data-status="Aguardando Manutenção"><i class="bi bi-hourglass me-1"></i>Aguardando </button><button class="btn btn-outline-primary btn-status" data-status="Em Manutenção"><i class="bi bi-tools me-1"></i>Em Manutenção </button><button class="btn btn-outline-success btn-status" data-status="Manutenção Concluída"><i class="bi bi-check-circle me-1"></i>Concluído </button><button class="btn btn-outline-info btn-status" data-status="Equipamento Disponível"><i class="bi bi-check-all me-1"></i>Disponível </button></div></div></div></div></div><div id="tela-ferramentas" class="view-content" style="display: none;"><h2 class="mb-4">Ferramentas e Integrações</h2><div class="row"><div class="col-md-6 mb-4"><div class="card h-100"><div class="card-header"><i class="bi bi-table me-2"></i>Integração com Planilha de Turnos </div><div class="card-body"><p class="card-text">Transfira automaticamente os dados de equipamentos em manutenção para a planilha de turnos. </p><div class="mb-3"><label for="id-planilha-turnos" class="form-label">ID da Planilha de Turnos</label><input type="text" class="form-control" id="id-planilha-turnos" placeholder="Cole o ID da planilha aqui"><div class="form-text">Para encontrar o ID,
+abra a planilha de turnos e copie o código da URL entre /d/ e /edit </div></div><div class="d-grid"><button class="btn btn-primary" id="btn-executar-integracao"><i class="bi bi-arrow-repeat me-1"></i>Executar Integração Agora </button></div><div class="mt-3 small"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="integracao-automatica" checked><label class="form-check-label" for="integracao-automatica">Ativar integração automática diária </label></div></div></div><div class="card-footer text-muted small">A integração automática (se ativada) transfere dados todos os dias às 6h. </div></div></div><div class="col-md-6 mb-4"><div class="card h-100"><div class="card-header"><i class="bi bi-envelope me-2"></i>Notificações por E-mail </div><div class="card-body"><p class="card-text">Configure e-mails para receber atualizações e alertas sobre manutenções. </p><div class="mb-3"><label for="emails-notificacao" class="form-label">E-mails para Notificação</label><textarea class="form-control" id="emails-notificacao" rows="3" placeholder="exemplo@empresa.com, gerente@empresa.com"></textarea><div class="form-text">Separe múltiplos e-mails por vírgula ou ponto-e-vírgula </div></div><div class="d-grid"><button class="btn btn-primary" id="btn-salvar-emails"><i class="bi bi-save me-1"></i>Salvar Configuração de E-mails </button></div><div class="mt-3"><div class="form-text mb-2">Enviar e-mail de teste para verificar a configuração (usa a primeira manutenção encontrada): </div><div class="input-group"><select class="form-select" id="tipo-email-teste"><option value="nova">Nova Manutenção</option><option value="atualizacao">Atualização de Status</option><option value="conclusao">Conclusão</option><option value="alerta">Alerta Urgente</option></select><button class="btn btn-outline-secondary" id="btn-teste-email"><i class="bi bi-send me-1"></i>Enviar Teste </button></div></div></div><div class="card-footer text-muted small">Notificações automáticas são enviadas em eventos importantes de manutenção. </div></div></div><div class="col-md-6 mb-4"><div class="card h-100"><div class="card-header"><i class="bi bi-gear me-2"></i>Configurações do Sistema </div><div class="card-body"><p class="card-text">Configure e atualize parâmetros e tarefas automáticas do sistema. </p><div class="d-grid gap-2"><button class="btn btn-primary" id="btn-configurar-gatilhos"><i class="bi bi-clock-history me-1"></i>(Re)Configurar Tarefas Automáticas </button><button class="btn btn-outline-primary" id="btn-verificar-atualizacoes"><i class="bi bi-cloud-download me-1"></i>Verificar Atualizações </button></div><div class="mt-3"><div class="d-flex justify-content-between align-items-center mb-1"><span class="small">Versão do Sistema:</span><span class="badge bg-info" id="versao-sistema"><?=VERSAO_APP ?></span></div><div class="progress" style="height: 5px;"><div class="progress-bar" role="progressbar" style="width: 100%;" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div></div></div></div><div class="card-footer text-muted small">Mantenha o sistema atualizado e configure as tarefas automáticas. </div></div></div></div></div></div></div><div class="modal fade" id="cameraModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Capturar Imagem</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><div class="camera-container"><video id="camera-modal-preview" autoplay playsinline></video><canvas id="camera-canvas" style="display: none;"></canvas></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btn-capturar-modal"><i class="bi bi-camera-fill me-1"></i>Capturar </button></div></div></div></div><div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Confirmação</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="confirm-message">Tem certeza que deseja realizar esta ação?</p></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="confirm-yes">Confirmar</button></div></div></div></div><div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title" id="alert-title">Aviso</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p id="alert-message" style="white-space: pre-wrap;"></p></div><div class="modal-footer"><button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button></div></div></div></div><div class="modal fade" id="choiceModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Registro Salvo com Sucesso</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div><div class="modal-body"><p>O registro de pré-manutenção foi salvo com sucesso !</p><p>O que deseja fazer agora?</p></div><div class="modal-footer"><button type="button" class="btn btn-outline-secondary" id="btn-choice-lista"><i class="bi bi-list-ul me-1"></i>Ir para Lista </button><button type="button" class="btn btn-outline-primary" id="btn-choice-novo"><i class="bi bi-plus-circle me-1"></i>Novo Registro </button><button type="button" class="btn btn-primary" id="btn-choice-pos"><i class="bi bi-arrow-right me-1"></i>Continuar para Pós-Manutenção </button></div></div></div></div><div class="modal fade" id="modal-anotacao" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header"><h5 class="modal-title">Anotar Imagem</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button></div><div class="modal-body"><div id="annotation-container"></div></div><div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btn-save-annotation">Salvar Anotação</button></div></div></div></div><footer class="footer-dev">&lt;/>Desenvolvido por Warlison Abreu </footer><script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js"></script><script>
 
 /**
          * ImageAnnotator - Ferramenta para anotações em imagens
@@ -550,7 +360,7 @@ class ImageAnnotator {
         // Limpar container
         this.container.innerHTML='';
         // Criar estrutura
-        this.container.innerHTML=` <div class="annotation-controls text-center mb-2"><div class="btn-group" role="group" aria-label="Ferramentas de Anotação"><button type="button" class="btn btn-sm btn-outline-primary active" id="btn-circle-<span class=" math-inline">\{this\.container\.id\}" \> <i class\="bi bi\-circle" \></i\> Círculo </button\> <button type\="button" class\="btn btn\-sm btn\-outline\-primary" id\="btn\-rectangle\-</span>{this.container.id}"><i class="bi bi-square"></i>Retângulo </button><button type="button" class="btn btn-sm btn-outline-danger" id="btn-clear-<span class=" math-inline">\{this\.container\.id\}" \> <i class\="bi bi\-trash" \></i\> Limpar Última </button\> <button type\="button" class\="btn btn\-sm btn\-outline\-secondary" id\="btn\-clear\-all\-</span>{this.container.id}"><i class="bi bi-x-octagon"></i>Limpar Todas </button></div></div><div class="image-container position-relative text-center"><img src="" id="annotation-image-<span class=" math-inline">\{this\.container\.id\}" style\="display\: none; max\-width\: 100%; vertical\-align\: top;" \> <canvas id\="annotation\-canvas\-</span>{this.container.id}" style="position: absolute; top: 0; left: 0; max-width: 100%; display: none;"></canvas></div>`;
+        this.container.innerHTML=` <div class="annotation-controls text-center mb-2"><div class="btn-group" role="group" aria-label="Ferramentas de Anotação"><button type="button" class="btn btn-sm btn-outline-primary active" id="btn-circle-${this.container.id}"><i class="bi bi-circle"></i>Círculo </button><button type="button" class="btn btn-sm btn-outline-primary" id="btn-rectangle-${this.container.id}"><i class="bi bi-square"></i>Retângulo </button><button type="button" class="btn btn-sm btn-outline-danger" id="btn-clear-${this.container.id}"><i class="bi bi-trash"></i>Limpar Última </button><button type="button" class="btn btn-sm btn-outline-secondary" id="btn-clear-all-${this.container.id}"><i class="bi bi-x-octagon"></i>Limpar Todas </button></div></div><div class="image-container position-relative text-center"><img src="" id="annotation-image-${this.container.id}" style="display: none; max-width: 100%; vertical-align: top;"><canvas id="annotation-canvas-${this.container.id}" style="position: absolute; top: 0; left: 0; max-width: 100%; display: none;"></canvas></div>`;
 
         // Obter referências
         this.imageElement=document.getElementById(`annotation-image-$ {
@@ -1198,13 +1008,21 @@ function criarChecklist(containerId, prefix, itens) {
             input.type='radio';
             input.className='btn-check'; // Classe Bootstrap para estilizar label
 
-            input.name=`<span class="math-inline" >\{prefix\}\-checklist\-</span> {
+            input.name=`$ {
+                prefix
+            }
+
+            -checklist-$ {
                 index
             }
 
             `;
 
-            input.id=`<span class="math-inline" >\{prefix\}\-checklist\-</span> {
+            input.id=`$ {
+                prefix
+            }
+
+            -checklist-$ {
                 index
             }
 
@@ -1375,7 +1193,11 @@ async function carregarDashboard() {
 
                     const div=document.createElement('div');
 
-                    div.innerHTML=` <strong><span class="math-inline" >\{manutencao\.placa \|\| 'Sem Placa' \}</strong\> <small class\="text\-muted d\-block" \></span> {
+                    div.innerHTML=` <strong>$ {
+                        manutencao.placa || 'Sem Placa'
+                    }
+
+                    </strong> <small class="text-muted d-block" >$ {
                         manutencao.dataCriacao || 'Sem Data'
                     }
 
@@ -1418,11 +1240,19 @@ async function carregarDashboard() {
 
                     const content=document.createElement('div');
 
-                    content.innerHTML=` <div><strong><span class="math-inline" >\{atividade\.placa \|\| 'Sem Placa' \}</strong\>\: Status alterado</div\> <div\><small class\="text\-muted" \></span> {
+                    content.innerHTML=` <div><strong>$ {
+                        atividade.placa || 'Sem Placa'
+                    }
+
+                    </strong>: Status alterado</div> <div><small class="text-muted" >$ {
                         atividade.statusAnterior || 'Novo'
                     }
 
-                    <i class="bi bi-arrow-right-short" ></i> <span class="math-inline" >\{atividade\.statusNovo \|\| 'N/A' \}</small\></div\> <div class\="text\-muted small mt\-1" \></span> {
+                    <i class="bi bi-arrow-right-short" ></i> $ {
+                        atividade.statusNovo || 'N/A'
+                    }
+
+                    </small></div> <div class="text-muted small mt-1" >$ {
                         atividade.data || 'Sem Data'
                     }
 
@@ -1441,1328 +1271,276 @@ async function carregarDashboard() {
 
         const tiposLabels=Object.keys(data.contadores?.tipoEquipamento || {});
         const tiposData=tiposLabels.map(tipo=> data.contadores.tipoEquipamento[tipo]);
-
-        if (graficoTipos) graficoTipos.destroy(); // Destroi gráfico anterior
-
-        if (tiposLabels.length > 0) {
-
-            // Só cria se tiver dados
-            graficoTipos=new Chart(document.getElementById('chart-tipos'), {
-
-                type: 'bar',
-                data: {
-
-                    labels: tiposLabels,
-                    datasets: [ {
-                        label: 'Manutenções',
-                        data: tiposData,
-                        backgroundColor: 'rgba(13, 110, 253, 0.7)', // Cor primária com transparência
-                        borderColor: 'rgba(13, 110, 253, 1)',
-                        borderWidth: 1
-                    }
-
-                    ]
-                }
-
-                ,
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false, // Permite controlar altura
-
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
-
-                    ,
-                    scales: {
-                        y: {
-
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
-                        }
-                    }
-                }
-            });
-    }
-
-    else {
-        graficoTiposContainer.innerHTML='<p class="text-center text-muted mt-3">Sem dados de tipo de equipamento.</p>';
-    }
-
-    // Gráfico de categorias
-    const graficoCategoriasContainer=document.getElementById('grafico-categorias');
-    graficoCategoriasContainer.innerHTML='<canvas id="chart-categorias"></canvas>';
-
-    const categoriasLabels=Object.keys(data.contadores?.categoriaProblema || {});
-    const categoriasData=categoriasLabels.map(cat=> data.contadores.categoriaProblema[cat]);
-    // Cores para o gráfico de pizza
-    const pieColors=[ 'rgba(13, 110, 253, 0.7)',
-    'rgba(220, 53, 69, 0.7)',
-    'rgba(255, 193, 7, 0.7)',
-    'rgba(25, 135, 84, 0.7)',
-    'rgba(108, 117, 125, 0.7)',
-    'rgba(13, 202, 240, 0.7)',
-    // Info
-    'rgba(102, 16, 242, 0.7)',
-    // Indigo
-    'rgba(214, 51, 132, 0.7)' // Pink
-    ];
-
-
-    if (graficoCategorias) graficoCategorias.destroy(); // Destroi gráfico anterior
-
-    if (categoriasLabels.length > 0) {
-
-        // Só cria se tiver dados
-        graficoCategorias=new Chart(document.getElementById('chart-categorias'), {
-
-            type: 'pie',
-            data: {
-
-                labels: categoriasLabels,
-                datasets: [ {
-                    data: categoriasData,
-                    backgroundColor: pieColors.slice(0, categoriasLabels.length), // Usa cores definidas
-                    borderColor: pieColors.map(c=> c.replace('0.7', '1')), // Cor sólida para borda
-                    borderWidth: 1
-                }
-
-                ]
-            }
-
-            ,
-            options: {
-                responsive: true,
-                maintainAspectRatio: false, // Permite controlar altura
-
-                plugins: {
-                    legend: {
-                        position: 'bottom', // Legenda abaixo
-                    }
-                }
-            }
-        });
-}
-
-else {
-    graficoCategoriasContainer.innerHTML='<p class="text-center text-muted mt-3">Sem dados de categorias.</p>';
-}
-
-// --- NOVOS GRÁFICOS E STATS ---
-
-// Gráfico de tempo médio de manutenção
-const graficoTempoMedioContainer=document.getElementById('grafico-tempo-medio');
-graficoTempoMedioContainer.innerHTML='<canvas id="chart-tempo-medio"></canvas>';
-
-// Recalcular tempo médio (adaptado da atualização)
-const manutencoesCompletasTempo=(await apiRequest('listarManutencoes')).manutencoes.filter(m=> // Busca todos para calcular tempo médio
-    m.Status===STATUS_CONCLUIDO || m.Status===STATUS_DISPONIVEL);
-
-const tempoMedioPorTipo= {}
-
-;
-
-manutencoesCompletasTempo.forEach(m=> {
-        if ( !m.Data_Criacao || !m.Data_Manutencao) return;
-
-        const tipEquip=m.Tipo_Equipamento || 'Indefinido';
-
-        // Calcular diferença em dias
-        try {
-            const dataInicio=new Date(m.Data_Criacao);
-            const dataFim=new Date(m.Data_Manutencao);
-            if (isNaN(dataInicio.getTime()) || isNaN(dataFim.getTime())) return;
-
-            const diffTempo=dataFim.getTime() - dataInicio.getTime();
-            if (diffTempo < 0) return; // Ignora se data fim for antes do início
-
-            const diffDias=Math.round(diffTempo / (1000 * 60 * 60 * 24));
-
-            if ( !tempoMedioPorTipo[tipEquip]) {
-                tempoMedioPorTipo[tipEquip]= {
-                    total: 0, count: 0
-                }
-
-                ;
-            }
-
-            tempoMedioPorTipo[tipEquip].total +=diffDias;
-            tempoMedioPorTipo[tipEquip].count++;
-        }
-
-        catch (e) {
-            console.warn("Erro ao calcular tempo médio:", e);
-        }
-    });
-
-const tiposEquipTempo=Object.keys(tempoMedioPorTipo);
-const tempoMedioDados=tiposEquipTempo.map(tipo=> tempoMedioPorTipo[tipo].count > 0 ? (tempoMedioPorTipo[tipo].total / tempoMedioPorTipo[tipo].count).toFixed(1) : 0);
-
-if (graficoTempoMedio) graficoTempoMedio.destroy();
-
-if (tiposEquipTempo.length > 0) {
-    graficoTempoMedio=new Chart(document.getElementById('chart-tempo-medio'), {
-
-        type: 'bar',
-        data: {
-
-            labels: tiposEquipTempo,
-            datasets: [ {
-                label: 'Tempo Médio (dias)',
-                data: tempoMedioDados,
-                backgroundColor: 'rgba(32, 201, 151, 0.7)', // Teal
-                borderColor: 'rgba(32, 201, 151, 1)',
-                borderWidth: 1
-            }
-
-            ]
-        }
-
-        ,
-        options: {
-
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            }
-
-            ,
-            scales: {
-                y: {
-
-                    beginAtZero: true,
-                    title: {
-                        display: true, text: 'Dias'
-                    }
-
-                    ,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            }
-        }
-    });
-}
-
-else {
-    graficoTempoMedioContainer.innerHTML='<p class="text-center text-muted mt-3">Sem dados de tempo médio.</p>';
-}
-
-
-// Gráfico de manutenções por período (Função separada para recarregar)
-const filtroPeriodo=document.getElementById('filtro-periodo-grafico');
-carregarGraficoPeriodo(parseInt(filtroPeriodo.value) || 30); // Carrega inicial
-
-
-// Status dos equipamentos
-const statusEquipamentosContainer=document.getElementById('status-equipamentos');
-
-if (statusEquipamentosContainer) {
-    statusEquipamentosContainer.innerHTML=''; // Limpa
-
-    // Obter equipamentos (já carregados em `equipamentos`)
-    if ( !equipamentos || equipamentos.length===0) {
-        statusEquipamentosContainer.innerHTML='<p class="text-center text-muted">Lista de equipamentos não carregada.</p>';
-    }
-
-    else {
-        const equipPorTipo= {}
-
-        ;
-
-        equipamentos.forEach(equip=> {
-                const tipo=equip.Tipo_Equipamento || 'Indefinido';
-
-                if ( !equipPorTipo[tipo]) {
-                    equipPorTipo[tipo]= {
-                        total: 0, disponiveis: 0, emManutencao: 0, aguardando: 0
-                    }
-
-                    ;
-                }
-
-                equipPorTipo[tipo].total++;
-
-                if (equip.Status==='Disponível') {
-                    equipPorTipo[tipo].disponiveis++;
-                }
-
-                else if (equip.Status==='Em Manutenção') {
-                    equipPorTipo[tipo].emManutencao++;
-                }
-
-                else if (equip.Status==='Aguardando Manutenção') {
-                    equipPorTipo[tipo].aguardando++;
-                }
-            });
-
-        // Criar cards para cada tipo
-        Object.entries(equipPorTipo).forEach(([tipo, dados])=> {
-                const disponibilidade=dados.total > 0 ? (dados.disponiveis / dados.total * 100) : 0;
-
-                const col=document.createElement('div');
-                col.className='col-md-4 mb-3'; // 3 colunas em desktop
-
-                col.innerHTML=` <div class="card h-100" > <div class="card-header bg-light" > <strong><span class="math-inline" >\{tipo\}</strong\> </div\> <div class\="card\-body d\-flex flex\-column justify\-content\-between" \> <div\> <div class\="d\-flex justify\-content\-between mb\-2" \> <span\>Total\: <strong\></span> {
-                    dados.total
-                }
-
-                </strong></span> <span>Disponibilidade: <strong class="<span class=" math-inline">\{disponibilidade < 50 ? 'text\-danger' \: disponibilidade < 80 ? 'text\-warning' \: 'text\-success'\}" \></span> {
-                    disponibilidade.toFixed(0)
-                }
-
-                %</strong></span> </div> <div class="progress mb-3" style="height: 20px;" > <div class="progress-bar bg-success" role="progressbar" style="width: ${dados.total > 0 ? (dados.disponiveis / dados.total * 100) : 0}%;" title="Disponíveis: <span class=" math-inline">\{dados\.disponiveis\}" \></span> {
-                    dados.disponiveis
-                }
-
-                </div> <div class="progress-bar bg-warning" role="progressbar" style="width: ${dados.total > 0 ? (dados.aguardando / dados.total * 100) : 0}%;" title="Aguardando: <span class=" math-inline">\{dados\.aguardando\}" \></span> {
-                    dados.aguardando
-                }
-
-                </div> <div class="progress-bar bg-primary" role="progressbar" style="width: ${dados.total > 0 ? (dados.emManutencao / dados.total * 100) : 0}%;" title="Em Manutenção: <span class=" math-inline">\{dados\.emManutencao\}" \></span> {
-                    dados.emManutencao
-                }
-
-                </div> </div> </div> <div class="d-flex justify-content-between small text-muted mt-auto" > <span><i class="bi bi-circle-fill text-success" ></i> Disponíveis</span> <span><i class="bi bi-circle-fill text-warning" ></i> Aguardando</span> <span><i class="bi bi-circle-fill text-primary" ></i> Em Manutenção</span> </div> </div> </div> `;
-                statusEquipamentosContainer.appendChild(col);
-            });
-    }
-
-    // fim else equipamentos
-}
-
-// fim if statusEquipamentosContainer
-
-}
-
-catch (error) {
-    modals.alert.hide(); // Esconde o "Aguarde" mesmo em erro
-
-    mostrarAlerta(`Erro ao carregar dashboard: $ {
-            error.message
-        }
-
-        `, 'Erro');
-}
-
-// Fim Try/Catch Carregar Dashboard
-}
-
-// Fim CarregarDashboard
-
-// Função para carregar gráfico de período (chamada ao mudar filtro)
-async function carregarGraficoPeriodo(dias) {
-    const graficoPeriodoContainer=document.getElementById('grafico-periodo');
-    if ( !graficoPeriodoContainer) return;
-    graficoPeriodoContainer.innerHTML='<div class="text-center mt-3"><div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Carregando...</span></div> Carregando gráfico...</div>'; // Loading indicator
-
-    try {
-        // Busca todas as manutenções (pode ser otimizado se a lista já estiver carregada)
-        const res=await apiRequest('listarManutencoes');
-        if ( !res.success) throw new Error("Falha ao buscar dados para gráfico de período.");
-
-        const todasManutencoes=res.manutencoes || [];
-
-        // Data limite
-        const dataLimite=new Date();
-        dataLimite.setDate(dataLimite.getDate() - dias);
-        dataLimite.setHours(0, 0, 0, 0); // Zera a hora para comparar dias inteiros
-
-        // Filtrar manutenções no período
-        const manutencoesPeriodo=todasManutencoes.filter(m=> {
-                if ( !m.Data_Criacao) return false;
-
-                try {
-                    const dataCriacao=new Date(m.Data_Criacao);
-                    return !isNaN(dataCriacao.getTime()) && dataCriacao >=dataLimite;
-                }
-
-                catch {
-                    return false;
-                }
-            });
-
-        // Obter dados agrupados por dia
-        const dadosPorDia= {}
-
-        ;
-
-        // Inicializar todos os dias no período
-        for (let i=0; i < dias; i++) {
-            const data=new Date();
-            data.setDate(data.getDate() - i);
-            const dataStr=data.toISOString().slice(0, 10);
-
-            dadosPorDia[dataStr]= {
-                abertas: 0, concluidas: 0
-            }
-
-            ;
-        }
-
-        // Contar manutenções abertas no dia
-        manutencoesPeriodo.forEach(m=> {
-                if ( !m.Data_Criacao) return;
-
-                try {
-                    const dataCriacao=new Date(m.Data_Criacao);
-                    const dataStr=dataCriacao.toISOString().slice(0, 10);
-
-                    if (dadosPorDia.hasOwnProperty(dataStr)) {
-                        dadosPorDia[dataStr].abertas++;
-                    }
-                }
-
-                catch {}
-            });
-
-        // Contar manutenções concluídas no dia (dentro do período)
-        todasManutencoes.forEach(m=> {
-                // Usa todas para pegar conclusões de chamados antigos
-                if ( !m.Data_Manutencao) return;
-
-                try {
-                    const dataManutencao=new Date(m.Data_Manutencao);
-                    if (isNaN(dataManutencao.getTime()) || dataManutencao < dataLimite) return; // Ignora se for antes do período
-
-                    const dataStr=dataManutencao.toISOString().slice(0, 10);
-
-                    if (dadosPorDia.hasOwnProperty(dataStr)) {
-                        dadosPorDia[dataStr].concluidas++;
-                    }
-                }
-
-                catch {}
-            });
-
-
-        // Converter para arrays para o gráfico
-        const labels=Object.keys(dadosPorDia).sort(); // Ordena as datas
-        const abertasData=labels.map(data=> dadosPorDia[data].abertas);
-        const concluidasData=labels.map(data=> dadosPorDia[data].concluidas);
-
-        // Formatar datas para exibição (DD/MM)
-        const labelsFormatados=labels.map(data=> {
-                try {
-                    const partes=data.split('-');
-
-                    return `<span class="math-inline" >\{partes\[2\]\}/</span> {
-                        partes[1]
-                    }
-
-                    `;
-                }
-
-                catch {
-                    return data;
-                }
-            });
-
-        // Limpa o container e adiciona o canvas novamente
-        graficoPeriodoContainer.innerHTML='<canvas id="chart-periodo"></canvas>';
-        const ctxPeriodo=document.getElementById('chart-periodo');
-        if ( !ctxPeriodo) return;
-
-
-        // Criar ou atualizar gráfico
-        if (graficoPeriodo) {
-            graficoPeriodo.destroy();
-        }
-
-        graficoPeriodo=new Chart(ctxPeriodo, {
-
-            type: 'line',
-            data: {
-
-                labels: labelsFormatados,
-                datasets: [ {
-                    label: 'Abertas',
-                    data: abertasData,
-                    borderColor: 'rgba(255, 193, 7, 1)', // Warning
-                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
-                    fill: true,
-                    tension: 0.1 // Linhas menos curvas
-                }
-
-                ,
-                {
-                label: 'Concluídas',
-                data: concluidasData,
-                borderColor: 'rgba(25, 135, 84, 1)', // Success
-                backgroundColor: 'rgba(25, 135, 84, 0.1)',
-                fill: true,
-                tension: 0.1
-            }
-
-            ]
-        }
-
-        ,
-        options: {
-
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                x: {
-                    grid: {
-                        display: false
-                    }
-                }
-
-                ,
-                y: {
-
-                    beginAtZero: true,
-                    ticks: {
-                        precision: 0
-                    }
-                }
-            }
-
-            ,
-            plugins: {
-                legend: {
-                    position: 'top',
-                }
-            }
-        }
-    });
-}
-
-catch (error) {
-    console.error("Erro ao carregar gráfico de período:", error);
-    graficoPeriodoContainer.innerHTML='<p class="text-center text-danger mt-3">Erro ao carregar gráfico.</p>';
-}
-
-// fim catch
-}
-
-// Fim carregarGraficoPeriodo
-
-// Função para carregar lista de manutenções
-async function carregarListaManutencoes() {
-    const filtroStatus=document.getElementById('filtro-status').value;
-    const filtroPlaca=document.getElementById('filtro-placa').value.trim();
-    const tbody=document.getElementById('lista-manutencoes');
-    const semRegistros=document.getElementById('sem-registros');
-
-    tbody.innerHTML='<tr><td colspan="5" class="text-center"><div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Carregando...</span></div> Carregando...</td></tr>';
-    semRegistros.style.display='none';
-
-    try {
-        // Sempre busca todas e filtra no cliente por enquanto
-        // Poderia passar filtros para API no futuro
-        const resManutencoes=await apiRequest('listarManutencoes');
-
-        if ( !resManutencoes.success) {
-            throw new Error(resManutencoes.message || "Erro ao buscar manutenções");
-        }
-
-        manutencoes=resManutencoes.manutencoes || [];
-
-        // Filtrar localmente
-        let manutencoesFiltradas=manutencoes;
-
-        if (filtroStatus) {
-            manutencoesFiltradas=manutencoesFiltradas.filter(m=> m.Status===filtroStatus);
-        }
-
-        if (filtroPlaca) {
-            manutencoesFiltradas=manutencoesFiltradas.filter(m=> m.Placa && m.Placa.toLowerCase().includes(filtroPlaca.toLowerCase()));
-        }
-
-        tbody.innerHTML=''; // Limpa o loading
-
-        if (manutencoesFiltradas.length===0) {
-            semRegistros.style.display='block';
-            return;
-        }
-
-        semRegistros.style.display='none';
-
-        manutencoesFiltradas.forEach(m=> {
-                const tr=document.createElement('tr');
-
-                // Formatar data
-                const dataCriacao=m.Data_Criacao ? new Date(m.Data_Criacao) : null;
-                const dataFormatada=dataCriacao ? dataCriacao.toLocaleDateString('pt-BR') : // Só data na lista
-                'N/A';
-
-                const statusClass=getStatusClass(m.Status);
-
-                tr.innerHTML=` <td><span class="math-inline" >\{m\.Placa \|\| 'N/A' \}</td\> <td\></span> {
-                    m.Tipo_Equipamento || 'N/A'
-                }
-
-                </td> <td>$ {
-                    dataFormatada
-                }
-
-                </td> <td><span class="badge <span class=" math-inline">\{statusClass\} rounded\-pill" \></span> {
-                    m.Status || 'N/A'
-                }
-
-                </span></td> <td> <button class="btn btn-sm btn-outline-primary btn-visualizar m-1" data-id="<span class=" math-inline">\{m\.ID\}" title\="Visualizar" \> <i class\="bi bi\-eye" \></i\> </button\> <button class\="btn btn\-sm btn\-outline\-secondary btn\-editar m\-1" data\-id\="</span>{m.ID}" title="Editar" > <i class="bi bi-pencil" ></i> </button> </td> `;
-
-                tbody.appendChild(tr);
-            });
-
-        // Adicionar eventos aos botões (DEPOIS que eles são adicionados ao DOM)
-        tbody.querySelectorAll('.btn-visualizar').forEach(btn=> {
-                btn.addEventListener('click', ()=> visualizarManutencao(btn.dataset.id));
-            });
-
-        tbody.querySelectorAll('.btn-editar').forEach(btn=> {
-                btn.addEventListener('click', ()=> editarManutencao(btn.dataset.id));
-            });
-
-    }
-
-    catch (error) {
-        console.error("Erro ao carregar lista:", error);
-
-        tbody.innerHTML=`<tr><td colspan="5" class="text-center text-danger">Erro ao carregar manutenções: $ {
-            error.message
-        }
-
-        </td></tr>`;
-        semRegistros.style.display='none';
-    }
-}
-
-// Função para obter classe de status
-function getStatusClass(status) {
-    switch (status) {
-        case STATUS_AGUARDANDO: return 'status-aguardando';
-        case STATUS_EM_MANUTENCAO: return 'status-em-manutencao';
-        case STATUS_CONCLUIDO: return 'status-concluido';
-        case STATUS_DISPONIVEL: return 'status-disponivel';
-        default: return 'bg-secondary text-white'; // Default mais visível
-    }
-}
-
-// Função para visualizar manutenção
-async function visualizarManutencao(id) {
-    mostrarAlerta('Carregando detalhes...', 'Aguarde', 'aguarde');
-
-    try {
-        const res=await apiRequest('obterManutencao', {
-            id
-        });
-    modals.alert.hide();
-
-    if ( !res.success || !res.manutencao) {
-        mostrarAlerta('Erro ao carregar manutenção: ' + (res.message || 'Não encontrada'), 'Erro');
-        return;
-    }
-
-    manutencaoAtual=res.manutencao;
-
-    // Preencher os dados na tela de visualização
-    document.getElementById('view-id').textContent=manutencaoAtual.ID || 'N/A';
-    document.getElementById('view-data-criacao').textContent=formatarData(manutencaoAtual.Data_Criacao);
-    document.getElementById('view-status').textContent=manutencaoAtual.Status || 'N/A';
-
-    document.getElementById('view-status').className=`badge $ {
-        getStatusClass(manutencaoAtual.Status)
-    }
-
-    rounded-pill`; // Rounded pill
-    document.getElementById('view-responsavel').textContent=manutencaoAtual.Responsavel || 'N/A';
-
-    document.getElementById('view-placa').textContent=manutencaoAtual.Placa || 'N/A';
-    // document.getElementById('view-modelo').textContent = manutencaoAtual.Modelo || 'N/A'; // Modelo removido
-    document.getElementById('view-tipo-equipamento').textContent=manutencaoAtual.Tipo_Equipamento || 'N/A';
-
-    document.getElementById('view-categoria-problema').textContent=manutencaoAtual.Categoria_Problema || 'N/A';
-    document.getElementById('view-urgencia').textContent=manutencaoAtual.Urgencia || 'N/A';
-
-    // Motivo Outro
-    const viewMotivoOutroContainer=document.getElementById('view-motivo-outro-container');
-
-    if (manutencaoAtual.Categoria_Problema==='Outro' && manutencaoAtual.Motivo_Outro) {
-        viewMotivoOutroContainer.style.display='block';
-        document.getElementById('view-motivo-outro').textContent=manutencaoAtual.Motivo_Outro;
-    }
-
-    else {
-        viewMotivoOutroContainer.style.display='none';
-    }
-
-    document.getElementById('view-descricao-problema').textContent=manutencaoAtual.Descricao_Problema || 'Nenhuma descrição';
-
-    // Checklist Pré
-    const viewChecklistPre=document.getElementById('view-checklist-pre');
-    viewChecklistPre.innerHTML=''; // Limpa
-
-    const checklistPre=manutencaoAtual.Checklist_Pre || {}
-
-    ; // Já deve ser objeto ou vazio
-
-    if (Object.keys(checklistPre).length > 0) {
-        Object.entries(checklistPre).forEach(([item, valor])=> {
-                const itemDiv=document.createElement('div');
-                itemDiv.className='mb-2 d-flex align-items-center'; // Alinha ícone e texto
-
-                let icon, textClass;
-
-                switch (valor) {
-                    case 'OK': icon='bi-check-circle-fill text-success';
-                    textClass='text-success';
-                    break;
-                    case 'Danificado': icon='bi-exclamation-triangle-fill text-danger';
-                    textClass='text-danger';
-                    break;
-                    case 'N/A': icon='bi-dash-circle-fill text-secondary';
-                    textClass='text-secondary';
-                    break;
-                    default: icon='bi-circle';
-                    textClass='';
-                }
-
-                itemDiv.innerHTML=` <i class="bi <span class=" math-inline">\{icon\} me\-2 fs\-5" \></i\> <div\> <span class\="fw\-semibold" \></span> {
-                    item
-                }
-
-                :</span> <span class="<span class=" math-inline">\{textClass\}" \></span> {
-                    valor
-                }
-
-                </span> </div> `;
-
-                viewChecklistPre.appendChild(itemDiv);
-            });
-    }
-
-    else {
-        viewChecklistPre.innerHTML='<p class="text-muted">Nenhum item verificado no checklist pré-manutenção.</p>';
-    }
-
-    document.getElementById('view-observacoes-pre').textContent=manutencaoAtual.Observacoes_Pre || 'Nenhuma observação registrada.';
-
-    // Imagens Pré
-    const viewImagensPre=document.getElementById('view-imagens-pre');
-    viewImagensPre.innerHTML=''; // Limpa
-    const imagensPre=Array.isArray(manutencaoAtual.Imagens_Pre) ? manutencaoAtual.Imagens_Pre : []; // Garante que é array
-
-
-    if (imagensPre.length > 0) {
-        imagensPre.forEach(img=> {
-                if ( !img || !img.url) return; // Pula inválidas
-                const imgContainer=document.createElement('div');
-                imgContainer.className='image-container position-relative'; // Adicionado position-relative
-
-                const imgElement=document.createElement('img');
-                imgElement.src=img.url;
-                imgElement.alt='Imagem Pré-Manutenção';
-                imgElement.className='img-thumbnail'; // Usa thumbnail do bootstrap
-                imgElement.style.cursor='pointer';
-                imgElement.onclick=()=> window.open(img.url, '_blank');
-
-                // Botão Anotar
-                const btnAnnotate=document.createElement('button');
-                btnAnnotate.className='btn btn-sm btn-info btn-annotate';
-                btnAnnotate.innerHTML='<i class="bi bi-pencil-square"></i>';
-                btnAnnotate.title='Anotar imagem';
-                btnAnnotate.dataset.imgSrc=img.url;
-
-                btnAnnotate.addEventListener('click', (e)=> {
-                        e.stopPropagation(); // Evitar que abra a imagem
-                        abrirEditorAnotacao(img.url);
-                    });
-
-                imgContainer.appendChild(imgElement);
-                imgContainer.appendChild(btnAnnotate); // Adiciona botão
-                viewImagensPre.appendChild(imgContainer);
-            });
-    }
-
-    else {
-        viewImagensPre.innerHTML='<p class="text-muted">Nenhuma imagem registrada na pré-manutenção.</p>';
-    }
-
-    // Seção Pós-Manutenção
-    const viewSectionPosManutencao=document.getElementById('view-section-pos-manutencao');
-
-    if (manutencaoAtual.Status===STATUS_CONCLUIDO || manutencaoAtual.Status===STATUS_DISPONIVEL) {
-        viewSectionPosManutencao.style.display='block';
-
-        document.getElementById('view-data-manutencao').textContent=formatarData(manutencaoAtual.Data_Manutencao) || 'N/A';
-
-        // Checklist Pós
-        const viewChecklistPos=document.getElementById('view-checklist-pos');
-        viewChecklistPos.innerHTML=''; // Limpa
-
-        const checklistPos=manutencaoAtual.Checklist_Pos || {}
-
-        ; // Já deve ser objeto
-
-
-        if (Object.keys(checklistPos).length > 0) {
-            Object.entries(checklistPos).forEach(([item, valor])=> {
-                    const itemDiv=document.createElement('div');
-                    itemDiv.className='mb-2 d-flex align-items-center';
-
-                    let icon, textClass;
-
-                    switch (valor) {
-                        case 'OK': icon='bi-check-circle-fill text-success'; textClass='text-success'; break;
-                        case 'Danificado': icon='bi-exclamation-triangle-fill text-danger'; textClass='text-danger'; break;
-                        case 'N/A': icon='bi-dash-circle-fill text-secondary'; textClass='text-secondary'; break;
-                        default: icon='bi-circle'; textClass='';
-                    }
-
-                    itemDiv.innerHTML=` <i class="bi <span class=" math-inline">\{icon\} me\-2 fs\-5" \></i\> <div\> <span class\="fw\-semibold" \></span> {
-                        item
-                    }
-
-                    :</span> <span class="<span class=" math-inline">\{textClass\}" \></span> {
-                        valor
-                    }
-
-                    </span> </div> `;
-                    viewChecklistPos.appendChild(itemDiv);
-                });
-        }
-
-        else {
-            viewChecklistPos.innerHTML='<p class="text-muted">Nenhum item verificado no checklist pós-manutenção.</p>';
-        }
-
-        document.getElementById('view-observacoes-pos').textContent=manutencaoAtual.Observacoes_Pos || 'Nenhuma observação registrada.';
-
-        // Imagens Pós
-        const viewImagensPos=document.getElementById('view-imagens-pos');
-        viewImagensPos.innerHTML=''; // Limpa
-        const imagensPos=Array.isArray(manutencaoAtual.Imagens_Pos) ? manutencaoAtual.Imagens_Pos : []; // Garante array
-
-        if (imagensPos.length > 0) {
-            imagensPos.forEach(img=> {
-                    if ( !img || !img.url) return; // Pula inválidas
-                    const imgContainer=document.createElement('div');
-                    imgContainer.className='image-container position-relative';
-
-                    const imgElement=document.createElement('img');
-                    imgElement.src=img.url;
-                    imgElement.alt='Imagem Pós-Manutenção';
-                    imgElement.className='img-thumbnail';
-                    imgElement.style.cursor='pointer';
-                    imgElement.onclick=()=> window.open(img.url, '_blank');
-
-                    // Botão Anotar
-                    const btnAnnotate=document.createElement('button');
-                    btnAnnotate.className='btn btn-sm btn-info btn-annotate';
-                    btnAnnotate.innerHTML='<i class="bi bi-pencil-square"></i>';
-                    btnAnnotate.title='Anotar imagem';
-                    btnAnnotate.dataset.imgSrc=img.url;
-
-                    btnAnnotate.addEventListener('click', (e)=> {
-                            e.stopPropagation();
-                            abrirEditorAnotacao(img.url);
-                        });
-
-
-                    imgContainer.appendChild(imgElement);
-                    imgContainer.appendChild(btnAnnotate); // Adiciona botão
-                    viewImagensPos.appendChild(imgContainer);
-                });
-        }
-
-        else {
-            viewImagensPos.innerHTML='<p class="text-muted">Nenhuma imagem registrada na pós-manutenção.</p>';
-        }
-    }
-
-    else {
-        viewSectionPosManutencao.style.display='none';
-    }
-
-    // Mostrar tela de visualização
-    mostrarTela('visualizacao');
-}
-
-catch (error) {
-    modals.alert.hide(); // Esconde o "Aguarde" em caso de erro
-
-    mostrarAlerta(`Erro ao exibir detalhes: $ {
-            error.message
-        }
-
-        `, 'Erro');
-}
-}
-
-// Função para editar manutenção
-async function editarManutencao(id) {
-    mostrarAlerta('Carregando dados para edição...', 'Aguarde', 'aguarde');
-
-    try {
-        const res=await apiRequest('obterManutencao', {
-            id
-        });
-    modals.alert.hide();
-
-    if ( !res.success || !res.manutencao) {
-        mostrarAlerta('Erro ao carregar manutenção para edição.', 'Erro');
-        return;
-    }
-
-    manutencaoAtual=res.manutencao;
-
-    // --- Preencher Formulário Pré-Manutenção ---
-    document.getElementById('form-pre-manutencao').reset(); // Limpa antes de preencher
-    document.getElementById('pre-id').value=manutencaoAtual.ID || '';
-
-    // Preencher Tipo e Placa/Equipamento (Lógica mais complexa agora)
-    const tipoEquip=manutencaoAtual.Tipo_Equipamento || '';
-    const placaEquip=manutencaoAtual.Placa || '';
-    document.getElementById('pre-tipo-equipamento').value=tipoEquip;
-
-    // Dispara o evento change para carregar o select de placa correto
-    const event=new Event('change');
-    document.getElementById('pre-tipo-equipamento').dispatchEvent(event);
-
-    // Espera um pouco para o select ser populado (idealmente usar Promise se o JS for complexo)
-    await new Promise(resolve=> setTimeout(resolve, 100));
-
-    const selectPlaca=document.getElementById('pre-placa-select');
-    const inputOutro=document.getElementById('pre-placa-outro-valor');
-    const hiddenPlacaInput=document.getElementById('pre-placa');
-    const hiddenModeloInput=document.getElementById('pre-modelo');
-
-
-    // Tenta selecionar a placa no select correspondente
-    let placaEncontradaNoSelect=false;
-
-    if (selectPlaca.style.display !=='none') {
-        for (let option of selectPlaca.options) {
-            if (option.value===placaEquip) {
-                selectPlaca.value=placaEquip;
-                placaEncontradaNoSelect=true;
-                hiddenPlacaInput.value=placaEquip; // Atualiza hidden input
-                // Tenta encontrar o modelo associado (se existir no dataset)
-                const equipInfo=equipamentos.find(eq=> eq.Placa===placaEquip && eq.Tipo_Equipamento===tipoEquip);
-                hiddenModeloInput.value=equipInfo?.Modelo || ''; // Usa modelo do equipamento encontrado
-                break;
-            }
-        }
-    }
-
-    // Se não encontrou no select, verifica se é 'OUTRO EQUIPAMENTO' ou tipo 'Outro'
-    if ( !placaEncontradaNoSelect) {
-        selectPlaca.value='OUTRO EQUIPAMENTO'; // Seleciona 'OUTRO'
-        inputOutro.style.display='block'; // Mostra input de texto
-        inputOutro.value=placaEquip; // Coloca o valor no input de texto
-        hiddenPlacaInput.value=placaEquip; // Atualiza hidden input
-        hiddenModeloInput.value=''; // Modelo desconhecido para 'Outro'
-    }
-
-    else {
-        inputOutro.style.display='none'; // Esconde input de texto se achou no select
-        inputOutro.value='';
-    }
-
-    // Preenche modelo (agora oculto, mas pode ser útil)
-    // O modelo é preenchido dentro da lógica de seleção acima
-
-    document.getElementById('pre-categoria-problema').value=manutencaoAtual.Categoria_Problema || '';
-    document.getElementById('pre-urgencia').value=manutencaoAtual.Urgencia || '';
-
-    // Dispara evento change para mostrar/ocultar campo "Outro Motivo"
-    document.getElementById('pre-categoria-problema').dispatchEvent(new Event('change'));
-    document.getElementById('pre-motivo-outro').value=manutencaoAtual.Motivo_Outro || '';
-
-
-    document.getElementById('pre-descricao-problema').value=manutencaoAtual.Descricao_Problema || '';
-    document.getElementById('pre-observacoes').value=manutencaoAtual.Observacoes_Pre || '';
-    document.getElementById('pre-responsavel').value=manutencaoAtual.Responsavel || '';
-
-    // Carregar checklist pré
-    const checklistPre=manutencaoAtual.Checklist_Pre || {}
-
-    ;
-    const checklistPreContainer=document.getElementById('pre-checklist-container');
-    checklistPreContainer.querySelectorAll('input[type="radio"]').forEach(radio=> radio.checked=false); // Desmarca todos
-
-    Object.entries(checklistPre).forEach(([item, valor])=> {
-            const radioToCheck=checklistPreContainer.querySelector(`input[type="radio"][data-item="<span class=" math-inline">\{CSS\.escape\(item\)\}" \]\[value\="</span>{CSS.escape(valor)}"]`);
-            if (radioToCheck) radioToCheck.checked=true;
-        });
-
-    // Carregar imagens pré
-    const imagensPreContainer=document.getElementById('imagens-preview-pre');
-    imagensPreContainer.innerHTML=''; // Limpa
-    imagenesPreUpload=Array.isArray(manutencaoAtual.Imagens_Pre) ? [...manutencaoAtual.Imagens_Pre] : []; // Copia array
-    imagenesPreUpload.forEach(img=> adicionarImagemPreview(img.url, 'pre', img.id)); // Passa ID para remoção
-
-
-    // --- Preencher Formulário Pós-Manutenção (se aplicável) ---
-    const formPos=document.getElementById('form-pos-manutencao');
-    formPos.reset(); // Limpa antes de preencher
-    document.getElementById('pos-id').value=manutencaoAtual.ID || '';
-    document.getElementById('pos-placa-display').textContent=manutencaoAtual.Placa || 'N/A';
-    // document.getElementById('pos-modelo-display').textContent = manutencaoAtual.Modelo || 'N/A'; // Removido
-    document.getElementById('pos-tipo-display').textContent=manutencaoAtual.Tipo_Equipamento || 'N/A';
-
-
-    if (manutencaoAtual.Status===STATUS_CONCLUIDO || manutencaoAtual.Status===STATUS_DISPONIVEL) {
-        document.getElementById('pos-observacoes').value=manutencaoAtual.Observacoes_Pos || '';
-
-        // Carregar checklist pós
-        const checklistPos=manutencaoAtual.Checklist_Pos || {}
-
-        ;
-        const checklistPosContainer=document.getElementById('pos-checklist-container');
-        checklistPosContainer.querySelectorAll('input[type="radio"]').forEach(radio=> radio.checked=false); // Desmarca
-
-        Object.entries(checklistPos).forEach(([item, valor])=> {
-                const radioToCheck=checklistPosContainer.querySelector(`input[type="radio"][data-item="<span class=" math-inline">\{CSS\.escape\(item\)\}" \]\[value\="</span>{CSS.escape(valor)}"]`);
-                if (radioToCheck) radioToCheck.checked=true;
-            });
-
-        // Carregar imagens pós
-        const imagensPosContainer=document.getElementById('imagens-preview-pos');
-        imagensPosContainer.innerHTML=''; // Limpa
-        imagenesPosUpload=Array.isArray(manutencaoAtual.Imagens_Pos) ? [...manutencaoAtual.Imagens_Pos] : []; // Copia array
-        imagenesPosUpload.forEach(img=> adicionarImagemPreview(img.url, 'pos', img.id)); // Passa ID
-
-        mostrarTela('posManu'); // Mostra tela pós se já concluído
-    }
-
-    else {
-        // Se não está concluído, limpa dados pós e mostra tela pré
-        document.getElementById('pos-observacoes').value='';
-        document.getElementById('imagens-preview-pos').innerHTML='';
-        imagenesPosUpload=[];
-        const checklistPosContainer=document.getElementById('pos-checklist-container');
-        checklistPosContainer.querySelectorAll('input[type="radio"]').forEach(radio=> radio.checked=false);
-        mostrarTela('preManu');
-    }
-}
-
-catch (error) {
-    modals.alert.hide();
-
-    mostrarAlerta(`Erro ao preparar edição: $ {
-            error.message
-        }
-
-        `, 'Erro');
-}
-}
-
-// Função para formatar data (revisada para consistência)
-function formatarData(dataInput) {
-    if ( !dataInput) return 'N/A';
-
-    try {
-        const dataObj=new Date(dataInput);
-
-        // Verifica se a data é válida
-        if (isNaN(dataObj.getTime())) {
-            return 'Data Inválida';
-        }
-
-        // Retorna formato DD/MM/YYYY HH:MM
-        return dataObj.toLocaleDateString('pt-BR', {
-            day: '2-digit', month: '2-digit', year: 'numeric'
-
-        })+' '+dataObj.toLocaleTimeString('pt-BR', {
-        hour: '2-digit', minute: '2-digit'
-    });
-}
-
-catch (e) {
-    return 'Erro Data'; // Retorna erro se falhar
-}
-}
-
-
-// Função para adicionar imagem ao preview (Atualizada para incluir ID e botão de remover correto)
-function adicionarImagemPreview(src, tipo, fileId=null) {
-
-    // Adicionado fileId opcional
-    const container=document.getElementById(`imagens-preview-$ {
-            tipo
-        }
-
-        `);
-    if ( !container) return;
-    const imgContainer=document.createElement('div');
-    imgContainer.className='image-container position-relative';
-    imgContainer.dataset.fileId=fileId || src; // Usa ID do arquivo ou URL/base64 como identificador
-
-    const img=document.createElement('img');
-    img.src=src; // Pode ser URL ou base64
-    img.alt='Imagem';
-    img.className='img-thumbnail photo-preview-img'; // Adicionado classe para seleção
-    img.style.cursor='pointer';
-    img.onclick=()=>window.open(src, '_blank'); // Abre em nova aba ao clicar
-
-    const deleteBtn=document.createElement('button');
-    deleteBtn.type='button'; // Importante para não submeter forms
-    // Usar classes Bootstrap para estilo e acessibilidade do botão de fechar
-    deleteBtn.className='btn-close delete-btn';
-    deleteBtn.style.position='absolute'; // Ajuste fino da posição
-    deleteBtn.style.top='5px';
-    deleteBtn.style.right='5px';
-    deleteBtn.style.backgroundColor='rgba(255, 255, 255, 0.7)'; // Fundo para contraste
-    deleteBtn.style.borderRadius='50%'; // Circular
-    deleteBtn.style.padding='0.25rem'; // Padding interno
-    deleteBtn.setAttribute('aria-label', 'Remover Imagem');
-    deleteBtn.title='Remover Imagem';
-
-    deleteBtn.onclick=function(e) {
-        e.stopPropagation(); // Evita abrir imagem ao clicar no X
-        const imageIdentifier=imgContainer.dataset.fileId;
-        imgContainer.remove(); // Remove o elemento do DOM
-
-        // Remove da lista correspondente
-        if (tipo==='pre') {
-            imagenesPreUpload=imagenesPreUpload.filter(imgData=> (imgData.id || imgData.url) !==imageIdentifier);
-        }
-
-        else {
-            imagenesPosUpload=imagenesPosUpload.filter(imgData=> (imgData.id || imgData.url) !==imageIdentifier);
-        }
-
-        // TODO: Adicionar chamada à API para excluir imagem do Drive se necessário (requer backend)
-        console.log("Imagem removida (localmente):", imageIdentifier);
-    }
-
-    ;
-
-    // Botão Anotar (Adiciona APENAS se a ferramenta estiver integrada)
-    if (typeof ImageAnnotator !=='undefined') {
-        const btnAnnotate=document.createElement('button');
-        btnAnnotate.type='button';
-        btnAnnotate.className='btn btn-sm btn-info btn-annotate'; // Mantém estilo original
-        btnAnnotate.style.position='absolute'; // Posicionamento
-        btnAnnotate.style.top='5px';
-        btnAnnotate.style.left='5px';
-        btnAnnotate.innerHTML='<i class="bi bi-pencil-square"></i>';
-        btnAnnotate.title='Anotar imagem';
-        btnAnnotate.dataset.imgSrc=src; // Guarda a URL original
-        btnAnnotate.dataset.originalId=fileId || src; // Identificador original
-
-        btnAnnotate.addEventListener('click', (e)=> {
-                e.stopPropagation();
-                // Passa o container da imagem e o tipo para a função de abrir
-                abrirEditorAnotacao(src, tipo, imgContainer);
-            });
-        imgContainer.appendChild(btnAnnotate); // Adiciona botão de anotar
-    }
-
-
-    imgContainer.appendChild(img);
-    imgContainer.appendChild(deleteBtn); // Adiciona botão de deletar
-    container.appendChild(imgContainer);
-}
-
-
-// --- Funções da Câmera ---
-async function abrirCamera(tipo) {
-    try {
-        const constraints= {
-            video: {
-                facingMode: "environment"
-            }
-
-            // Tenta câmera traseira
-        }
-
-        ;
-
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            mediaStream=await navigator.mediaDevices.getUserMedia(constraints);
-
-            const videoElementId=`camera-preview-$ {
-                tipo
-            }
-
-            `;
-            const video=document.getElementById(videoElementId);
-
-            if (video) {
-                video.srcObject=mediaStream;
-                video.play(); // Garante que o vídeo comece
-
-                document.getElementById(`camera-container-$ {
-                        tipo
-                    }
-
-                    `).style.display='block';
+        // CONTINUAÇÃO DA FUNÇÃO adicionarImagemPreview...
+        if ( !container) return;
+
+        const imgContainer=document.createElement('div');
+        imgContainer.className='image-container position-relative';
+        imgContainer.dataset.fileId=fileId || src; // Usa ID do arquivo ou URL/base64 como identificador
+
+        const img=document.createElement('img');
+        img.src=src; // Pode ser URL ou base64
+        img.alt='Imagem';
+        img.className='img-thumbnail photo-preview-img'; // Adicionado classe para seleção
+        img.style.cursor='pointer';
+        img.onclick=()=>window.open(src, '_blank'); // Abre em nova aba ao clicar
+
+        const deleteBtn=document.createElement('button');
+        deleteBtn.type='button'; // Importante para não submeter forms
+        // Usar classes Bootstrap para estilo e acessibilidade do botão de fechar
+        deleteBtn.className='btn-close delete-btn';
+        deleteBtn.style.position='absolute'; // Ajuste fino da posição
+        deleteBtn.style.top='5px';
+        deleteBtn.style.right='5px';
+        deleteBtn.style.backgroundColor='rgba(255, 255, 255, 0.7)'; // Fundo para contraste
+        deleteBtn.style.borderRadius='50%'; // Circular
+        deleteBtn.style.padding='0.25rem'; // Padding interno
+        deleteBtn.setAttribute('aria-label', 'Remover Imagem');
+        deleteBtn.title='Remover Imagem';
+
+        deleteBtn.onclick=function(e) {
+            e.stopPropagation(); // Evita abrir imagem ao clicar no X
+            const imageIdentifier=imgContainer.dataset.fileId;
+            imgContainer.remove(); // Remove o elemento do DOM
+
+            // Remove da lista correspondente
+            if (tipo==='pre') {
+                imagenesPreUpload=imagenesPreUpload.filter(imgData=> (imgData.id || imgData.url) !==imageIdentifier);
             }
 
             else {
-                console.error("Elemento de vídeo não encontrado:", videoElementId);
-                mostrarAlerta('Erro interno: Elemento de vídeo não encontrado.', 'Erro');
+                imagenesPosUpload=imagenesPosUpload.filter(imgData=> (imgData.id || imgData.url) !==imageIdentifier);
+            }
+
+            // TODO: Adicionar chamada à API para excluir imagem do Drive se necessário (requer backend)
+            console.log("Imagem removida (localmente):", imageIdentifier);
+        }
+
+        ;
+
+        // Botão Anotar (Adiciona APENAS se a ferramenta estiver integrada)
+        if (typeof ImageAnnotator !=='undefined') {
+            const btnAnnotate=document.createElement('button');
+            btnAnnotate.type='button';
+            btnAnnotate.className='btn btn-sm btn-info btn-annotate'; // Mantém estilo original
+            btnAnnotate.style.position='absolute'; // Posicionamento
+            btnAnnotate.style.top='5px';
+            btnAnnotate.style.left='5px';
+            btnAnnotate.innerHTML='<i class="bi bi-pencil-square"></i>';
+            btnAnnotate.title='Anotar imagem';
+            btnAnnotate.dataset.imgSrc=src; // Guarda a URL original
+            btnAnnotate.dataset.originalId=fileId || src; // Identificador original
+
+            btnAnnotate.addEventListener('click', (e)=> {
+                    e.stopPropagation();
+                    // Passa o container da imagem e o tipo para a função de abrir
+                    abrirEditorAnotacao(src, tipo, imgContainer);
+                });
+            imgContainer.appendChild(btnAnnotate); // Adiciona botão de anotar
+        }
+
+
+        imgContainer.appendChild(img);
+        imgContainer.appendChild(deleteBtn); // Adiciona botão de deletar
+        container.appendChild(imgContainer);
+    }
+
+
+    // --- Funções da Câmera ---
+    async function abrirCamera(tipo) {
+        try {
+            const constraints= {
+                video: {
+                    facingMode: "environment"
+                }
+
+                // Tenta câmera traseira
+            }
+
+            ;
+
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                mediaStream=await navigator.mediaDevices.getUserMedia(constraints);
+
+                const videoElementId=`camera-preview-$ {
+                    tipo
+                }
+
+                `;
+                const video=document.getElementById(videoElementId);
+
+                if (video) {
+                    video.srcObject=mediaStream;
+                    video.play(); // Garante que o vídeo comece
+
+                    document.getElementById(`camera-container-$ {
+                            tipo
+                        }
+
+                        `).style.display='block';
+                }
+
+                else {
+                    console.error("Elemento de vídeo não encontrado:", videoElementId);
+                    mostrarAlerta('Erro interno: Elemento de vídeo não encontrado.', 'Erro');
+                }
+            }
+
+            else {
+                mostrarAlerta('Seu navegador não suporta acesso à câmera.', 'Erro');
             }
         }
 
-        else {
-            mostrarAlerta('Seu navegador não suporta acesso à câmera.', 'Erro');
+        catch (err) {
+            console.error('Erro ao abrir câmera:', err);
+            let errorMsg='Erro ao abrir câmera.';
+
+            if (err.name==="NotAllowedError") {
+                errorMsg='Permissão para acessar a câmera foi negada.';
+            }
+
+            else if (err.name==="NotFoundError") {
+                errorMsg='Nenhuma câmera encontrada no dispositivo.';
+            }
+
+            else if (err.name==="NotReadableError") {
+                errorMsg='Não foi possível acessar a câmera. Pode estar sendo usada por outro app.';
+            }
+
+            mostrarAlerta(errorMsg, 'Erro Câmera', 'erro');
         }
     }
 
-    catch (err) {
-        console.error('Erro ao abrir câmera:', err);
-        let errorMsg='Erro ao abrir câmera.';
-
-        if (err.name==="NotAllowedError") {
-            errorMsg='Permissão para acessar a câmera foi negada.';
+    function fecharCamera(tipo) {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track=> track.stop());
+            mediaStream=null;
         }
 
-        else if (err.name==="NotFoundError") {
-            errorMsg='Nenhuma câmera encontrada no dispositivo.';
-        }
+        const container=document.getElementById(`camera-container-$ {
+                tipo
+            }
 
-        else if (err.name==="NotReadableError") {
-            errorMsg='Não foi possível acessar a câmera. Pode estar sendo usada por outro app.';
-        }
+            `);
+        if (container) container.style.display='none';
 
-        mostrarAlerta(errorMsg, 'Erro Câmera', 'erro');
-    }
-}
-
-function fecharCamera(tipo) {
-    if (mediaStream) {
-        mediaStream.getTracks().forEach(track=> track.stop());
-        mediaStream=null;
-    }
-
-    const container=document.getElementById(`camera-container-$ {
-            tipo
-        }
-
-        `);
-    if (container) container.style.display='none';
-
-    const video=document.getElementById(`camera-preview-$ {
-            tipo
-        }
-
-        `);
-    if(video) video.srcObject=null; // Limpa o source object
-}
-
-async function capturarImagem(tipo) {
-    try {
         const video=document.getElementById(`camera-preview-$ {
                 tipo
             }
 
             `);
+        if(video) video.srcObject=null; // Limpa o source object
+    }
 
-        if ( !video || !video.videoWidth || !video.videoHeight) {
-            throw new Error("Preview da câmera não está pronto.");
+    async function capturarImagem(tipo) {
+        try {
+            const video=document.getElementById(`camera-preview-$ {
+                    tipo
+                }
+
+                `);
+
+            if ( !video || !video.videoWidth || !video.videoHeight) {
+                throw new Error("Preview da câmera não está pronto.");
+            }
+
+            const canvas=document.createElement('canvas');
+            canvas.width=video.videoWidth;
+            canvas.height=video.videoHeight;
+
+            const ctx=canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            const base64=canvas.toDataURL('image/jpeg', 0.9); // Qualidade 0.9
+
+            fecharCamera(tipo); // Fecha a câmera após captura
+            await uploadImagem(base64, tipo);
         }
 
-        const canvas=document.createElement('canvas');
-        canvas.width=video.videoWidth;
-        canvas.height=video.videoHeight;
+        catch (e) {
+            console.error('Erro ao capturar imagem:', e);
+            mostrarAlerta('Erro ao capturar imagem: ' + e.message, 'Erro', 'erro');
+            fecharCamera(tipo); // Fecha a câmera mesmo em erro
+        }
+    }
 
-        const ctx=canvas.getContext('2d');
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Função de upload de imagem (atualizada para mostrar loading e tratar nova/edição)
+    async function uploadImagem(base64, tipo) {
 
-        const base64=canvas.toDataURL('image/jpeg', 0.9); // Qualidade 0.9
+        // Mostra um loading específico para imagem
+        const tempId=`temp-$ {
+            Date.now()
+        }
 
-        fecharCamera(tipo); // Fecha a câmera após captura
-        await uploadImagem(base64, tipo);
+        `;
+        adicionarImagemPreviewLoading(tempId, tipo);
+
+        try {
+            const idManutencao=document.getElementById(tipo==='pre' ? 'pre-id' : 'pos-id').value;
+            const isNew= !idManutencao; // Se ID está vazio, é uma nova manutenção
+
+            // Se for nova, apenas adiciona localmente com base64
+            if (isNew) {
+                const imageData= {
+                    url: base64, id: tempId, timestamp: new Date().toISOString(), isLocal: true
+                }
+
+                ; // Marca como local
+
+                if (tipo==='pre') {
+                    imagenesPreUpload.push(imageData);
+                }
+
+                else {
+                    // Não deveria chegar aqui para pós se for nova, mas por segurança
+                    imagenesPosUpload.push(imageData);
+                }
+
+                // Atualiza o preview que estava mostrando loading
+                removerImagemPreviewLoading(tempId, tipo);
+                adicionarImagemPreview(base64, tipo, tempId); // Usa tempId como identificador
+                return; // Não faz upload para o servidor ainda
+            }
+
+
+            // Fazer upload para o servidor se for edição
+            const res=await apiRequest('uploadImagem', {
+                id: idManutencao,
+                imagem: base64, // Envia base64
+                tipo: tipo
+            });
+
+        removerImagemPreviewLoading(tempId, tipo); // Remove loading
+
+        if ( !res || !res.success) {
+            throw new Error(res.message || 'Erro desconhecido no upload');
+        }
+
+        // Adicionar à lista de imagens com URL e ID do Drive
+        const imageData= {
+            url: res.url, id: res.id, timestamp: new Date().toISOString()
+        }
+
+        ;
+
+        if (tipo==='pre') {
+            imagenesPreUpload.push(imageData);
+        }
+
+        else {
+            imagenesPosUpload.push(imageData);
+        }
+
+        // Adiciona ao preview a imagem real do Drive
+        adicionarImagemPreview(res.url, tipo, res.id);
+
     }
 
     catch (e) {
-        console.error('Erro ao capturar imagem:', e);
-        mostrarAlerta('Erro ao capturar imagem: ' + e.message, 'Erro', 'erro');
-        fecharCamera(tipo); // Fecha a câmera mesmo em erro
+        removerImagemPreviewLoading(tempId, tipo); // Remove loading em caso de erro
+        console.error('Erro ao fazer upload de imagem:', e);
+        mostrarAlerta('Erro ao fazer upload de imagem: ' + e.message, 'Erro', 'erro');
     }
-}
-
-// Função de upload de imagem (atualizada para mostrar loading e tratar nova/edição)
-async function uploadImagem(base64, tipo) {
-
-    // Mostra um loading específico para imagem
-    const tempId=`temp-$ {
-        Date.now()
-    }
-
-    `;
-    adicionarImagemPreviewLoading(tempId, tipo);
-
-    try {
-        const idManutencao=document.getElementById(tipo==='pre' ? 'pre-id' : 'pos-id').value;
-        const isNew= !idManutencao; // Se ID está vazio, é uma nova manutenção
-
-        // Se for nova, apenas adiciona localmente com base64
-        if (isNew) {
-            const imageData= {
-                url: base64, id: tempId, timestamp: new Date().toISOString(), isLocal: true
-            }
-
-            ; // Marca como local
-
-            if (tipo==='pre') {
-                imagenesPreUpload.push(imageData);
-            }
-
-            else {
-                // Não deveria chegar aqui para pós se for nova, mas por segurança
-                imagenesPosUpload.push(imageData);
-            }
-
-            // Atualiza o preview que estava mostrando loading
-            removerImagemPreviewLoading(tempId, tipo);
-            adicionarImagemPreview(base64, tipo, tempId); // Usa tempId como identificador
-            return; // Não faz upload para o servidor ainda
-        }
-
-
-        // Fazer upload para o servidor se for edição
-        const res=await apiRequest('uploadImagem', {
-            id: idManutencao,
-            imagem: base64, // Envia base64
-            tipo: tipo
-        });
-
-    removerImagemPreviewLoading(tempId, tipo); // Remove loading
-
-    if ( !res || !res.success) {
-        throw new Error(res.message || 'Erro desconhecido no upload');
-    }
-
-    // Adicionar à lista de imagens com URL e ID do Drive
-    const imageData= {
-        url: res.url, id: res.id, timestamp: new Date().toISOString()
-    }
-
-    ;
-
-    if (tipo==='pre') {
-        imagenesPreUpload.push(imageData);
-    }
-
-    else {
-        imagenesPosUpload.push(imageData);
-    }
-
-    // Adiciona ao preview a imagem real do Drive
-    adicionarImagemPreview(res.url, tipo, res.id);
-
-}
-
-catch (e) {
-    removerImagemPreviewLoading(tempId, tipo); // Remove loading em caso de erro
-    console.error('Erro ao fazer upload de imagem:', e);
-    mostrarAlerta('Erro ao fazer upload de imagem: ' + e.message, 'Erro', 'erro');
-}
 }
 
 // Funções auxiliares para loading de imagem
