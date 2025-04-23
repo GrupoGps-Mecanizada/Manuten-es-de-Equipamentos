@@ -1844,306 +1844,46 @@
 
                  const tiposLabels = Object.keys(data.contadores?.tipoEquipamento || {});
                  const tiposData = tiposLabels.map(tipo => data.contadores.tipoEquipamento[tipo]);
+                 // CONTINUAÇÃO DA FUNÇÃO adicionarImagemPreview...
+           if (!container) return;
 
-                 if (graficoTipos) {
-                     graficoTipos.destroy(); // Destroi o gráfico existente se houver
-                 }
-                 
-                 graficoTipos = new Chart(
-                     document.getElementById('chart-tipos'),
-                     {
-                         type: 'bar',
-                         data: {
-                             labels: tiposLabels,
-                             datasets: [{
-                                 label: 'Quantidade',
-                                 data: tiposData,
-                                 backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                                 borderColor: 'rgba(13, 110, 253, 1)',
-                                 borderWidth: 1
-                             }]
-                         },
-                         options: {
-                             responsive: true,
-                             plugins: {
-                                 legend: {
-                                     position: 'top',
-                                 },
-                                 title: {
-                                     display: true,
-                                     text: 'Distribuição por Tipo de Equipamento'
-                                 }
-                             }
-                         }
-                     }
-                 );
+           const imgContainer = document.createElement('div');
+           imgContainer.className = 'image-container position-relative';
+           imgContainer.dataset.fileId = fileId || src; // Usa ID do arquivo ou URL/base64 como identificador
 
-                 // Gráfico de categorias
-                 const graficosCategoriasContainer = document.getElementById('grafico-categorias');
-                 graficosCategoriasContainer.innerHTML = '<canvas id="chart-categorias"></canvas>';
+           const img = document.createElement('img');
+           img.src = src; // Pode ser URL ou base64
+           img.alt = 'Imagem';
+           img.className = 'img-thumbnail photo-preview-img'; // Adicionado classe para seleção
+           img.style.cursor = 'pointer';
+           img.onclick = () => window.open(src, '_blank'); // Abre em nova aba ao clicar
 
-                 const categoriasLabels = Object.keys(data.contadores?.categoriaProblema || {});
-                 const categoriasData = categoriasLabels.map(cat => data.contadores.categoriaProblema[cat]);
+           const deleteBtn = document.createElement('button');
+           deleteBtn.type = 'button'; // Importante para não submeter forms
+           // Usar classes Bootstrap para estilo e acessibilidade do botão de fechar
+           deleteBtn.className = 'btn-close delete-btn';
+           deleteBtn.style.position = 'absolute'; // Ajuste fino da posição
+           deleteBtn.style.top = '5px';
+           deleteBtn.style.right = '5px';
+           deleteBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // Fundo para contraste
+           deleteBtn.style.borderRadius = '50%'; // Circular
+           deleteBtn.style.padding = '0.25rem'; // Padding interno
+           deleteBtn.setAttribute('aria-label', 'Remover Imagem');
+           deleteBtn.title = 'Remover Imagem';
+           deleteBtn.onclick = function(e) {
+               e.stopPropagation(); // Evita abrir imagem ao clicar no X
+               const imageIdentifier = imgContainer.dataset.fileId;
+               imgContainer.remove(); // Remove o elemento do DOM
 
-                 if (graficoCategorias) {
-                     graficoCategorias.destroy(); // Destroi o gráfico existente se houver
-                 }
-                 
-                 graficoCategorias = new Chart(
-                     document.getElementById('chart-categorias'),
-                     {
-                         type: 'pie',
-                         data: {
-                             labels: categoriasLabels,
-                             datasets: [{
-                                 data: categoriasData,
-                                 backgroundColor: [
-                                     'rgba(255, 99, 132, 0.7)',
-                                     'rgba(54, 162, 235, 0.7)',
-                                     'rgba(255, 206, 86, 0.7)',
-                                     'rgba(75, 192, 192, 0.7)',
-                                     'rgba(153, 102, 255, 0.7)',
-                                     'rgba(255, 159, 64, 0.7)',
-                                     'rgba(199, 199, 199, 0.7)'
-                                 ],
-                                 borderColor: [
-                                     'rgba(255, 99, 132, 1)',
-                                     'rgba(54, 162, 235, 1)',
-                                     'rgba(255, 206, 86, 1)',
-                                     'rgba(75, 192, 192, 1)',
-                                     'rgba(153, 102, 255, 1)',
-                                     'rgba(255, 159, 64, 1)',
-                                     'rgba(199, 199, 199, 1)'
-                                 ],
-                                 borderWidth: 1
-                             }]
-                         },
-                         options: {
-                             responsive: true,
-                             plugins: {
-                                 legend: {
-                                     position: 'right',
-                                 },
-                                 title: {
-                                     display: true,
-                                     text: 'Distribuição por Categoria do Problema'
-                                 }
-                             }
-                         }
-                     }
-                 );
-
-                 // Carrega o gráfico de Tempo Médio
-                 const graficoTempoMedioContainer = document.getElementById('grafico-tempo-medio');
-                 graficoTempoMedioContainer.innerHTML = '<canvas id="chart-tempo-medio"></canvas>';
-
-                 // Implementar carregamento de dados para tempo médio
-                 // Este é um exemplo - adapte conforme seus dados reais
-                 const tempoMedioLabels = Object.keys(data.tempoMedio || {tipoA: 5, tipoB: 3, tipoC: 8});
-                 const tempoMedioData = tempoMedioLabels.map(tipo => data.tempoMedio?.[tipo] || 0);
-
-                 if (graficoTempoMedio) {
-                     graficoTempoMedio.destroy();
-                 }
-                 
-                 graficoTempoMedio = new Chart(
-                     document.getElementById('chart-tempo-medio'),
-                     {
-                         type: 'bar',
-                         data: {
-                             labels: tempoMedioLabels,
-                             datasets: [{
-                                 label: 'Dias',
-                                 data: tempoMedioData,
-                                 backgroundColor: 'rgba(40, 167, 69, 0.7)',
-                                 borderColor: 'rgba(40, 167, 69, 1)',
-                                 borderWidth: 1
-                             }]
-                         },
-                         options: {
-                             responsive: true,
-                             scales: {
-                                 y: {
-                                     beginAtZero: true,
-                                     title: {
-                                         display: true,
-                                         text: 'Tempo médio (dias)'
-                                     }
-                                 }
-                             },
-                             plugins: {
-                                 legend: {
-                                     display: false,
-                                 },
-                                 title: {
-                                     display: true,
-                                     text: 'Tempo Médio de Manutenção por Tipo'
-                                 }
-                             }
-                         }
-                     }
-                 );
-
-                 // Carrega o gráfico de Período
-                 carregarGraficoPeriodo(parseInt(document.getElementById('filtro-periodo-grafico').value) || 30);
-
-                 // Status dos equipamentos
-                 const statusEquipContainer = document.getElementById('status-equipamentos');
-                 statusEquipContainer.innerHTML = '';
-
-                 // Exemplo de como exibir status equipamentos (adapte conforme seus dados)
-                 if (data.statusEquipamentos && data.statusEquipamentos.equipamentos) {
-                     Object.entries(data.statusEquipamentos.equipamentos).forEach(([tipo, status]) => {
-                         const col = document.createElement('div');
-                         col.className = 'col-md-4 col-sm-6 mb-3';
-                         
-                         const card = document.createElement('div');
-                         card.className = 'card h-100';
-                         
-                         const cardBody = document.createElement('div');
-                         cardBody.className = 'card-body';
-                         
-                         const title = document.createElement('h5');
-                         title.className = 'card-title';
-                         title.textContent = tipo;
-                         
-                         const disponivel = document.createElement('div');
-                         disponivel.className = 'mb-2';
-                         disponivel.innerHTML = `<i class="bi bi-check-circle-fill text-success me-1"></i> Disponíveis: <strong>${status.disponivel || 0}</strong>`;
-                         
-                         const manutencao = document.createElement('div');
-                         manutencao.className = 'mb-2';
-                         manutencao.innerHTML = `<i class="bi bi-tools text-primary me-1"></i> Em Manutenção: <strong>${status.manutencao || 0}</strong>`;
-                         
-                         const inativo = document.createElement('div');
-                         inativo.className = 'mb-2';
-                         inativo.innerHTML = `<i class="bi bi-x-circle-fill text-danger me-1"></i> Inativos: <strong>${status.inativo || 0}</strong>`;
-                         
-                         cardBody.appendChild(title);
-                         cardBody.appendChild(disponivel);
-                         cardBody.appendChild(manutencao);
-                         cardBody.appendChild(inativo);
-                         card.appendChild(cardBody);
-                         col.appendChild(card);
-                         statusEquipContainer.appendChild(col);
-                     });
-                 } else {
-                     statusEquipContainer.innerHTML = '<div class="col-12 text-center text-muted py-3">Nenhuma informação de status disponível</div>';
-                 }
-             } catch (error) {
-                 modals.alert.hide(); // Esconde o "Aguarde" em caso de erro
-                 console.error('Erro ao carregar dashboard:', error);
-                 mostrarAlerta(`Erro ao carregar dashboard: ${error.message}`, 'Erro', 'erro');
-             }
-        }
-
-        // Função para carregar gráfico de período
-        function carregarGraficoPeriodo(dias = 30) {
-            // Pegar dados do dashboard ou fazer nova requisição se necessário
-            const graficoPeriodoContainer = document.getElementById('grafico-periodo');
-            graficoPeriodoContainer.innerHTML = '<canvas id="chart-periodo"></canvas>';
-            
-            // Aqui você implementaria uma chamada à API para obter dados de período
-            // ou usaria dados já carregados em carregarDashboard
-            
-            // Exemplo com dados fictícios - substitua pela sua lógica real
-            const datas = [];
-            const valores = [];
-            
-            // Gera datas para X dias atrás até hoje
-            for (let i = dias; i >= 0; i--) {
-                const data = new Date();
-                data.setDate(data.getDate() - i);
-                datas.push(data.toLocaleDateString('pt-BR', {day: '2-digit', month: '2-digit'}));
-                
-                // Valor aleatório para exemplo (substitua pelos dados reais)
-                valores.push(Math.floor(Math.random() * 10));
-            }
-            
-            if (graficoPeriodo) {
-                graficoPeriodo.destroy();
-            }
-            
-            graficoPeriodo = new Chart(
-                document.getElementById('chart-periodo'),
-                {
-                    type: 'line',
-                    data: {
-                        labels: datas,
-                        datasets: [{
-                            label: 'Manutenções',
-                            data: valores,
-                            borderColor: 'rgba(13, 110, 253, 1)',
-                            backgroundColor: 'rgba(13, 110, 253, 0.1)',
-                            tension: 0.2,
-                            fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        plugins: {
-                            legend: {
-                                display: false,
-                            },
-                            title: {
-                                display: false
-                            }
-                        },
-                        scales: {
-                            y: {
-                                beginAtZero: true,
-                                ticks: {
-                                    precision: 0
-                                }
-                            }
-                        }
-                    }
-                }
-            );
-        }
-
-        // Função para adicionar imagem ao preview
-        function adicionarImagemPreview(src, tipo, fileId) {
-            const container = document.getElementById(`imagens-preview-${tipo}`);
-            if (!container) return;
-
-            const imgContainer = document.createElement('div');
-            imgContainer.className = 'image-container position-relative';
-            imgContainer.dataset.fileId = fileId || src; // Usa ID do arquivo ou URL/base64 como identificador
-
-            const img = document.createElement('img');
-            img.src = src; // Pode ser URL ou base64
-            img.alt = 'Imagem';
-            img.className = 'img-thumbnail photo-preview-img'; // Adicionado classe para seleção
-            img.style.cursor = 'pointer';
-            img.onclick = () => window.open(src, '_blank'); // Abre em nova aba ao clicar
-
-            const deleteBtn = document.createElement('button');
-            deleteBtn.type = 'button'; // Importante para não submeter forms
-            // Usar classes Bootstrap para estilo e acessibilidade do botão de fechar
-            deleteBtn.className = 'btn-close delete-btn';
-            deleteBtn.style.position = 'absolute'; // Ajuste fino da posição
-            deleteBtn.style.top = '5px';
-            deleteBtn.style.right = '5px';
-            deleteBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // Fundo para contraste
-            deleteBtn.style.borderRadius = '50%'; // Circular
-            deleteBtn.style.padding = '0.25rem'; // Padding interno
-            deleteBtn.setAttribute('aria-label', 'Remover Imagem');
-            deleteBtn.title = 'Remover Imagem';
-            deleteBtn.onclick = function(e) {
-                e.stopPropagation(); // Evita abrir imagem ao clicar no X
-                const imageIdentifier = imgContainer.dataset.fileId;
-                imgContainer.remove(); // Remove o elemento do DOM
-
-                // Remove da lista correspondente
-                if (tipo === 'pre') {
-                    imagenesPreUpload = imagenesPreUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
-                } else {
-                    imagenesPosUpload = imagenesPosUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
-                }
-                // TODO: Adicionar chamada à API para excluir imagem do Drive se necessário (requer backend)
-                console.log("Imagem removida (localmente):", imageIdentifier);
-            };
+               // Remove da lista correspondente
+               if (tipo === 'pre') {
+                   imagenesPreUpload = imagenesPreUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
+               } else {
+                   imagenesPosUpload = imagenesPosUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
+               }
+               // TODO: Adicionar chamada à API para excluir imagem do Drive se necessário (requer backend)
+               console.log("Imagem removida (localmente):", imageIdentifier);
+           };
 
             // Botão Anotar (Adiciona APENAS se a ferramenta estiver integrada)
             if (typeof ImageAnnotator !== 'undefined') {
@@ -2165,13 +1905,1026 @@
                 imgContainer.appendChild(btnAnnotate); // Adiciona botão de anotar
             }
 
-            imgContainer.appendChild(img);
-            imgContainer.appendChild(deleteBtn); // Adiciona botão de deletar
-            container.appendChild(imgContainer);
+
+           imgContainer.appendChild(img);
+           imgContainer.appendChild(deleteBtn); // Adiciona botão de deletar
+           container.appendChild(imgContainer);
+       }
+
+
+        // --- Funções da Câmera ---
+        async function abrirCamera(tipo) {
+            try {
+                const constraints = {
+                    video: { facingMode: "environment" } // Tenta câmera traseira
+                };
+
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+
+                    const videoElementId = `camera-preview-${tipo}`;
+                    const video = document.getElementById(videoElementId);
+                     if (video) {
+                         video.srcObject = mediaStream;
+                         video.play(); // Garante que o vídeo comece
+                         document.getElementById(`camera-container-${tipo}`).style.display = 'block';
+                     } else {
+                         console.error("Elemento de vídeo não encontrado:", videoElementId);
+                         mostrarAlerta('Erro interno: Elemento de vídeo não encontrado.', 'Erro');
+                     }
+                } else {
+                    mostrarAlerta('Seu navegador não suporta acesso à câmera.', 'Erro');
+                }
+            } catch (err) {
+                console.error('Erro ao abrir câmera:', err);
+                let errorMsg = 'Erro ao abrir câmera.';
+                if (err.name === "NotAllowedError") {
+                    errorMsg = 'Permissão para acessar a câmera foi negada.';
+                } else if (err.name === "NotFoundError") {
+                    errorMsg = 'Nenhuma câmera encontrada no dispositivo.';
+                } else if (err.name === "NotReadableError") {
+                    errorMsg = 'Não foi possível acessar a câmera. Pode estar sendo usada por outro app.';
+                }
+                mostrarAlerta(errorMsg, 'Erro Câmera', 'erro');
+            }
         }
 
-        // Função para abrir o editor de anotação
-        function abrirEditorAnotacao(imgSrc, tipo, containerElement) {
+        function fecharCamera(tipo) {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            const container = document.getElementById(`camera-container-${tipo}`);
+            if (container) container.style.display = 'none';
+            const video = document.getElementById(`camera-preview-${tipo}`);
+            if(video) video.srcObject = null; // Limpa o source object
+        }
+
+        async function capturarImagem(tipo) {
+            try {
+                const video = document.getElementById(`camera-preview-${tipo}`);
+                if (!video || !video.videoWidth || !video.videoHeight) {
+                    throw new Error("Preview da câmera não está pronto.");
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const base64 = canvas.toDataURL('image/jpeg', 0.9); // Qualidade 0.9
+
+                fecharCamera(tipo); // Fecha a câmera após captura
+                await uploadImagem(base64, tipo);
+            } catch (e) {
+                console.error('Erro ao capturar imagem:', e);
+                mostrarAlerta('Erro ao capturar imagem: ' + e.message, 'Erro', 'erro');
+                fecharCamera(tipo); // Fecha a câmera mesmo em erro
+            }
+        }
+
+        // Função de upload de imagem (atualizada para mostrar loading e tratar nova/edição)
+        async function uploadImagem(base64, tipo) {
+            // Mostra um loading específico para imagem
+            const tempId = `temp-${Date.now()}`;
+            adicionarImagemPreviewLoading(tempId, tipo);
+
+            try {
+                const idManutencao = document.getElementById(tipo === 'pre' ? 'pre-id' : 'pos-id').value;
+                const isNew = !idManutencao; // Se ID está vazio, é uma nova manutenção
+
+                 // Se for nova, apenas adiciona localmente com base64
+                 if (isNew) {
+                     const imageData = { url: base64, id: tempId, timestamp: new Date().toISOString(), isLocal: true }; // Marca como local
+                     if (tipo === 'pre') {
+                         imagenesPreUpload.push(imageData);
+                     } else {
+                         // Não deveria chegar aqui para pós se for nova, mas por segurança
+                         imagenesPosUpload.push(imageData);
+                     }
+                     // Atualiza o preview que estava mostrando loading
+                     removerImagemPreviewLoading(tempId, tipo);
+                     adicionarImagemPreview(base64, tipo, tempId); // Usa tempId como identificador
+                     return; // Não faz upload para o servidor ainda
+                 }
+
+
+                // Fazer upload para o servidor se for edição
+                const res = await apiRequest('uploadImagem', {
+                    id: idManutencao,
+                    imagem: base64, // Envia base64
+                    tipo: tipo
+                });
+
+                removerImagemPreviewLoading(tempId, tipo); // Remove loading
+
+                if (!res || !res.success) {
+                    throw new Error(res.message || 'Erro desconhecido no upload');
+                }
+
+                // Adicionar à lista de imagens com URL e ID do Drive
+                const imageData = { url: res.url, id: res.id, timestamp: new Date().toISOString() };
+                if (tipo === 'pre') {
+                    imagenesPreUpload.push(imageData);
+                } else {
+                    imagenesPosUpload.push(imageData);
+                }
+                // Adiciona ao preview a imagem real do Drive
+                adicionarImagemPreview(res.url, tipo, res.id);
+
+            } catch (e) {
+                removerImagemPreviewLoading(tempId, tipo); // Remove loading em caso de erro
+                console.error('Erro ao fazer upload de imagem:', e);
+                mostrarAlerta('Erro ao fazer upload de imagem: ' + e.message, 'Erro', 'erro');
+            }
+        }
+
+       // Funções auxiliares para loading de imagem
+       function adicionarImagemPreviewLoading(tempId, tipo) {
+           const container = document.getElementById(`imagens-preview-${tipo}`);
+           if (!container) return;
+           const loadingContainer = document.createElement('div');
+           loadingContainer.className = 'image-container text-center d-flex align-items-center justify-content-center border rounded image-loading'; // Add class
+           loadingContainer.style.width = '150px';
+           loadingContainer.style.height = '150px';
+           loadingContainer.dataset.tempId = tempId; // Guarda o ID temporário
+           loadingContainer.innerHTML = `
+               <div class="spinner-border spinner-border-sm text-primary" role="status">
+                   <span class="visually-hidden">Enviando...</span>
+               </div>
+           `;
+           container.appendChild(loadingContainer);
+       }
+
+       function removerImagemPreviewLoading(tempId, tipo) {
+           const container = document.getElementById(`imagens-preview-${tipo}`);
+           if (!container) return;
+           const loadingElement = container.querySelector(`.image-loading[data-temp-id="${tempId}"]`);
+           if (loadingElement) {
+               loadingElement.remove();
+           }
+       }
+
+
+        // --- Inicialização e Event Listeners Principais ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Carregar dados iniciais
+            carregarDadosIniciais(); // Esta função agora chama as outras
+
+            // Navegação
+            document.getElementById('nav-dashboard')?.addEventListener('click', e => { e.preventDefault(); mostrarTela('dashboard'); });
+            document.getElementById('nav-lista')?.addEventListener('click', e => { e.preventDefault(); mostrarTela('lista'); });
+            document.getElementById('nav-novo')?.addEventListener('click', e => {
+                e.preventDefault();
+                 // Limpar formulário pré
+                document.getElementById('form-pre-manutencao')?.reset();
+                document.getElementById('pre-id').value = '';
+                document.getElementById('pre-placa').value = ''; // Limpa hidden
+                document.getElementById('pre-modelo').value = ''; // Limpa hidden
+                document.getElementById('motivo-outro-container').style.display = 'none';
+                document.getElementById('imagens-preview-pre').innerHTML = '';
+                document.getElementById('pre-placa-select').style.display = 'none'; // Esconde select de placa
+                document.getElementById('pre-placa-outro-valor').style.display = 'none'; // Esconde input de placa
+                document.getElementById('pre-placa-outro-valor').value = '';
+
+
+                imagenesPreUpload = [];
+                manutencaoAtual = null; // Garante que não há manutenção atual ao criar nova
+
+                // Resetar checklist
+                const checklistPreContainer = document.getElementById('pre-checklist-container');
+                checklistPreContainer?.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+
+                // Resetar selects para "Selecione..."
+                document.getElementById('pre-tipo-equipamento').selectedIndex = 0;
+                document.getElementById('pre-categoria-problema').selectedIndex = 0;
+                document.getElementById('pre-urgencia').selectedIndex = 0;
+
+
+                mostrarTela('preManu');
+            });
+             // Navegação Ferramentas
+             document.getElementById('nav-ferramentas')?.addEventListener('click', e => { //
+                 e.preventDefault(); //
+                 mostrarTela('ferramentas'); //
+             }); //
+
+
+            document.getElementById('btn-nova-manutencao')?.addEventListener('click', () => {
+                document.getElementById('nav-novo')?.click();
+            });
+
+            // Botões voltar
+            document.querySelectorAll('.btn-voltar').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Decide para qual tela voltar (lista é o padrão)
+                    mostrarTela('lista');
+                });
+            });
+
+            // Botão de editar na visualização
+            document.getElementById('btn-editar-manutencao')?.addEventListener('click', () => {
+                if (manutencaoAtual && manutencaoAtual.ID) {
+                    editarManutencao(manutencaoAtual.ID);
+                } else {
+                    mostrarAlerta("Nenhuma manutenção selecionada para editar.", "Aviso");
+                }
+            });
+
+            // --- Event Listeners para Relatórios Avançados ---
+            document.getElementById('btn-gerar-pdf-basico')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (manutencaoAtual && manutencaoAtual.ID) {
+                     gerarRelatorioTextoParaPdf(manutencaoAtual.ID); // Função auxiliar para gerar e baixar
+                } else { mostrarAlerta("Selecione uma manutenção.", "Aviso"); }
+            });
+
+            document.getElementById('btn-gerar-pdf-avancado')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (manutencaoAtual && manutencaoAtual.ID) {
+                    gerarRelatorioAvancadoCliente(manutencaoAtual.ID, 'pdf'); // Nova função cliente
+                } else { mostrarAlerta("Selecione uma manutenção.", "Aviso"); }
+            });
+
+            document.getElementById('btn-gerar-excel')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (manutencaoAtual && manutencaoAtual.ID) {
+                    gerarRelatorioAvancadoCliente(manutencaoAtual.ID, 'excel');
+                } else { mostrarAlerta("Selecione uma manutenção.", "Aviso"); }
+            });
+
+            document.getElementById('btn-gerar-csv')?.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (manutencaoAtual && manutencaoAtual.ID) {
+                    gerarRelatorioAvancadoCliente(manutencaoAtual.ID, 'csv');
+                } else { mostrarAlerta("Selecione uma manutenção.", "Aviso"); }
+            });
+            // --- Fim Relatórios ---
+
+
+            // Filtro na lista
+            document.getElementById('btn-filtrar')?.addEventListener('click', () => {
+                carregarListaManutencoes();
+            });
+
+            document.getElementById('btn-limpar-filtro')?.addEventListener('click', () => {
+                document.getElementById('filtro-status').value = '';
+                document.getElementById('filtro-placa').value = '';
+                carregarListaManutencoes();
+            });
+
+            // --- Lógica para Selects Dinâmicos de Equipamento ---
+            const tipoEquipSelect = document.getElementById('pre-tipo-equipamento');
+            const placaSelect = document.getElementById('pre-placa-select');
+            const placaOutroInput = document.getElementById('pre-placa-outro-valor');
+            const hiddenPlaca = document.getElementById('pre-placa');
+            const hiddenModelo = document.getElementById('pre-modelo');
+
+            tipoEquipSelect?.addEventListener('change', function() {
+                 const tipoSelecionado = this.value;
+                 placaSelect.innerHTML = '<option value="">Selecione o Equipamento...</option>'; // Limpa e adiciona placeholder
+                 placaSelect.style.display = 'none';
+                 placaOutroInput.style.display = 'none';
+                 placaOutroInput.value = '';
+                 placaOutroInput.required = false;
+                 hiddenPlaca.value = ''; // Limpa hidden
+                 hiddenModelo.value = ''; // Limpa hidden
+
+                 if (tipoSelecionado) {
+                     const opcoesPlaca = equipamentosData[tipoSelecionado] || [];
+
+                     if (opcoesPlaca.length > 0) {
+                         // Preenche o select de placas
+                         opcoesPlaca.forEach(placa => {
+                             const option = document.createElement('option');
+                             option.value = placa;
+                             option.textContent = placa;
+                             placaSelect.appendChild(option);
+                         });
+                         placaSelect.style.display = 'block';
+                         placaSelect.required = true; // Torna obrigatório
+                         placaOutroInput.required = false; // Não é mais obrigatório
+                     } else {
+                         // Se não há opções pré-definidas (ex: Outro Tipo), mostra direto o input
+                         placaOutroInput.style.display = 'block';
+                         placaOutroInput.required = true;
+                         placaSelect.required = false; // Não é obrigatório
+                     }
+                 } else {
+                     // Se nenhum tipo selecionado, ambos ficam escondidos e não requeridos
+                     placaSelect.required = false;
+                     placaOutroInput.required = false;
+                 }
+            });
+
+            placaSelect?.addEventListener('change', function() {
+                 const placaSelecionada = this.value;
+                 hiddenPlaca.value = placaSelecionada; // Atualiza hidden
+
+                 if (placaSelecionada === 'OUTRO EQUIPAMENTO') {
+                     placaOutroInput.style.display = 'block';
+                     placaOutroInput.required = true;
+                     placaOutroInput.value = ''; // Limpa valor anterior
+                     placaOutroInput.focus();
+                     hiddenPlaca.value = ''; // Limpa hidden temporariamente
+                     hiddenModelo.value = ''; // Limpa modelo
+                 } else if (placaSelecionada === '') {
+                     // Se voltou para "Selecione..."
+                     placaOutroInput.style.display = 'none';
+                     placaOutroInput.required = false;
+                     hiddenPlaca.value = '';
+                     hiddenModelo.value = '';
+                 } else {
+                     placaOutroInput.style.display = 'none';
+                     placaOutroInput.required = false;
+                     // Tenta encontrar o modelo do equipamento selecionado
+                     const tipoAtual = tipoEquipSelect.value;
+                     const equipInfo = equipamentos.find(eq => eq.Placa === placaSelecionada && eq.Tipo_Equipamento === tipoAtual);
+                     hiddenModelo.value = equipInfo?.Modelo || ''; // Preenche modelo no hidden
+                 }
+            });
+
+            placaOutroInput?.addEventListener('input', function() {
+                 // Quando o usuário digita em "Outro", atualiza o hidden
+                 hiddenPlaca.value = this.value.trim(); // Usa o valor digitado
+                 hiddenModelo.value = ''; // Modelo é desconhecido
+            });
+            // --- Fim Lógica Selects ---
+
+            // Ao mudar categoria, mostrar/esconder campo de outro motivo
+            document.getElementById('pre-categoria-problema')?.addEventListener('change', function() {
+                const motivoOutroContainer = document.getElementById('motivo-outro-container');
+                const motivoOutroInput = document.getElementById('pre-motivo-outro');
+                if (this.value === 'Outro') {
+                    motivoOutroContainer.style.display = 'block';
+                    motivoOutroInput.required = true;
+                } else {
+                    motivoOutroContainer.style.display = 'none';
+                    motivoOutroInput.required = false;
+                    motivoOutroInput.value = ''; // Limpa o campo ao esconder
+                }
+            });
+
+            // Submit do formulário pré-manutenção
+            document.getElementById('form-pre-manutencao')?.addEventListener('submit', async function(e) {
+                 e.preventDefault();
+                 mostrarAlerta('Salvando registro pré-manutenção...', 'Aguarde', 'aguarde');
+
+                 // Obter dados do formulário
+                 const dados = obterDadosFormulario('form-pre-manutencao');
+
+                 // Validar se placa/equipamento foi preenchido
+                 if (!dados.placa) {
+                     modals.alert.hide();
+                     mostrarAlerta('Selecione ou informe o equipamento/placa.', 'Erro de Validação', 'erro');
+                     // Tenta focar no campo problemático
+                     document.getElementById('pre-placa-outro-valor').style.display !== 'none' ? document.getElementById('pre-placa-outro-valor').focus() : document.getElementById('pre-placa-select').focus();
+                     return;
+                 }
+                 // Validar se tipo de equipamento foi selecionado
+                 if (!dados.tipoEquipamento) {
+                     modals.alert.hide();
+                     mostrarAlerta('Selecione o Tipo de Equipamento.', 'Erro de Validação', 'erro');
+                      document.getElementById('pre-tipo-equipamento').focus();
+                     return;
+                 }
+
+                 try {
+                     // Montar objeto para salvar, garantindo que temos ID se for edição
+                     const payload = {
+                         id: dados.id || undefined, // Envia ID se for edição
+                         placa: dados.placa,
+                         modelo: dados.modelo,
+                         tipoEquipamento: dados.tipoEquipamento,
+                         categoriaProblema: dados.categoriaProblema,
+                         urgencia: dados.urgencia,
+                         motivoOutro: dados.motivoOutro,
+                         descricaoProblema: dados.descricaoProblema,
+                         checklistPre: dados.checklistPre,
+                         observacoesPre: dados.observacoesPre,
+                         imagensPre: dados.imagensPre, // Array de {url, id, timestamp}
+                         responsavel: dados.responsavel,
+                         // Define status inicial apenas se for novo E não está definido nos dados
+                         status: dados.id ? undefined : (dados.status || STATUS_AGUARDANDO)
+                     };
+
+                     // Salvar manutenção
+                     const res = await apiRequest('salvarManutencao', {
+                         dados: JSON.stringify(payload)
+                     });
+
+                     modals.alert.hide(); // Esconde "Aguarde"
+
+                     if (!res || !res.success) {
+                         throw new Error(res.message || 'Erro desconhecido ao salvar');
+                     }
+
+                     const savedId = res.id || dados.id; // Usa o ID retornado ou o ID existente
+
+                     // Perguntar o que fazer agora
+                     document.getElementById('btn-choice-lista').onclick = () => {
+                         modals.choice.hide();
+                         mostrarTela('lista');
+                     };
+
+                     document.getElementById('btn-choice-novo').onclick = () => {
+                         modals.choice.hide();
+                         document.getElementById('nav-novo')?.click();
+                     };
+
+                     document.getElementById('btn-choice-pos').onclick = async () => {
+                         modals.choice.hide();
+                         mostrarAlerta('Carregando dados para pós-manutenção...', 'Aguarde', 'aguarde');
+                         try {
+                             // Recarrega os dados da manutenção salva para garantir consistência
+                             const resLoad = await apiRequest('obterManutencao', { id: savedId });
+                             modals.alert.hide();
+
+                             if (!resLoad.success || !resLoad.manutencao) {
+                                 throw new Error("Erro ao recarregar dados para pós-manutenção.");
+                             }
+                             const manutencaoRecarregada = resLoad.manutencao;
+
+                             // Carregar para o formulário pós
+                             document.getElementById('pos-id').value = savedId;
+                             document.getElementById('pos-placa-display').textContent = manutencaoRecarregada.Placa || 'N/A';
+                             document.getElementById('pos-tipo-display').textContent = manutencaoRecarregada.Tipo_Equipamento || 'N/A';
+
+
+                             // Limpar dados PÓS anteriores (caso esteja reeditando)
+                             document.getElementById('pos-observacoes').value = manutencaoRecarregada.Observacoes_Pos || '';
+                             document.getElementById('imagens-preview-pos').innerHTML = '';
+                             imagenesPosUpload = Array.isArray(manutencaoRecarregada.Imagens_Pos) ? [...manutencaoRecarregada.Imagens_Pos] : [];
+                             imagenesPosUpload.forEach(img => adicionarImagemPreview(img.url, 'pos', img.id)); // Adiciona imagens existentes
+
+                             // Resetar checklist PÓS
+                             const checklistPosContainer = document.getElementById('pos-checklist-container');
+                             checklistPosContainer.querySelectorAll('input[type="radio"]').forEach(radio => radio.checked = false);
+                             const checklistPosData = manutencaoRecarregada.Checklist_Pos || {};
+                             Object.entries(checklistPosData).forEach(([item, valor]) => {
+                                 const radioToCheck = checklistPosContainer.querySelector(`input[type="radio"][data-item="${CSS.escape(item)}"][value="${CSS.escape(valor)}"]`);
+                                 if (radioToCheck) radioToCheck.checked = true;
+                             });
+
+                             mostrarTela('posManu');
+                         } catch (loadError) {
+                             modals.alert.hide();
+                             mostrarAlerta(loadError.message, "Erro");
+                             mostrarTela('lista'); // Volta pra lista em caso de erro
+                         }
+                     };
+
+                     modals.choice.show();
+
+                 } catch (error) {
+                     modals.alert.hide();
+                     mostrarAlerta(`Erro ao salvar: ${error.message}`, 'Erro', 'erro');
+                 }
+            });
+
+
+            // Submit do formulário pós-manutenção
+            document.getElementById('form-pos-manutencao')?.addEventListener('submit', async function(e) {
+                 e.preventDefault();
+                 mostrarAlerta('Finalizando manutenção...', 'Aguarde', 'aguarde');
+
+                 const id = document.getElementById('pos-id').value;
+                 if (!id) {
+                     modals.alert.hide();
+                     mostrarAlerta('ID da manutenção não encontrado. Não é possível finalizar.', 'Erro Crítico', 'erro');
+                     return;
+                 }
+
+                 // Obter dados do formulário PÓS
+                 const dadosPos = obterDadosFormulario('form-pos-manutencao');
+
+                 try {
+                     // Obter dados PRE existentes para não sobrescrever
+                     const resManutencao = await apiRequest('obterManutencao', { id });
+                     if (!resManutencao.success || !resManutencao.manutencao) {
+                         throw new Error('Erro ao carregar dados existentes da manutenção.');
+                     }
+                     const manutencaoExistente = resManutencao.manutencao;
+
+                     // Montar objeto final para salvar, combinando dados existentes com os novos dados PÓS
+                     const dadosParaSalvar = {
+                         ...manutencaoExistente, // Mantém dados PRE e outros
+                         id: id, // Garante o ID correto
+                         dataManutencao: new Date().toISOString(), // Data atual para conclusão
+                         checklistPos: dadosPos.checklistPos,
+                         observacoesPos: dadosPos.observacoesPos,
+                         imagensPos: dadosPos.imagensPos, // Já contém URLs e IDs
+                         status: STATUS_CONCLUIDO // Define como concluído ao finalizar
+                     };
+
+                     // Salvar manutenção (atualização final)
+                     const res = await apiRequest('salvarManutencao', {
+                         dados: JSON.stringify(dadosParaSalvar)
+                     });
+
+                     modals.alert.hide(); // Esconde "Aguarde"
+
+                     if (!res || !res.success) {
+                         throw new Error(res.message || 'Erro desconhecido ao finalizar');
+                     }
+
+                     mostrarAlerta('Manutenção finalizada com sucesso!', 'Sucesso', 'sucesso');
+
+                     // Voltar para a lista
+                     mostrarTela('lista');
+
+                 } catch (error) {
+                     modals.alert.hide();
+                     mostrarAlerta(`Erro ao finalizar: ${error.message}`, 'Erro', 'erro');
+                 }
+            });
+
+            // Botão para voltar para pré-manutenção a partir da tela Pós
+            document.getElementById('btn-voltar-pre')?.addEventListener('click', () => {
+                const id = document.getElementById('pos-id').value;
+                if (id) {
+                    // Simula clique no botão de editar para recarregar na tela PRE
+                    editarManutencao(id);
+                } else {
+                    mostrarTela('preManu'); // Se não tiver ID, vai para novo registro
+                }
+            });
+
+            // Botões de atualização de status na Visualização
+            document.querySelectorAll('#tela-visualizacao .btn-status').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                     if (!manutencaoAtual || !manutencaoAtual.ID) {
+                         mostrarAlerta("Nenhuma manutenção selecionada.", "Aviso");
+                         return;
+                     }
+
+                     const status = this.dataset.status;
+                     if (manutencaoAtual.Status === status) {
+                         mostrarAlerta(`A manutenção já está com o status "${status}".`, "Informação");
+                         return;
+                     }
+
+                     // Confirmar alteração
+                     mostrarConfirmacao(`Deseja realmente alterar o status para "${status}"?`, async () => {
+                         mostrarAlerta('Atualizando status...', 'Aguarde', 'aguarde');
+                         try {
+                             const res = await apiRequest('atualizarStatusManutencao', {
+                                 id: manutencaoAtual.ID,
+                                 status: status
+                             });
+                             modals.alert.hide(); // Esconde "Aguarde"
+
+                             if (!res || !res.success) {
+                                 throw new Error(res.message || 'Erro desconhecido ao atualizar status');
+                             }
+
+                             mostrarAlerta('Status atualizado com sucesso!', 'Sucesso', 'sucesso');
+
+                             // Atualizar visualização
+                             visualizarManutencao(manutencaoAtual.ID); // Recarrega a visualização
+                         } catch (error) {
+                              modals.alert.hide();
+                              mostrarAlerta(`Erro ao atualizar status: ${error.message}`, 'Erro', 'erro');
+                         }
+                     });
+                });
+            });
+
+            // --- Event Listeners Câmera ---
+            document.getElementById('btn-abrir-camera-pre')?.addEventListener('click', () => abrirCamera('pre'));
+            document.getElementById('btn-fechar-camera-pre')?.addEventListener('click', () => fecharCamera('pre'));
+            document.getElementById('btn-capturar-pre')?.addEventListener('click', () => capturarImagem('pre'));
+
+            document.getElementById('btn-abrir-camera-pos')?.addEventListener('click', () => abrirCamera('pos'));
+            document.getElementById('btn-fechar-camera-pos')?.addEventListener('click', () => fecharCamera('pos'));
+            document.getElementById('btn-capturar-pos')?.addEventListener('click', () => capturarImagem('pos'));
+
+            // --- Event Listeners Galeria ---
+            document.getElementById('btn-selecionar-imagem-pre')?.addEventListener('click', () => {
+                document.getElementById('input-imagem-pre')?.click();
+            });
+             document.getElementById('input-imagem-pre')?.addEventListener('change', function() {
+                 if (this.files) {
+                     // Processa múltiplos arquivos
+                     Array.from(this.files).forEach(file => {
+                         if (file.size > 5 * 1024 * 1024) { // Limite de 5MB por exemplo
+                             mostrarAlerta(`Arquivo ${file.name} é muito grande (max 5MB).`, 'Aviso', 'aviso');
+                             return;
+                         }
+                         if (!file.type.startsWith('image/')) {
+                              mostrarAlerta(`Arquivo ${file.name} não é uma imagem.`, 'Aviso', 'aviso');
+                              return;
+                         }
+                         const reader = new FileReader();
+                         reader.onload = async function(e) {
+                             await uploadImagem(e.target.result, 'pre');
+                         };
+                         reader.onerror = (err) => {
+                             console.error("Erro ao ler arquivo:", err);
+                             mostrarAlerta(`Erro ao ler o arquivo ${file.name}.`, 'Erro', 'erro');
+                         }
+                         reader.readAsDataURL(file);
+                     });
+                     this.value = ''; // Limpa o input para permitir selecionar os mesmos arquivos novamente
+                 }
+             });
+
+            document.getElementById('btn-selecionar-imagem-pos')?.addEventListener('click', () => {
+                document.getElementById('input-imagem-pos')?.click();
+            });
+            document.getElementById('input-imagem-pos')?.addEventListener('change', function() {
+                 if (this.files) {
+                     Array.from(this.files).forEach(file => {
+                         if (file.size > 5 * 1024 * 1024) {
+                             mostrarAlerta(`Arquivo ${file.name} é muito grande (max 5MB).`, 'Aviso', 'aviso');
+                             return;
+                         }
+                          if (!file.type.startsWith('image/')) {
+                              mostrarAlerta(`Arquivo ${file.name} não é uma imagem.`, 'Aviso', 'aviso');
+                              return;
+                         }
+                         const reader = new FileReader();
+                         reader.onload = async function(e) {
+                             await uploadImagem(e.target.result, 'pos');
+                         };
+                         reader.onerror = (err) => {
+                             console.error("Erro ao ler arquivo:", err);
+                             mostrarAlerta(`Erro ao ler o arquivo ${file.name}.`, 'Erro', 'erro');
+                         }
+                         reader.readAsDataURL(file);
+                     });
+                     this.value = ''; // Limpa o input
+                 }
+            });
+
+            // --- Event Listeners para Ferramentas ---
+            // Integração com Planilha de Turnos
+            document.getElementById('btn-executar-integracao')?.addEventListener('click', async function() {
+                 const idPlanilhaInput = document.getElementById('id-planilha-turnos');
+                 const idPlanilha = idPlanilhaInput.value.trim();
+
+                 if (!idPlanilha) {
+                     mostrarAlerta('Por favor, informe o ID da planilha de turnos.', 'Aviso');
+                     idPlanilhaInput.focus();
+                     return;
+                 }
+
+                 mostrarAlerta('Executando integração com planilha de turnos...', 'Aguarde', 'aguarde');
+
+                 try {
+                     // Primeiro salva a configuração do ID no backend
+                     await apiRequest('salvarConfiguracao', { chave: 'ID_PLANILHA_TURNOS', valor: idPlanilha });
+                     // Tenta executar a integração
+                     const res = await apiRequest('integrarComPlanilhaTurnos', { idPlanilha: idPlanilha }); // Passa o ID
+                     modals.alert.hide();
+
+                     if (res && res.success) {
+                         mostrarAlerta(res.message || 'Integração concluída!', 'Sucesso', 'sucesso');
+                     } else {
+                         throw new Error(res.message || 'Erro desconhecido na integração');
+                     }
+                 } catch (error) {
+                     modals.alert.hide();
+                     console.error('Erro ao executar integração:', error);
+                     mostrarAlerta(`Erro na integração: ${error.message}`, 'Erro', 'erro');
+                 }
+            });
+
+            // Salvar configuração de e-mails
+            document.getElementById('btn-salvar-emails')?.addEventListener('click', async function() {
+                 const emails = document.getElementById('emails-notificacao').value.trim();
+                 mostrarAlerta('Salvando configuração de e-mails...', 'Aguarde', 'aguarde');
+
+                 try {
+                     const res = await apiRequest('salvarConfiguracao', {
+                         chave: 'EMAILS_NOTIFICACAO',
+                         valor: emails
+                     });
+                     modals.alert.hide();
+
+                     if (res && res.success) {
+                         mostrarAlerta('Configuração de e-mails salva com sucesso!', 'Sucesso', 'sucesso');
+                     } else {
+                         throw new Error(res.message || 'Erro ao salvar configuração de e-mails');
+                     }
+                 } catch (error) {
+                     modals.alert.hide();
+                     console.error('Erro ao salvar e-mails:', error);
+                     mostrarAlerta(`Erro ao salvar e-mails: ${error.message}`, 'Erro', 'erro');
+                 }
+            });
+
+            // Salvar configuração de integração automática (ao mudar o switch)
+            document.getElementById('integracao-automatica')?.addEventListener('change', async function() {
+                 const valor = this.checked ? 'SIM' : 'NAO';
+                 mostrarAlerta('Salvando preferência de integração...', 'Aguarde', 'aguarde');
+
+                 try {
+                     const res = await apiRequest('salvarConfiguracao', {
+                         chave: 'INTEGRAÇÃO_AUTOMÁTICA',
+                         valor: valor
+                     });
+                     modals.alert.hide();
+
+                     if (res && res.success) {
+                         mostrarAlerta(`Integração automática ${this.checked ? 'ativada' : 'desativada'}. Clique em '(Re)Configurar Tarefas Automáticas' para aplicar.`, 'Sucesso');
+                     } else {
+                         throw new Error(res.message || 'Erro ao salvar configuração de integração');
+                     }
+                 } catch (error) {
+                     modals.alert.hide();
+                     console.error('Erro ao atualizar configuração de integração:', error);
+                     mostrarAlerta(`Erro ao salvar preferência: ${error.message}`, 'Erro', 'erro');
+                     // Reverte visualmente se falhar
+                     this.checked = !this.checked;
+                 }
+            });
+
+
+            // Enviar e-mail de teste
+            document.getElementById('btn-teste-email')?.addEventListener('click', async function() {
+                const emailsTextarea = document.getElementById('emails-notificacao');
+                const emails = emailsTextarea.value.trim();
+                if (!emails) {
+                    mostrarAlerta('Por favor, informe pelo menos um e-mail para teste no campo acima e salve.', 'Aviso');
+                    emailsTextarea.focus();
+                    return;
+                }
+
+                const tipoEmail = document.getElementById('tipo-email-teste').value;
+                const emailList = emails.split(/[,;]+/).map(e => e.trim()).filter(e => e && e.includes('@'));
+
+                if (emailList.length === 0) {
+                    mostrarAlerta('Não foi possível identificar e-mails válidos para o teste.', 'Aviso');
+                    return;
+                }
+
+                // Busca a primeira manutenção da lista atual
+                 mostrarAlerta('Buscando manutenção para teste...', 'Aguarde', 'aguarde');
+                const resManutencoesLista = await apiRequest('listarManutencoes');
+                 modals.alert.hide(); // Esconde busca
+                const manutencoesLista = resManutencoesLista.manutencoes || [];
+
+
+                if (manutencoesLista.length === 0) {
+                    mostrarAlerta('É necessário ter pelo menos uma manutenção registrada para enviar e-mail de teste.', 'Aviso');
+                    return;
+                }
+
+                const idManutencaoTeste = manutencoesLista[0].ID; // Usa a primeira da lista
+
+                mostrarAlerta(`Enviando e-mail de teste (${tipoEmail}) para ${emailList.length} destinatário(s)...`, 'Aguarde', 'aguarde');
+
+                try {
+                    const res = await apiRequest('enviarEmailNotificacao', {
+                        id: idManutencaoTeste,
+                        destinatarios: JSON.stringify(emailList), // Envia a lista como string JSON
+                        tipo: tipoEmail
+                    });
+                    modals.alert.hide();
+
+                    if (res && res.success) {
+                        mostrarAlerta(`E-mail de teste enviado com sucesso para: ${emailList.join(', ')}`, 'Sucesso', 'sucesso');
+                    } else {
+                        throw new Error(res.message || 'Erro desconhecido ao enviar e-mail');
+                    }
+                } catch (error) {
+                    modals.alert.hide();
+                    console.error('Erro ao enviar e-mail de teste:', error);
+                    mostrarAlerta(`Erro ao enviar e-mail de teste: ${error.message}`, 'Erro', 'erro');
+                }
+            });
+
+            // Configurar gatilhos automáticos
+            document.getElementById('btn-configurar-gatilhos')?.addEventListener('click', async function() {
+                // A configuração da integração automática já foi salva pelo evento 'change' do switch
+                // Este botão agora apenas chama a reconfiguração dos triggers no backend
+                mostrarAlerta('Configurando/Reconfigurando tarefas automáticas do sistema...', 'Aguarde', 'aguarde');
+
+                try {
+                    const res = await apiRequest('configurarGatilhoAutomatico');
+                    modals.alert.hide();
+
+                    if (res && res.success) {
+                        mostrarAlerta(res.message || 'Tarefas automáticas configuradas com sucesso!', 'Sucesso', 'sucesso');
+                    } else {
+                        throw new Error(res.message || 'Erro ao configurar tarefas automáticas');
+                    }
+                } catch (error) {
+                    modals.alert.hide();
+                    console.error('Erro ao configurar gatilhos:', error);
+                    mostrarAlerta(`Erro na configuração das tarefas: ${error.message}`, 'Erro', 'erro');
+                }
+            });
+
+            // Verificar atualizações (Placeholder)
+            document.getElementById('btn-verificar-atualizacoes')?.addEventListener('click', function() {
+                // Implementar lógica de verificação de versão se necessário
+                 const versaoAtual = document.getElementById('versao-sistema')?.textContent || 'N/A';
+                mostrarAlerta(`Você está usando a versão ${versaoAtual}. Verifique o repositório ou contato para novas versões.`, 'Informação');
+            });
+            // --- Fim Ferramentas ---
+
+             // Evento de mudança no filtro de período do gráfico
+             document.getElementById('filtro-periodo-grafico')?.addEventListener('change', function() {
+                  carregarGraficoPeriodo(parseInt(this.value) || 30);
+             });
+
+            // Inicialização da ferramenta de anotação (se incluída)
+             if (typeof ImageAnnotator !== 'undefined') {
+                 anotadorImagem = new ImageAnnotator('annotation-container');
+                 configurarSalvamentoAnotacao();
+                 // Inicializar integração visual (adicionar botões às imagens existentes)
+                 // É melhor chamar isso depois que os dados da visualização são carregados
+             }
+
+
+        }); // Fim DOMContentLoaded
+
+        // --- Funções Auxiliares ---
+
+        // Configura os selects dinâmicos de equipamento
+        function configurarSelectsEquipamentos() {
+             // Os listeners já são adicionados no DOMContentLoaded.
+             // Apenas garante que o select de tipo tenha as opções corretas (se vierem do backend)
+             // const tipoSelect = document.getElementById('pre-tipo-equipamento');
+             // Exemplo: preencherSelect(tipoSelect.id, tiposEquipamentosOptions || []); // Se tipos viessem da API
+        }
+
+
+        // Função auxiliar para gerar PDF do relatório básico de texto via Backend
+        async function gerarRelatorioTextoParaPdf(id) {
+             mostrarAlerta('Gerando PDF básico...', 'Aguarde', 'aguarde');
+             try {
+                 // Chama a função backend que gera o texto E o PDF
+                 const res = await apiRequest('gerarPDFTextoBackend', { id: id }); // Supõe que existe essa função no backend
+                 modals.alert.hide();
+
+                 if (res && res.success && res.url) {
+                     window.open(res.url, '_blank'); // Abre o PDF gerado no Drive
+                     mostrarAlerta('PDF Básico gerado com sucesso!', 'Sucesso', 'sucesso');
+                 } else {
+                     mostrarAlerta('Erro ao gerar o arquivo PDF no servidor: ' + (res?.message || 'Erro desconhecido'), 'Erro', 'erro');
+                 }
+             } catch (error) {
+                 modals.alert.hide();
+                 console.error("Erro ao gerar PDF básico:", error);
+                 mostrarAlerta(`Erro ao gerar PDF: ${error.message}`, 'Erro', 'erro');
+             }
+        }
+
+
+        // Função CLIENTE para chamar relatórios avançados
+        async function gerarRelatorioAvancadoCliente(id, formato) {
+             if (!id) return;
+             mostrarAlerta(`Gerando relatório em formato ${formato.toUpperCase()}...`, 'Aguarde', 'aguarde');
+
+             try {
+                 const res = await apiRequest('gerarRelatorioAvancado', {
+                     id: id,
+                     formato: formato,
+                     opcoes: JSON.stringify({ incluirImagens: true }) // Exemplo de opção
+                 });
+                 modals.alert.hide();
+
+                 if (!res || !res.success) {
+                     throw new Error(res.message || `Erro ao gerar relatório ${formato}`);
+                 }
+
+                 // Abrir relatório em nova aba (URL do Drive)
+                 if (res.url) {
+                     window.open(res.url, '_blank');
+                     mostrarAlerta(`Relatório ${formato.toUpperCase()} gerado! Verifique a nova aba ou seu Google Drive.`, 'Sucesso', 'sucesso');
+                 } else {
+                     mostrarAlerta(`Relatório ${formato.toUpperCase()} gerado, mas URL não encontrada. Verifique o Drive.`, 'Aviso');
+                 }
+
+             } catch (error) {
+                 modals.alert.hide();
+                 console.error(`Erro ao gerar relatório ${formato}:`, error);
+                 mostrarAlerta(`Erro ao gerar relatório ${formato}: ${error.message}`, 'Erro', 'erro');
+             }
+        }
+
+        // Função para carregar dados na tela de Ferramentas
+        async function carregarDadosFerramentas() {
+             mostrarAlerta('Carregando configurações...', 'Aguarde', 'aguarde');
+             try {
+                 // Versão do sistema
+                 document.getElementById('versao-sistema').textContent = VERSAO_APP || 'N/A'; // Usa variável global
+
+                 const res = await apiRequest('obterConfiguracoes');
+                 modals.alert.hide();
+
+                 if (res && res.success && res.configuracoes) {
+                     const configs = res.configuracoes;
+                     // Preenche campos com valores da configuração
+                     document.getElementById('id-planilha-turnos').value = configs['ID_PLANILHA_TURNOS'] || '';
+                     document.getElementById('emails-notificacao').value = configs['EMAILS_NOTIFICACAO'] || '';
+                     document.getElementById('integracao-automatica').checked = configs['INTEGRAÇÃO_AUTOMÁTICA'] === 'SIM';
+                 } else {
+                     mostrarAlerta('Não foi possível carregar as configurações do servidor.', 'Aviso');
+                 }
+             } catch (error) {
+                 modals.alert.hide();
+                 console.error('Erro ao carregar dados de ferramentas:', error);
+                 mostrarAlerta(`Erro ao carregar configurações: ${error.message}`, 'Erro', 'erro');
+             }
+        }
+
+        // --- Funções de Anotação ---
+        function configurarSalvamentoAnotacao() {
+             const btnSalvar = document.getElementById('btn-save-annotation');
+             if (btnSalvar && anotadorImagem) {
+                 btnSalvar.onclick = async () => { // Função anônima para garantir contexto
+                     const annotatedImageBase64 = anotadorImagem.captureImage();
+                     // const originalUrl = anotadorImagem.imageElement.src; // URL original
+                     const tipoImagem = anotadorImagem.contextoTipo; // 'pre' ou 'pos'
+                     const imageContainerElement = anotadorImagem.contextoContainer; // Elemento div da imagem
+                     const idOriginal = anotadorImagem.contextoIdOriginal; // ID/URL original
+
+                     modals.anotacao.hide(); // Fecha o modal
+                     mostrarAlerta('Salvando imagem anotada...', 'Aguarde', 'aguarde');
+
+                     try {
+                         const idManutencao = manutencaoAtual?.ID;
+                         if (!idManutencao) throw new Error("ID da manutenção não encontrado para salvar anotação.");
+
+                         // Faz upload da *nova* imagem anotada
+                         const resUpload = await apiRequest('uploadImagem', {
+                             id: idManutencao,
+                             imagem: annotatedImageBase64,
+                             tipo: tipoImagem, // 'pre' ou 'pos'
+                             idOriginalParaSubstituir: idOriginal // **NOVO**: Passa ID original para backend poder excluir/substituir
+                         });
+
+                         if (!resUpload || !resUpload.success) {
+                             throw new Error(resUpload.message || "Falha no upload da imagem anotada.");
+                         }
+
+                         modals.alert.hide();
+                         mostrarAlerta('Anotação salva com sucesso!', 'Sucesso', 'sucesso');
+
+                         // Atualiza a imagem no preview com a nova URL do Drive
+                         const imgElementPreview = imageContainerElement.querySelector('img');
+                         if (imgElementPreview) {
+                             imgElementPreview.src = resUpload.url; // Atualiza src da imagem
+                             imgElementPreview.onclick = () => window.open(resUpload.url, '_blank'); // Atualiza link
+                             const btnAnnotatePreview = imageContainerElement.querySelector('.btn-annotate');
+                             if (btnAnnotatePreview) btnAnnotatePreview.dataset.imgSrc = resUpload.url; // Atualiza source para anotar novamente
+                         }
+                         imageContainerElement.dataset.fileId = resUpload.id; // Atualiza identificador do container
+
+                         // Atualiza a lista de uploads (substitui a original pela anotada)
+                         const listaUploads = tipoImagem === 'pre' ? imagenesPreUpload : imagenesPosUpload;
+                         const indexOriginal = listaUploads.findIndex(img => (img.id || img.url) === idOriginal);
+
+                         const novaImageData = { url: resUpload.url, id: resUpload.id, timestamp: new Date().toISOString() };
+                         if (indexOriginal > -1) {
+                             listaUploads[indexOriginal] = novaImageData; // Substitui
+                         } else {
+                             listaUploads.push(novaImageData); // Adiciona se não achou (improvável)
+                         }
+
+                        // Força atualização da manutenção no backend para salvar o novo array de imagens
+                         await salvarAposAnotacao(idManutencao);
+
+
+                     } catch (error) {
+                         modals.alert.hide();
+                         console.error("Erro ao salvar imagem anotada:", error);
+                         mostrarAlerta(`Erro ao salvar anotação: ${error.message}`, 'Erro', 'erro');
+                     }
+                 };
+             }
+        }
+
+        // Função auxiliar para salvar a manutenção após anotar uma imagem
+        async function salvarAposAnotacao(idManutencao) {
+             try {
+                  const resManutencao = await apiRequest('obterManutencao', { id: idManutencao });
+                  if (!resManutencao.success || !resManutencao.manutencao) {
+                      throw new Error('Erro ao recarregar manutenção após anotar imagem.');
+                  }
+                  let dadosParaSalvar = {...resManutencao.manutencao}; // Copia dados atuais
+
+                  // Atualiza os arrays de imagens com os dados globais modificados
+                  dadosParaSalvar.Imagens_Pre = imagenesPreUpload.map(img => ({ url: img.url, id: img.id, timestamp: img.timestamp }));
+                  dadosParaSalvar.Imagens_Pos = imagenesPosUpload.map(img => ({ url: img.url, id: img.id, timestamp: img.timestamp }));
+
+                  // Salva a manutenção inteira novamente
+                  await apiRequest('salvarManutencao', { dados: JSON.stringify(dadosParaSalvar) });
+                  console.log("Manutenção atualizada após anotação.");
+
+             } catch(error) {
+                  console.error("Erro ao salvar manutenção após anotação:", error);
+                  mostrarAlerta("Erro ao atualizar registro de imagens após anotação.", "Erro", "erro");
+             }
+        }
+
+
+       function abrirEditorAnotacao(imgSrc, tipo, containerElement) {
             if (!anotadorImagem) {
                 mostrarAlerta("Ferramenta de anotação não inicializada.", "Erro", "erro");
                 return;
@@ -2190,171 +2943,79 @@
                 console.error('Erro ao carregar imagem para anotação:', err);
                 mostrarAlerta('Erro ao carregar imagem para anotação.', 'Erro', 'erro');
             });
-        }
+       }
 
-        // Função para carregar lista de manutenções
-        async function carregarListaManutencoes() {
-            const filtroStatus = document.getElementById('filtro-status').value;
-            const filtroPlaca = document.getElementById('filtro-placa').value;
-            
-            mostrarAlerta('Carregando lista de manutenções...', 'Aguarde', 'aguarde');
-            
-            try {
-                const res = await apiRequest('listarManutencoes', {
-                    filtroStatus: filtroStatus,
-                    filtroPlaca: filtroPlaca
-                });
-                
-                modals.alert.hide(); // Esconde "Aguarde"
-                
-                if (!res.success) {
-                    throw new Error(res.message || 'Erro desconhecido ao listar manutenções');
-                }
-                
-                manutencoes = res.manutencoes || [];
-                
-                // Atualizar tabela
-                const tbody = document.getElementById('lista-manutencoes');
-                const semRegistros = document.getElementById('sem-registros');
-                
-                tbody.innerHTML = '';
-                
-                if (manutencoes.length === 0) {
-                    tbody.style.display = 'none';
-                    semRegistros.style.display = 'block';
-                    return;
-                }
-                
-                tbody.style.display = 'table-row-group';
-                semRegistros.style.display = 'none';
-                
-                manutencoes.forEach(manutencao => {
-                    const row = document.createElement('tr');
-                    const statusClass = getStatusClass(manutencao.Status);
-                    
-                    row.innerHTML = `
-                        <td>${manutencao.Placa || 'N/A'}</td>
-                        <td>${manutencao.Tipo_Equipamento || 'N/A'}</td>
-                        <td>${manutencao.Data_Criacao || 'N/A'}</td>
-                        <td><span class="badge ${statusClass}">${manutencao.Status || 'N/A'}</span></td>
-                        <td>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-outline-primary btn-acao" data-acao="visualizar" data-id="${manutencao.ID}">
-                                    <i class="bi bi-eye"></i>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary btn-acao" data-acao="editar" data-id="${manutencao.ID}">
-                                    <i class="bi bi-pencil"></i>
-                                </button>
-                            </div>
-                        </td>
-                    `;
-                    
-                    tbody.appendChild(row);
-                });
-                
-                // Adicionar event listeners aos botões de ação
-                document.querySelectorAll('.btn-acao').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        const id = this.getAttribute('data-id');
-                        const acao = this.getAttribute('data-acao');
-                        
-                        if (acao === 'visualizar') {
-                            visualizarManutencao(id);
-                        } else if (acao === 'editar') {
-                            editarManutencao(id);
-                        }
-                    });
-                });
-                
-            } catch (error) {
-                modals.alert.hide(); // Esconde "Aguarde" em caso de erro
-                console.error('Erro ao carregar lista:', error);
-                mostrarAlerta(`Erro ao carregar lista: ${error.message}`, 'Erro', 'erro');
-            }
-        }
+       // === CORREÇÃO API REQUEST ===
+       // Função para API usando Fetch (NECESSÁRIO SUBSTITUIR A URL)
+       async function apiRequest(action, params = {}) {
+           // !!! SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU WEB APP !!!
+           const SCRIPT_URL = 'URL_DO_SEU_WEB_APP_AQUI';
+           // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-        // Obter classe CSS baseada no status
-        function getStatusClass(status) {
-            if (!status) return 'status-badge status-aguardando';
-            
-            status = status.toLowerCase();
-            
-            if (status.includes('aguardando')) {
-                return 'status-badge status-aguardando';
-            } else if (status.includes('em manutenção')) {
-                return 'status-badge status-em-manutencao';
-            } else if (status.includes('concluída')) {
-                return 'status-badge status-concluido';
-            } else if (status.includes('disponível')) {
-                return 'status-badge status-disponivel';
-            }
-            
-            return 'status-badge status-aguardando'; // Default
-        }
+           if (SCRIPT_URL === 'URL_DO_SEU_WEB_APP_AQUI') {
+               console.error("!!!! URGENTE: Defina a URL de implantação do seu Web App na variável SCRIPT_URL no código HTML !!!!");
+               mostrarAlerta("Erro de configuração: A URL do Web App não foi definida no código HTML.", "Erro Crítico", "erro");
+               return { success: false, message: "URL do Web App não configurada." };
+           }
 
-        // === FUNÇÕES API FETCH (SUBSTITUIÇÃO PARA AMBIENTE WEB) ===
-        // Função para API usando Fetch (NECESSÁRIO SUBSTITUIR A URL)
-        async function apiRequestFetch(action, params = {}) {
-            // !!! SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU WEB APP !!!
-            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7Dj1bB_E_JXZer9Mwq3YEmPGLzfV-UpZX9qJ3kMmwaWypcCEinFWfzm9CN1KLRIwF/exec';
-            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           // Adiciona a ação aos parâmetros
+           params.action = action;
 
-            if (SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbz7Dj1bB_E_JXZer9Mwq3YEmPGLzfV-UpZX9qJ3kMmwaWypcCEinFWfzm9CN1KLRIwF/exec') {
-                console.error("!!!! URGENTE: Defina a URL de implantação do seu Web App na variável SCRIPT_URL no código HTML !!!!");
-                mostrarAlerta("Erro de configuração: A URL do Web App não foi definida no código HTML.", "Erro Crítico", "erro");
-                return { success: false, message: "URL do Web App não configurada." };
-            }
+           // Constrói a URL com parâmetros de consulta
+           const url = new URL(SCRIPT_URL);
+           Object.keys(params).forEach(key => {
+               // Trata valores que podem ser objetos/arrays (como 'dados' ou 'destinatarios')
+               if (typeof params[key] === 'object' && params[key] !== null) {
+                   url.searchParams.append(key, JSON.stringify(params[key]));
+               } else if (params[key] !== undefined && params[key] !== null) {
+                  url.searchParams.append(key, params[key]);
+               }
+           });
 
-            // Adiciona a ação aos parâmetros
-            params.action = action;
 
-            // Constrói a URL com parâmetros de consulta
-            const url = new URL(SCRIPT_URL);
-            Object.keys(params).forEach(key => {
-                // Trata valores que podem ser objetos/arrays (como 'dados' ou 'destinatarios')
-                if (typeof params[key] === 'object' && params[key] !== null) {
-                    url.searchParams.append(key, JSON.stringify(params[key]));
-                } else if (params[key] !== undefined && params[key] !== null) {
-                   url.searchParams.append(key, params[key]);
-                }
-            });
+           try {
+               const response = await fetch(url.toString(), {
+                   method: 'GET', // Ou 'POST' se preferir enviar no corpo
+                   // mode: 'cors', // Necessário se hospedado fora do Google
+                   // headers: { // Headers podem ser necessários dependendo da configuração
+                   //     'Content-Type': 'application/json',
+                   // },
+                   // body: JSON.stringify(params) // Se usar POST
+               });
 
-            try {
-                const response = await fetch(url.toString(), {
-                    method: 'GET' // Ou 'POST' se preferir enviar no corpo
-                });
+               if (!response.ok) {
+                   let errorText = response.statusText;
+                   try {
+                       // Tenta pegar uma mensagem de erro mais detalhada do corpo, se houver
+                       const errorBody = await response.text();
+                       console.error("Erro na API - Corpo da resposta:", errorBody);
+                       // Tenta parsear como JSON, pode falhar se for HTML de erro do Apps Script
+                       try {
+                           const errorJson = JSON.parse(errorBody);
+                           if (errorJson && errorJson.message) {
+                               errorText = errorJson.message;
+                           }
+                       } catch (parseError) {
+                           // Se não for JSON, usa o texto do corpo se for curto, ou statusText
+                           errorText = errorBody.length < 200 ? errorBody : errorText;
+                       }
+                   } catch (bodyError) { /* Ignora se não conseguir ler o corpo */ }
+                   throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
+               }
 
-                if (!response.ok) {
-                    let errorText = response.statusText;
-                    try {
-                        // Tenta pegar uma mensagem de erro mais detalhada do corpo
-                        const errorBody = await response.text();
-                        console.error("Erro na API - Corpo da resposta:", errorBody);
-                        // Tenta parsear como JSON
-                        try {
-                            const errorJson = JSON.parse(errorBody);
-                            if (errorJson && errorJson.message) {
-                                errorText = errorJson.message;
-                            }
-                        } catch (parseError) {
-                            // Se não for JSON, usa o texto do corpo se for curto
-                            errorText = errorBody.length < 200 ? errorBody : errorText;
-                        }
-                    } catch (bodyError) { /* Ignora se não conseguir ler o corpo */ }
-                    throw new Error(`Erro HTTP ${response.status}: ${errorText}`);
-                }
+               // Tenta parsear a resposta como JSON
+               const result = await response.json();
+               return result;
 
-                // Tenta parsear a resposta como JSON
-                const result = await response.json();
-                return result;
+           } catch (error) {
+               console.error('Erro na requisição fetch para', action, ':', error);
+               mostrarAlerta(`Erro de comunicação (${action}): ${error.message}`, 'Erro de Rede', 'erro');
+               // Retorna um objeto de erro padronizado
+               return { success: false, message: `Erro de comunicação: ${error.message}` };
+           }
+       }
 
-            } catch (error) {
-                console.error('Erro na requisição fetch para', action, ':', error);
-                mostrarAlerta(`Erro de comunicação (${action}): ${error.message}`, 'Erro de Rede', 'erro');
-                // Retorna um objeto de erro padronizado
-                return { success: false, message: `Erro de comunicação: ${error.message}` };
-            }
-        }
+
     </script>
 </body>
 </html>
