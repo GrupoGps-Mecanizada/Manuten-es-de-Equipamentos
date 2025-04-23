@@ -1695,10 +1695,10 @@
          */
         async function apiRequest(action, params = {}) {
              // !!! SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU WEB APP !!!
-             const SCRIPT_URL = 'URL_DO_SEU_WEB_APP_AQUI'; // <<< COLOQUE SUA URL AQUI
+             const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz7Dj1bB_E_JXZer9Mwq3YEmPGLzfV-UpZX9qJ3kMmwaWypcCEinFWfzm9CN1KLRIwF/exec'; // <<< COLOQUE SUA URL AQUI
              // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-             if (SCRIPT_URL === 'URL_DO_SEU_WEB_APP_AQUI' || !SCRIPT_URL) {
+             if (SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbz7Dj1bB_E_JXZer9Mwq3YEmPGLzfV-UpZX9qJ3kMmwaWypcCEinFWfzm9CN1KLRIwF/exec' || !SCRIPT_URL) {
                  console.error("!!!! URGENTE: Defina a URL de implantação do seu Web App na variável SCRIPT_URL no código HTML !!!!");
                  mostrarAlerta("Erro de configuração: A URL do Web App não foi definida no código HTML.", "Erro Crítico", "erro");
                  return Promise.resolve({ success: false, message: "URL do Web App não configurada." }); // Retorna promise resolvida com erro
