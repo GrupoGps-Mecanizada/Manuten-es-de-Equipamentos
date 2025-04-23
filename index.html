@@ -1298,36 +1298,3 @@
 
 </body>
 </html>
-
-
-Resumo das Alterações:
-
-Remoção do Bloco <script> Monolítico: O extenso bloco <script> que começava com class ImageAnnotator e continha todas as funções JavaScript (apiRequest, carregarDashboard, validarFormPreManutencao, manipuladores de eventos, etc.) foi completamente removido do final do <body>.
-
-Inclusão dos Scripts Modulares: Foram adicionadas tags <script src="..."></script> para cada um dos arquivos JS modulares, na ordem de dependência sugerida:
-
-Bibliotecas (Bootstrap, Chart.js) primeiro.
-
-Configurações e Utilitários (config.js, utils-novo.js).
-
-Módulos Core (comentados, pois a existência não foi confirmada, mas prontos para descomentar).
-
-Cliente API (api-client.js).
-
-Módulos de Features (image-annotator.js - classe extraída, photo-handler.js, form-handler.js, dashboard.js).
-
-Lógica Principal e Inicialização (app.js, main.js).
-
-Classe ImageAnnotator: Assumi que a classe ImageAnnotator foi movida para seu próprio arquivo (image-annotator.js) e incluída na lista. Se o nome do arquivo for diferente, ajuste o src correspondente.
-
-Comentários: Adicionei comentários para indicar a finalidade de cada grupo de scripts.
-
-Remoção de fix-loading.js: Conforme solicitado, embora não estivesse no código original fornecido, a instrução foi seguida (não há inclusão dele no código final).
-
-Próximos Passos:
-
-Verifique os Nomes dos Arquivos: Certifique-se de que os nomes dos arquivos (config.js, utils-novo.js, api-client.js, etc.) no HTML correspondem exatamente aos nomes dos seus arquivos JS no projeto.
-
-Crie os Arquivos (se necessário): Se algum dos arquivos listados (config.js, utils-novo.js, api-client.js, image-annotator.js, photo-handler.js, form-handler.js, dashboard.js, app.js, main.js) ainda não existir, você precisará criá-los e mover/reescrever a lógica correspondente do script monolítico original para dentro deles.
-
-Teste: Abra o index.html no navegador e verifique o console de desenvolvedor (F12) em busca de erros. Teste todas as funcionalidades (navegação, formulários, câmera, dashboard, etc.) para garantir que a estrutura modular está funcionando como esperado.
