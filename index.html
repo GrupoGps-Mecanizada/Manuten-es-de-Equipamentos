@@ -1839,51 +1839,41 @@
                  }
 
                  // Gráfico de tipos de equipamento
-                 const graficoTiposContainer = document.getElementById('grafico-tipos');
-                 graficoTiposContainer.innerHTML = '<canvas id="chart-tipos"></canvas>';
-
-                 const tiposLabels = Object.keys(data.contadores?.tipoEquipamento || {});
-                 const tiposData = tiposLabels.map(tipo => data.contadores.tipoEquipamento[tipo]);
-                 // CONTINUAÇÃO DA FUNÇÃO adicionarImagemPreview...
-           if (!container) return;
-
-           const imgContainer = document.createElement('div');
-           imgContainer.className = 'image-container position-relative';
-           imgContainer.dataset.fileId = fileId || src; // Usa ID do arquivo ou URL/base64 como identificador
-
-           const img = document.createElement('img');
-           img.src = src; // Pode ser URL ou base64
-           img.alt = 'Imagem';
-           img.className = 'img-thumbnail photo-preview-img'; // Adicionado classe para seleção
-           img.style.cursor = 'pointer';
-           img.onclick = () => window.open(src, '_blank'); // Abre em nova aba ao clicar
-
-           const deleteBtn = document.createElement('button');
-           deleteBtn.type = 'button'; // Importante para não submeter forms
-           // Usar classes Bootstrap para estilo e acessibilidade do botão de fechar
-           deleteBtn.className = 'btn-close delete-btn';
-           deleteBtn.style.position = 'absolute'; // Ajuste fino da posição
-           deleteBtn.style.top = '5px';
-           deleteBtn.style.right = '5px';
-           deleteBtn.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'; // Fundo para contraste
-           deleteBtn.style.borderRadius = '50%'; // Circular
-           deleteBtn.style.padding = '0.25rem'; // Padding interno
-           deleteBtn.setAttribute('aria-label', 'Remover Imagem');
-           deleteBtn.title = 'Remover Imagem';
-           deleteBtn.onclick = function(e) {
-               e.stopPropagation(); // Evita abrir imagem ao clicar no X
-               const imageIdentifier = imgContainer.dataset.fileId;
-               imgContainer.remove(); // Remove o elemento do DOM
-
-               // Remove da lista correspondente
-               if (tipo === 'pre') {
-                   imagenesPreUpload = imagenesPreUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
-               } else {
-                   imagenesPosUpload = imagenesPosUpload.filter(imgData => (imgData.id || imgData.url) !== imageIdentifier);
-               }
-               // TODO: Adicionar chamada à API para excluir imagem do Drive se necessário (requer backend)
-               console.log("Imagem removida (localmente):", imageIdentifier);
-           };
+                const graficoTiposContainer = document.getElementById('grafico-tipos');
+                graficoTiposContainer.innerHTML = '<canvas id="chart-tipos"></canvas>';
+                
+                const tiposLabels = Object.keys(data.contadores?.tipoEquipamento || {});
+                const tiposData = tiposLabels.map(tipo => data.contadores.tipoEquipamento[tipo]);
+                
+                // Criar gráfico de tipos
+                if (graficoTipos) {
+                    graficoTipos.destroy();
+                }
+                const ctxTipos = document.getElementById('chart-tipos').getContext('2d');
+                graficoTipos = new Chart(ctxTipos, {
+                    type: 'bar',
+                    data: {
+                        labels: tiposLabels,
+                        datasets: [{
+                            label: 'Manutenções por Tipo',
+                            data: tiposData,
+                            backgroundColor: 'rgba(13, 110, 253, 0.6)',
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+                 
 
             // Botão Anotar (Adiciona APENAS se a ferramenta estiver integrada)
             if (typeof ImageAnnotator !== 'undefined') {
