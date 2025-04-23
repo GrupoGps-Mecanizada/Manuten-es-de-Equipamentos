@@ -1826,116 +1826,111 @@
 
         // --- Comunicação com Backend (Google Apps Script via Fetch) ---
        async function apiRequest(action, params = {}) {
-            // !!! SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU WEB APP !!!
-            const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbVVILxD74qDNckth7Pkb7P3fUBmUZXnapqMi6yB7O1QtXuklisu95T3b3R2uRD9xa/exec'; // <<< COLOQUE SUA URL AQUI
-            // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-            if (SCRIPT_URL === 'URL_DO_SEU_WEB_APP_AQUI' || !SCRIPT_URL) {
-                console.error("!!!! URGENTE: Defina a URL de implantação do seu Web App na variável SCRIPT_URL !!!!");
-                mostrarAlerta("Erro de configuração: A URL do Web App não foi definida no código HTML. A comunicação com o servidor falhará.", "Erro Crítico", "erro");
-                return Promise.resolve({ success: false, message: "URL do Web App não configurada." });
-            }
-
-            // Adiciona a ação aos parâmetros
-            params.action = action;
-
-            // Determina o método e prepara os dados
-            let method = 'GET';
-            let body = null;
-            let requestUrl = new URL(SCRIPT_URL);
-            let headers = { 'Content-Type': 'application/json' }; // Default header
-
-            // Ações que devem SEMPRE usar POST (para enviar dados no corpo)
-            const postActions = ['salvarManutencao', 'uploadImagem', 'excluirImagem', 'salvarConfiguracao', 'configurarGatilhoAutomatico', 'enviarEmailNotificacao', 'integrarComPlanilhaTurnos', 'excluirManutencao']; // Adicione outras ações POST aqui
-
-            if (postActions.includes(action)) {
-                method = 'POST';
-                body = JSON.stringify(params); // Envia todos os params no corpo
-                requestUrl = SCRIPT_URL; // Usa URL base para POST
-            } else {
-                // Para GET, adiciona parâmetros à URL
-                 Object.keys(params).forEach(key => {
-                     const value = params[key];
-                     if (value !== undefined && value !== null) {
-                         if (typeof value === 'object') {
-                             requestUrl.searchParams.append(key, JSON.stringify(value));
-                         } else {
-                             requestUrl.searchParams.append(key, value);
-                         }
-                     }
-                 });
-                 requestUrl = requestUrl.toString();
-                 // Para GET, não enviamos Content-Type JSON
-                 delete headers['Content-Type'];
-            }
-
-
-            const fetchOptions = {
-                method: method,
-                headers: headers,
-                body: body, // Será null para GET
-                // mode: 'cors', // Geralmente não necessário para Apps Script se configurado corretamente
-                redirect: 'follow', // Importante para Apps Script
-                // muteHttpExceptions: true // Não é uma opção padrão do fetch, era do UrlFetchApp
-            };
-
-
+          // !!! SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU WEB APP !!!
+          const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzbVVILxD74qDNckth7Pkb7P3fUBmUZXnapqMi6yB7O1QtXuklisu95T3b3R2uRD9xa/exec'; // <<< COLOQUE SUA URL AQUI
+          // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        
+          if (SCRIPT_URL === 'URL_DO_SEU_WEB_APP_AQUI' || !SCRIPT_URL) {
+            console.error("!!!! URGENTE: Defina a URL de implantação do seu Web App na variável SCRIPT_URL !!!!");
+            mostrarAlerta("Erro de configuração: A URL do Web App não foi definida no código HTML. A comunicação com o servidor falhará.", "Erro Crítico", "erro");
+            return Promise.resolve({ success: false, message: "URL do Web App não configurada." });
+          }
+        
+          // Adiciona a ação aos parâmetros
+          params.action = action;
+          
+          // Adicionar o origin atual para validação no servidor
+          params.origin = window.location.origin;
+        
+          // Determina o método e prepara os dados
+          let method = 'GET';
+          let body = null;
+          let requestUrl = new URL(SCRIPT_URL);
+          let headers = { 'Content-Type': 'application/json' }; // Default header
+        
+          // Ações que devem SEMPRE usar POST (para enviar dados no corpo)
+          const postActions = ['salvarManutencao', 'uploadImagem', 'excluirImagem', 'salvarConfiguracao', 'configurarGatilhoAutomatico', 'enviarEmailNotificacao', 'integrarComPlanilhaTurnos', 'excluirManutencao']; // Adicione outras ações POST aqui
+        
+          if (postActions.includes(action)) {
+            method = 'POST';
+            body = JSON.stringify(params); // Envia todos os params no corpo
+            requestUrl = SCRIPT_URL; // Usa URL base para POST
+          } else {
+            // Para GET, adiciona parâmetros à URL
+            Object.keys(params).forEach(key => {
+              const value = params[key];
+              if (value !== undefined && value !== null) {
+                if (typeof value === 'object') {
+                  requestUrl.searchParams.append(key, JSON.stringify(value));
+                } else {
+                  requestUrl.searchParams.append(key, value);
+                }
+              }
+            });
+            requestUrl = requestUrl.toString();
+            // Para GET, não enviamos Content-Type JSON
+            delete headers['Content-Type'];
+          }
+        
+          const fetchOptions = {
+            method: method,
+            headers: headers,
+            body: body, // Será null para GET
+            mode: 'cors', // Ativa explicitamente o modo CORS
+            credentials: 'include', // Inclui cookies na requisição (se necessário)
+            redirect: 'follow',
+          };
+        
+          try {
+            const response = await fetch(requestUrl, fetchOptions);
+        
+            // Tenta ler o corpo da resposta como texto primeiro
+            let responseBodyText = '';
             try {
-                const response = await fetch(requestUrl, fetchOptions);
-
-                // Tenta ler o corpo da resposta como texto primeiro
-                 let responseBodyText = '';
-                 try {
-                      responseBodyText = await response.text();
-                 } catch (textError) {
-                      // Ignora se não conseguir ler o corpo (pode acontecer em erros de rede)
-                      console.warn("Não foi possível ler o corpo da resposta:", textError);
-                 }
-
-
-                if (!response.ok) {
-                    // Tenta extrair uma mensagem de erro mais útil do corpo JSON (se possível)
-                    let errorDetail = response.statusText;
-                     if (responseBodyText) {
-                         try {
-                             const errorJson = JSON.parse(responseBodyText);
-                             if (errorJson && errorJson.message) {
-                                 errorDetail = errorJson.message;
-                             } else if (responseBodyText.length < 300) { // Usa texto curto como detalhe
-                                  errorDetail += ` - ${responseBodyText}`;
-                             }
-                         } catch (e) { /* Não é JSON, usa o texto se for curto */
-                              if (responseBodyText.length < 300) {
-                                   errorDetail += ` - ${responseBodyText}`;
-                              }
-                         }
-                     }
-                    console.error('Erro na API:', action, 'Status:', response.status, 'Detalhe:', errorDetail, 'Resposta Completa:', responseBodyText);
-                    throw new Error(`Erro ${response.status}: ${errorDetail}`);
-                }
-
-                // Tenta parsear a resposta como JSON
-                try {
-                    const result = JSON.parse(responseBodyText);
-                    // Verifica se o backend explicitamente indicou falha
-                     if (result && result.success === false) {
-                          console.warn(`Backend retornou erro para ação "${action}":`, result.message);
-                          // Mantém a mensagem de erro do backend
-                     }
-                    return result;
-                } catch (jsonError) {
-                    console.error('Erro ao parsear resposta JSON:', responseBodyText, jsonError);
-                    // Se a resposta era esperada como JSON mas falhou, é um erro
-                    throw new Error('Resposta inválida do servidor (não JSON).');
-                }
-
-            } catch (error) {
-                console.error(`Erro na requisição ${method} para`, action, ':', error);
-                // Garante que a mensagem de erro seja útil
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                mostrarAlerta(`Erro de comunicação (${action}): ${errorMessage}`, 'Erro de Rede', 'erro');
-                return { success: false, message: `Erro de comunicação: ${errorMessage}` };
+              responseBodyText = await response.text();
+            } catch (textError) {
+              console.warn("Não foi possível ler o corpo da resposta:", textError);
             }
+        
+            if (!response.ok) {
+              // Tenta extrair uma mensagem de erro mais útil do corpo JSON (se possível)
+              let errorDetail = response.statusText;
+              if (responseBodyText) {
+                try {
+                  const errorJson = JSON.parse(responseBodyText);
+                  if (errorJson && errorJson.message) {
+                    errorDetail = errorJson.message;
+                  } else if (responseBodyText.length < 300) { 
+                    errorDetail += ` - ${responseBodyText}`;
+                  }
+                } catch (e) { 
+                  if (responseBodyText.length < 300) {
+                    errorDetail += ` - ${responseBodyText}`;
+                  }
+                }
+              }
+              console.error('Erro na API:', action, 'Status:', response.status, 'Detalhe:', errorDetail, 'Resposta Completa:', responseBodyText);
+              throw new Error(`Erro ${response.status}: ${errorDetail}`);
+            }
+        
+            // Tenta parsear a resposta como JSON
+            try {
+              const result = JSON.parse(responseBodyText);
+              if (result && result.success === false) {
+                console.warn(`Backend retornou erro para ação "${action}":`, result.message);
+              }
+              return result;
+            } catch (jsonError) {
+              console.error('Erro ao parsear resposta JSON:', responseBodyText, jsonError);
+              throw new Error('Resposta inválida do servidor (não JSON).');
+            }
+        
+          } catch (error) {
+            console.error(`Erro na requisição ${method} para`, action, ':', error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            mostrarAlerta(`Erro de comunicação (${action}): ${errorMessage}`, 'Erro de Rede', 'erro');
+            return { success: false, message: `Erro de comunicação: ${errorMessage}` };
+          }
         }
 
 
