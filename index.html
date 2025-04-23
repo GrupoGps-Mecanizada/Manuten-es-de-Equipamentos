@@ -1818,8 +1818,8 @@
             mostrarAlerta('Carregando dados iniciais...', 'Aguarde', 'aguarde');
             try {
                 // Carregar configurações primeiro (tipos, categorias, urgência, checklist)
-                const resConfig = await apiRequest('obterConfiguracoesIniciais'); // Função unificada no backend
-
+                const resConfig = await apiRequest('obterTiposEquipamentos'); // <--- Mude aqui
+                
                 if (resConfig.success) {
                     tiposEquipamentosOptions = resConfig.tiposEquipamentos || [];
                     categoriasProblemas = resConfig.categoriasProblemas || [];
