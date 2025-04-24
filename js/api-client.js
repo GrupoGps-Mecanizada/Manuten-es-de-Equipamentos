@@ -43,11 +43,10 @@ ModuleLoader.register('apiClient', function () {
 
     const fetchOptions = {
       method: method.toUpperCase(),
-      mode: 'cors', // Essencial para cross-origin
-      credentials: 'omit', // Importante se precisar de autenticação Google
+      mode: 'cors',
+      credentials: 'omit', // Esta é a configuração chave que resolve o problema CORS
       headers: {},
-      redirect: 'follow',
-      //signal: controller.signal // Para timeout, se necessário
+      redirect: 'follow'
     };
 
     if (isPost) {
