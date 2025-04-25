@@ -1824,78 +1824,55 @@
 
             modals.confirm.show();
         }
-
+        
         // --- Comunicação com Backend (Google Apps Script via Fetch) ---
        async function apiRequest(action, params = {}) {
-          // !!! SUBSTITUA PELA URL DE IMPLANTAÇÃO DO SEU WEB APP !!!
-          const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzrVgG1heNBS-oys_RTh94Fujy9qey_9NYNaepFCcdk-Fkxtz5XsC_-Pux95Vnm55XQ/exec'; // <<< COLOQUE SUA URL AQUI
-          // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        
-          if (SCRIPT_URL === 'DO_SEU_WEB_APP_AQUI' || !SCRIPT_URL) {
-            console.error("!!!! URGENTE: Defina a URL de implantação do seu Web App na variável SCRIPT_URL !!!!");
-            mostrarAlerta("Erro de configuração: A URL do Web App não foi definida no código HTML. A comunicação com o servidor falhará.", "Erro Crítico", "erro");
-            return Promise.resolve({ success: false, message: "URL do Web App não configurada." });
-          }
-        
-          // Adiciona a ação aos parâmetros
-          params.action = action;
-          
-          // Adicionar o origin atual para validação no servidor
-          params.origin = window.location.origin;
-        
-          // Determina o método e prepara os dados
-          let method = 'GET';
-          let body = null;
-          let requestUrl = new URL(SCRIPT_URL);
-          let headers = { 'Content-Type': 'application/json' }; // Default header
-        
-          // Ações que devem SEMPRE usar POST (para enviar dados no corpo)
-          const postActions = ['salvarManutencao', 'uploadImagem', 'excluirImagem', 'salvarConfiguracao', 'configurarGatilhoAutomatico', 'enviarEmailNotificacao', 'integrarComPlanilhaTurnos', 'excluirManutencao']; // Adicione outras ações POST aqui
-        
-          if (postActions.includes(action)) {
-            method = 'POST';
-            body = JSON.stringify(params); // Envia todos os params no corpo
-            requestUrl = SCRIPT_URL; // Usa URL base para POST
-          } else {
-            // Para GET, adiciona parâmetros à URL
-            Object.keys(params).forEach(key => {
-              const value = params[key];
-              if (value !== undefined && value !== null) {
-                if (typeof value === 'object') {
-                  requestUrl.searchParams.append(key, JSON.stringify(value));
-                } else {
-                  requestUrl.searchParams.append(key, value);
-                }
-              }
-            });
-            requestUrl = requestUrl.toString();
-            // Para GET, não enviamos Content-Type JSON
-            delete headers['Content-Type'];
-          }
-          
-          const fetchOptions = {
-            method: 'POST',
-            mode: 'no-cors', // Esta é a chave para evitar o erro de CORS
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              action: action,
-              dados: params,
-              origin: window.location.origin
-            })
-          };
+          // Substitua pela URL do seu Web App
+          const SCRIPT_URL = 'https://script.google.com/macros/s/SUA_NOVA_URL_AQUI/exec';
           
           try {
-            console.log(`Enviando requisição para ${action} com modo no-cors`);
-            await fetch(SCRIPT_URL, fetchOptions);
+            if (action === 'ping') {
+              console.log('Teste de ping para API...');
+            }
             
-            // IMPORTANTE: Com modo 'no-cors', não podemos ler a resposta!
-            // Retornamos uma resposta padrão de sucesso
-            return { 
-              success: true, 
-              message: "Solicitação enviada. A resposta não pode ser lida devido às restrições de CORS."
+            // Determina se é GET ou POST
+            const method = ['salvarManutencao', 'uploadImagem'].includes(action) ? 'POST' : 'GET';
+            
+            let url = SCRIPT_URL;
+            let options = {
+              method: method,
+              headers: {
+                'Content-Type': 'application/json'
+              }
             };
+            
+            // Prepara URL para GET ou corpo para POST
+            if (method === 'GET') {
+              url += `?action=${action}`;
+              if (params) {
+                Object.keys(params).forEach(key => {
+                  url += `&${key}=${encodeURIComponent(params[key])}`;
+                });
+              }
+            } else {
+              options.body = JSON.stringify({
+                action: action,
+                dados: params
+              });
+            }
+            
+            console.log(`Enviando requisição ${method} para ${action}`);
+            const response = await fetch(url, options);
+            
+            // Verifica resposta
+            if (!response.ok) {
+              throw new Error(`Erro HTTP: ${response.status}`);
+            }
+            
+            const result = await response.json();
+            console.log(`Resposta para ${action}:`, result);
+            
+            return result;
           } catch (error) {
             console.error(`Erro na requisição ${action}:`, error);
             return { success: false, message: `Erro de comunicação: ${error.message}` };
