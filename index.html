@@ -1824,11 +1824,11 @@
 
             modals.confirm.show();
         }
-        
+        X
         // --- Comunicação com Backend (Google Apps Script via Fetch) ---
         async function apiRequest(action, params = {}) {
           // URL atual do seu script
-          const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzY3vCvwXyB8JpRbDMSf2sOjzL9gcjSKPwEck-xjcp1supjsnRR5RlkCw11ML0wqYvS/exec';
+          const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxd4vJFLib-OJXbL18Q7whx1jMWsS63DAkXJELji25Zk4pxefxHK_LKYWz9QWjc7H8e/exec';
         
           // Dados padrão para cada tipo de ação (IMPORTANTE!)
           const dadosPadrao = {
@@ -1930,7 +1930,7 @@
             return { success: false, message: `Erro de comunicação: ${error.message}` };
           }
         }
-        
+        X
 
         // --- Funções de Carregamento e Preparação --- (Manter as mesmas: carregarDadosIniciais, preencherSelect, criarChecklist, obterDadosFormulario, configurarSelectsEquipamentos)
 
