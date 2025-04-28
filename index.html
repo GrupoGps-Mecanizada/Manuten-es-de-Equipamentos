@@ -2,10 +2,13 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
+    <!-- 1. Meta Tag já estava correta -->
     <meta http-equiv="Permissions-Policy" content="browsing-topics=()">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Manutenção de Equipamentos</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet"> 
+    <!-- 2. Adicionado Favicon -->
+    <link rel="icon" href="favicon.ico">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
             --primary-color: #0d6efd;
@@ -1164,24 +1167,27 @@
         &lt;/> Desenvolvido por Warlison Abreu
     </footer>
 
-    <!-- Scripts JS -->
+    <!-- Scripts JS Externos (Bibliotecas) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 
-    <!-- ****** ATUALIZAÇÃO APLICADA AQUI ****** -->
-    <!-- Carrega arquivos JS externos PRIMEIRO -->
-    <script src="js/config.js"></script>          <!-- Carrega as configurações globais (ex: API_URL) -->
-    <script src="./js/module-loader.js" defer></script>   <!-- Carrega o ModuleLoader -->
-    <script src="./js/api-client.js" defer></script>      <!-- Carrega o módulo apiClient com a função apiRequest -->
-    <!-- Adicione outros módulos JS aqui (ex: imageUploader.js, ui.js, etc.) -->
-    <script src="js/imageUploader.js"></script>
-    <script src="js/ui-helpers.js"></script>
-    <script src="js/dashboard.js"></script>
-    <script src="js/lista.js"></script>
-    <script src="js/formulario.js"></script>
-    <script src="js/ferramentas.js"></script>
-    <script src="js/main.js"></script>            <!-- Script principal que inicializa os módulos e listeners -->
+    <!-- ****** INÍCIO DA ATUALIZAÇÃO APLICADA (CORREÇÃO 3) ****** -->
+    <script src="./js/core/module-loader.js"   defer></script>
 
+    <script src="./js/ui/utils.js"             defer></script>  <!-- (ou ui-helpers.js) -->
+    <script src="./js/ui/imageUploader.js"     defer></script>
+
+    <script src="./js/ui/api-client.js"        defer></script>
+
+    <script src="./js/features/dashboards.js"  defer></script>
+    <script src="./js/ui/lista.js"             defer></script>
+    <script src="./js/ui/form-handler.js"      defer></script>
+    <script src="./js/ui/ferramentas.js"       defer></script>
+
+    <script src="./js/ui/main.js"              defer></script>
+    <!-- ****** FIM DA ATUALIZAÇÃO APLICADA (CORREÇÃO 3) ****** -->
+
+    <!-- Script inline permanece como estava -->
     <script>
         // Mantenha APENAS o código Javascript que NÃO é a função apiRequest
         // como a definição da classe ImageAnnotator, variáveis globais,
