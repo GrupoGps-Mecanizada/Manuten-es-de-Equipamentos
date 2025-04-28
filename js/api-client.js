@@ -1,259 +1,141 @@
 /**
- * Módulo para gerenciar uploads de imagens com suporte a JSONP
+ * Módulo ApiClient: Responsável por fazer requisições à API do Google Apps Script.
+ * Gerencia a configuração de cabeçalhos CORS e o envio de dados.
  */
-ModuleLoader.register('imageUploader', function() {
-  // Dependências
-  let ApiClient = null;
-  let AppState = null;
-  let Utils = null;
-  let Config = null;
+ModuleLoader.register('apiClient', function() {
+
+  // Obtém a URL da API a partir da configuração global (ajuste se necessário)
+  // Certifique-se que window.CONFIG.API_URL está definido corretamente no seu HTML ou em outro script.
+  const API_URL = window.CONFIG?.API_URL;
 
   /**
-   * Inicializa o módulo
+   * Função central para realizar requisições à API.
+   * @param {string} endpoint - O parâmetro 'action' ou o caminho específico da API (sem a URL base).
+   *                           Para GET, pode incluir query parameters (ex: '?action=listarManutencoes&status=Aguardando').
+   *                           Para POST, geralmente é apenas a ação (ex: '?action=salvarManutencao').
+   * @param {string} [method='GET'] - Método HTTP (GET ou POST).
+   * @param {Object|null} [data=null] - Dados a serem enviados no corpo da requisição (para POST).
+   * @returns {Promise<any>} - Promessa que resolve com os dados da resposta da API ou rejeita com um erro.
    */
-  function init() {
-    console.log('Inicializando ImageUploader...');
-    
-    // Obtém dependências
-    ApiClient = ModuleLoader.get('apiClient');
-    AppState = ModuleLoader.get('state');
-    Utils = window.Utils;
-    Config = window.CONFIG;
-    
-    console.log('ImageUploader inicializado');
-  }
+  async function apiRequest(endpoint, method = 'GET', data = null) {
+    // Validação inicial
+    if (!API_URL) {
+       console.error("API_URL não está definida em window.CONFIG. Verifique a configuração.");
+       throw new Error("API_URL não configurada.");
+    }
+    if (!endpoint) {
+       console.error("Endpoint da API não fornecido para apiRequest.");
+       throw new Error("Endpoint da API é necessário.");
+    }
 
-  /**
-   * Faz upload de imagem para o servidor usando JSONP
-   * @param {string} manutencaoId - ID da manutenção
-   * @param {string} imageDataUrl - Dados da imagem em base64
-   * @returns {Promise<Object>} Resultado do upload
-   */
-  function uploadImageViaJSONP(manutencaoId, imageDataUrl) {
-    return new Promise((resolve, reject) => {
-      if (!manutencaoId) {
-        return reject(new Error('ID da manutenção não fornecido para upload'));
-      }
-      
-      if (!imageDataUrl || !imageDataUrl.startsWith('data:image/')) {
-        return reject(new Error('Dados de imagem inválidos'));
-      }
-      
-      // Cria um ID único para o callback JSONP
-      const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
-      
-      // Define o callback global
-      window[callbackName] = function(response) {
-        // Remove o script após execução
-        if (script && script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-        
-        // Remove o callback global para evitar memory leaks
-        delete window[callbackName];
-        
-        // Processa a resposta
-        if (response && response.success) {
-          resolve(response);
-        } else {
-          reject(new Error(response?.message || 'Falha no upload de imagem'));
-        }
-      };
-      
-      // Prepara os dados para envio via JSONP (serializa para evitar problemas)
-      const uploadData = {
-        id: manutencaoId,
-        imageData: imageDataUrl
-      };
-      
-      // Converte para JSON e então para string segura para URL
-      const jsonData = JSON.stringify(uploadData);
-      const encodedData = encodeURIComponent(jsonData);
-      
-      // Cria a URL para o script JSONP
-      const apiUrl = Config?.API_URL || '';
-      if (!apiUrl) {
-        return reject(new Error('URL da API não configurada'));
-      }
-      
-      // Monta a URL completa para o JSONP
-      const scriptUrl = `${apiUrl}?action=processarPostViaGet&acao=uploadImagem&dados=${encodedData}&callback=${callbackName}`;
-      
-      // Cria e adiciona o script à página
-      const script = document.createElement('script');
-      script.src = scriptUrl;
-      script.onerror = () => {
-        // Remove o script e o callback em caso de erro
-        if (script.parentNode) {
-          script.parentNode.removeChild(script);
-        }
-        delete window[callbackName];
-        reject(new Error('Falha na requisição JSONP para upload de imagem'));
-      };
-      
-      // Adiciona o script no DOM para iniciar a requisição
-      document.head.appendChild(script);
-      
-      // Define um timeout para evitar callbacks pendentes
-      setTimeout(() => {
-        if (window[callbackName]) {
-          delete window[callbackName];
-          reject(new Error('Timeout na requisição de upload de imagem'));
-        }
-      }, 30000); // 30 segundos de timeout
-    });
-  }
-  
-  /**
-   * Processa e redimensiona uma imagem antes do upload
-   * @param {File|Blob} file - Arquivo de imagem
-   * @param {Object} options - Opções de processamento
-   * @returns {Promise<string>} DataURL da imagem processada
-   */
-  function processarImagem(file, options = {}) {
-    return new Promise((resolve, reject) => {
-      // Valores padrão
-      const defaults = {
-        maxWidth: 1200,
-        maxHeight: 1200,
-        quality: 0.8,
-        format: 'jpeg'
-      };
-      
-      // Mescla opções
-      const settings = { ...defaults, ...options };
-      
-      // Verifica se o arquivo é de imagem
-      if (!file || !file.type.startsWith('image/')) {
-        return reject(new Error('Arquivo inválido. Somente imagens são aceitas.'));
-      }
-      
-      // Cria um objeto URL para a imagem
-      const objectUrl = URL.createObjectURL(file);
-      
-      // Cria um elemento de imagem para carregar a imagem
-      const img = new Image();
-      
-      img.onload = function() {
-        // Libera o objeto URL 
-        URL.revokeObjectURL(objectUrl);
-        
-        // Calcula dimensões preservando proporção
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > settings.maxWidth) {
-          const ratio = settings.maxWidth / width;
-          width = settings.maxWidth;
-          height = height * ratio;
-        }
-        
-        if (height > settings.maxHeight) {
-          const ratio = settings.maxHeight / height;
-          height = settings.maxHeight;
-          width = width * ratio;
-        }
-        
-        // Cria um canvas para redimensionar
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        
-        // Desenha a imagem no canvas
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        // Converte para DataURL
-        const mimeType = `image/${settings.format}`;
-        const dataUrl = canvas.toDataURL(mimeType, settings.quality);
-        
-        resolve(dataUrl);
-      };
-      
-      img.onerror = function() {
-        URL.revokeObjectURL(objectUrl);
-        reject(new Error('Erro ao carregar imagem para processamento'));
-      };
-      
-      // Inicia o carregamento da imagem
-      img.src = objectUrl;
-    });
-  }
-  
-  /**
-   * Faz upload de uma imagem para uma manutenção
-   * @param {string} manutencaoId - ID da manutenção
-   * @param {File|Blob} fileOrBlob - Arquivo ou Blob da imagem
-   * @param {Object} options - Opções de processamento
-   * @returns {Promise<Object>} Resultado do upload
-   */
-  async function uploadImagem(manutencaoId, fileOrBlob, options = {}) {
+    // Garante que o método está em maiúsculas para comparações consistentes
+    const upperCaseMethod = method.toUpperCase();
+
+    // Constrói a URL completa
+    // Adiciona '?' se não houver e o endpoint não começar com '?'
+    const separator = endpoint.startsWith('?') ? '' : '?';
+    const url = `${API_URL}${separator}${endpoint}`;
+
+    // --- Lógica de Headers e Options ATUALIZADA ---
+
+    // 1. Cabeçalhos (Headers):
+    // Inicia vazio. Adiciona Content-Type APENAS para requisições POST.
+    // Isso ajuda a evitar pre-flight requests desnecessárias em GET.
+    const headers = {};
+    if (upperCaseMethod === 'POST') {
+      headers['Content-Type'] = 'application/json';
+    }
+    // Adicione outros headers aqui se necessário (ex: Autenticação)
+    // headers['Authorization'] = 'Bearer SEU_TOKEN';
+
+    // 2. Opções (Options) para o Fetch:
+    let options = {
+      method: upperCaseMethod, // GET ou POST
+      headers: headers,        // Headers definidos acima
+      // credentials: 'include', // Descomente se você precisar enviar/receber cookies
+                                 // entre domínios (requer configuração CORS específica no backend)
+    };
+
+    // 3. Corpo (Body):
+    // Adiciona o corpo APENAS se houver dados (data) E o método NÃO for GET.
+    if (data && upperCaseMethod !== 'GET') {
+      options.body = JSON.stringify(data);
+    }
+
+    // --- FIM da Lógica Atualizada ---
+    // IMPORTANTE: A tentativa de fallback com `mode: 'no-cors'` foi REMOVIDA.
+
+    // Log da requisição para depuração
+    console.log(`API Request: ${upperCaseMethod} ${url}`, upperCaseMethod !== 'GET' ? options : '(Options sem body para GET)');
+
+    // Executa a requisição Fetch
     try {
-      // Processa a imagem antes do upload
-      const dataUrl = await processarImagem(fileOrBlob, options);
-      
-      // Tenta fazer upload da imagem usando JSONP
-      return await uploadImageViaJSONP(manutencaoId, dataUrl);
+      const response = await fetch(url, options);
+
+      // Tratamento da resposta HTTP
+      if (!response.ok) {
+        // Tenta obter mais detalhes do erro do corpo da resposta
+        let errorMsg = `Erro na API: Status ${response.status} (${response.statusText})`;
+        try {
+          const errorBody = await response.text(); // Tenta ler o corpo como texto
+          // Verifica se o corpo não está vazio antes de adicionar
+          if (errorBody) {
+             // Tenta parsear como JSON se possível para mensagens de erro estruturadas
+             try {
+                const errorJson = JSON.parse(errorBody);
+                errorMsg += ` - ${errorJson.message || errorBody}`;
+             } catch (parseError) {
+                errorMsg += ` - ${errorBody}`; // Usa o texto bruto se não for JSON
+             }
+          }
+        } catch (readError) {
+           console.warn("Não foi possível ler o corpo da resposta de erro.", readError);
+        }
+        throw new Error(errorMsg); // Lança o erro detalhado
+      }
+
+      // Processa o corpo da resposta bem-sucedida
+      const contentType = response.headers.get("content-type");
+      if (response.status === 204) { // 204 No Content
+         return null; // Retorna null se não houver conteúdo (comum em exclusões bem-sucedidas)
+      } else if (contentType && contentType.includes("application/json")) {
+         return await response.json(); // Processa como JSON se o header indicar
+      } else {
+         // Se não for JSON ou status 204, tenta retornar como texto
+         // Pode ser útil se a API retornar texto simples ou HTML em algum caso
+         return await response.text();
+      }
+
     } catch (error) {
-      console.error('Erro no upload de imagem:', error);
+      // Captura erros de rede ou erros lançados no tratamento da resposta
+      console.error(`Falha na Requisição API [${upperCaseMethod} ${endpoint}]:`, error);
+
+      // Melhora a mensagem de erro para falhas de rede (TypeError)
+      if (error instanceof TypeError) {
+         // Erros comuns: Falha de rede, CORS bloqueado (apesar das configs), DNS não encontrado
+         throw new Error(`Erro de rede ou CORS ao tentar acessar a API: ${error.message}. Verifique a conexão e as configurações de CORS.`);
+      }
+
+      // Re-lança o erro original (que pode já ter sido formatado acima)
+      // para que a função que chamou o apiRequest possa tratar (ex: mostrar na UI)
       throw error;
     }
   }
-  
-  /**
-   * Captura imagem da webcam
-   * @returns {Promise<Blob>} Blob da imagem capturada
-   */
-  function capturarImagemWebcam() {
-    return new Promise((resolve, reject) => {
-      // Cria elementos de vídeo e canvas para captura
-      const video = document.createElement('video');
-      const canvas = document.createElement('canvas');
-      let stream = null;
-      
-      // Configuração de vídeo
-      video.autoplay = true;
-      video.setAttribute('playsinline', true); // Necessário para iOS
-      
-      // Solicitação de acesso à câmera
-      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-        .then((mediaStream) => {
-          stream = mediaStream;
-          video.srcObject = mediaStream;
-          
-          // Espera o vídeo carregar
-          video.onloadedmetadata = () => {
-            // Define dimensões do canvas baseado no vídeo
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            
-            // Captura um frame
-            const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0);
-            
-            // Converte para blob
-            canvas.toBlob((blob) => {
-              // Interrompe o stream da câmera
-              const tracks = stream.getTracks();
-              tracks.forEach(track => track.stop());
-              
-              resolve(blob);
-            }, 'image/jpeg', 0.9);
-          };
-        })
-        .catch(error => {
-          console.error('Erro ao acessar câmera:', error);
-          reject(new Error(`Não foi possível acessar a câmera: ${error.message}`));
-        });
-    });
+
+  // Função de inicialização (pode ser usada para configurações futuras)
+  function init() {
+    if (!API_URL) {
+      console.warn("ApiClient: API_URL não encontrada na inicialização. Verifique window.CONFIG.");
+    } else {
+      console.log('ApiClient inicializado. URL da API:', API_URL);
+    }
   }
 
-  // API pública
+  // Expõe as funções públicas do módulo
   return {
     init,
-    uploadImagem,
-    processarImagem,
-    capturarImagemWebcam,
-    uploadImageViaJSONP
+    request: apiRequest // Função principal para fazer requisições
+    // Adicione outras funções auxiliares aqui se necessário
   };
-});
+
+}); // Fim do ModuleLoader.register
