@@ -1,235 +1,259 @@
 /**
- * API Client para comunicação com o backend do Google Apps Script
- * Com tratamento adequado de CORS
+ * Módulo para gerenciar uploads de imagens com suporte a JSONP
  */
-ModuleLoader.register('apiClient', function() {
-  // Módulos e utilitários
+ModuleLoader.register('imageUploader', function() {
+  // Dependências
+  let ApiClient = null;
   let AppState = null;
-  let Config = null;
   let Utils = null;
-
-  // URL da API do config
-  let apiUrl = '';
+  let Config = null;
 
   /**
    * Inicializa o módulo
    */
   function init() {
-    console.log('Inicializando API Client...');
+    console.log('Inicializando ImageUploader...');
     
     // Obtém dependências
+    ApiClient = ModuleLoader.get('apiClient');
     AppState = ModuleLoader.get('state');
     Utils = window.Utils;
     Config = window.CONFIG;
     
-    // Obtém a URL da API do config
-    apiUrl = Config?.API_URL || '';
-    
-    if (!apiUrl) {
-      console.warn('API_URL não está configurada. As funcionalidades online não estarão disponíveis.');
-      return;
-    }
-    
-    console.log('API Client inicializado com URL:', apiUrl);
+    console.log('ImageUploader inicializado');
   }
 
   /**
-   * Realiza requisição para API com tratamento de CORS melhorado
-   * @param {string} method - Método HTTP (GET, POST, etc.)
-   * @param {string} action - A ação da API a ser chamada
-   * @param {Object|null} data - Dados a serem enviados (para POST)
-   * @param {Object} options - Opções adicionais
-   * @returns {Promise<Object>} Resposta da API
+   * Faz upload de imagem para o servidor usando JSONP
+   * @param {string} manutencaoId - ID da manutenção
+   * @param {string} imageDataUrl - Dados da imagem em base64
+   * @returns {Promise<Object>} Resultado do upload
    */
-  async function apiRequest(method, action, data = null, options = {}) {
-    // Valida URL da API
-    if (!apiUrl) {
-      return Promise.reject(new Error('API_URL não configurada. Operação online não disponível.'));
-    }
-    
-    // Verifica se está online
-    if (!navigator.onLine) {
-      return Promise.reject(new Error('Sem conexão com a Internet. Tente novamente quando estiver online.'));
-    }
-    
-    try {
-      const url = new URL(apiUrl);
-      
-      // Para requisições GET, adiciona parâmetros à URL
-      if (method === 'GET' && action) {
-        url.searchParams.append('action', action);
-        
-        // Adiciona parâmetros adicionais dos dados
-        if (data) {
-          Object.keys(data).forEach(key => {
-            url.searchParams.append(key, data[key]);
-          });
-        }
-        
-        // Sempre adiciona a origem para CORS
-        url.searchParams.append('origin', window.location.origin);
+  function uploadImageViaJSONP(manutencaoId, imageDataUrl) {
+    return new Promise((resolve, reject) => {
+      if (!manutencaoId) {
+        return reject(new Error('ID da manutenção não fornecido para upload'));
       }
       
-      // Prepara opções do fetch
-      const fetchOptions = {
-        method: method,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Origin': window.location.origin
-        },
-        mode: 'cors', // Usa modo CORS explicitamente
-        cache: 'no-cache',
-        redirect: 'follow',
-        ...options // Mescla opções personalizadas
+      if (!imageDataUrl || !imageDataUrl.startsWith('data:image/')) {
+        return reject(new Error('Dados de imagem inválidos'));
+      }
+      
+      // Cria um ID único para o callback JSONP
+      const callbackName = 'jsonpCallback_' + Date.now() + '_' + Math.floor(Math.random() * 1000000);
+      
+      // Define o callback global
+      window[callbackName] = function(response) {
+        // Remove o script após execução
+        if (script && script.parentNode) {
+          script.parentNode.removeChild(script);
+        }
+        
+        // Remove o callback global para evitar memory leaks
+        delete window[callbackName];
+        
+        // Processa a resposta
+        if (response && response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response?.message || 'Falha no upload de imagem'));
+        }
       };
       
-      // Para requisições POST, adiciona os dados ao corpo
-      if (method === 'POST' && (action || data)) {
-        fetchOptions.body = JSON.stringify({
-          action: action,
-          dados: data,
-          origin: window.location.origin // Inclui origem no corpo para CORS
-        });
+      // Prepara os dados para envio via JSONP (serializa para evitar problemas)
+      const uploadData = {
+        id: manutencaoId,
+        imageData: imageDataUrl
+      };
+      
+      // Converte para JSON e então para string segura para URL
+      const jsonData = JSON.stringify(uploadData);
+      const encodedData = encodeURIComponent(jsonData);
+      
+      // Cria a URL para o script JSONP
+      const apiUrl = Config?.API_URL || '';
+      if (!apiUrl) {
+        return reject(new Error('URL da API não configurada'));
       }
       
-      console.log(`API Request: ${method} para ${url}`, fetchOptions);
-      const response = await fetch(url, fetchOptions);
+      // Monta a URL completa para o JSONP
+      const scriptUrl = `${apiUrl}?action=processarPostViaGet&acao=uploadImagem&dados=${encodedData}&callback=${callbackName}`;
       
-      // Trata respostas não-JSON
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        // Trata respostas não-JSON (comum em erros de CORS)
-        if (!response.ok) {
-          throw new Error(`Erro na API: ${response.status} - ${response.statusText}`);
+      // Cria e adiciona o script à página
+      const script = document.createElement('script');
+      script.src = scriptUrl;
+      script.onerror = () => {
+        // Remove o script e o callback em caso de erro
+        if (script.parentNode) {
+          script.parentNode.removeChild(script);
         }
-        return { success: false, message: "Resposta recebida não é JSON válido." };
+        delete window[callbackName];
+        reject(new Error('Falha na requisição JSONP para upload de imagem'));
+      };
+      
+      // Adiciona o script no DOM para iniciar a requisição
+      document.head.appendChild(script);
+      
+      // Define um timeout para evitar callbacks pendentes
+      setTimeout(() => {
+        if (window[callbackName]) {
+          delete window[callbackName];
+          reject(new Error('Timeout na requisição de upload de imagem'));
+        }
+      }, 30000); // 30 segundos de timeout
+    });
+  }
+  
+  /**
+   * Processa e redimensiona uma imagem antes do upload
+   * @param {File|Blob} file - Arquivo de imagem
+   * @param {Object} options - Opções de processamento
+   * @returns {Promise<string>} DataURL da imagem processada
+   */
+  function processarImagem(file, options = {}) {
+    return new Promise((resolve, reject) => {
+      // Valores padrão
+      const defaults = {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.8,
+        format: 'jpeg'
+      };
+      
+      // Mescla opções
+      const settings = { ...defaults, ...options };
+      
+      // Verifica se o arquivo é de imagem
+      if (!file || !file.type.startsWith('image/')) {
+        return reject(new Error('Arquivo inválido. Somente imagens são aceitas.'));
       }
       
-      const jsonResponse = await response.json();
-      console.log(`API Response:`, jsonResponse);
-      return jsonResponse;
+      // Cria um objeto URL para a imagem
+      const objectUrl = URL.createObjectURL(file);
       
-    } catch (error) {
-      console.error(`Erro na requisição ${method} para ${action}:`, error);
+      // Cria um elemento de imagem para carregar a imagem
+      const img = new Image();
       
-      // Verifica se é um erro de CORS
-      if (error.message.includes('CORS') || error.name === 'TypeError' && error.message === 'Failed to fetch') {
-        console.error('Possível erro de CORS detectado. Tentando abordagem alternativa...');
+      img.onload = function() {
+        // Libera o objeto URL 
+        URL.revokeObjectURL(objectUrl);
         
-        // Fallback de CORS: Usar modo 'no-cors' para requisições POST
-        // Nota: Isso tornará a resposta ilegível, então retornamos uma resposta predefinida
-        if (method === 'POST') {
-          try {
-            const url = new URL(apiUrl);
-            await fetch(url, {
-              method: 'POST',
-              mode: 'no-cors', // Isso permite a requisição mas torna a resposta ilegível
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                action: action,
-                dados: data,
-                origin: window.location.origin
-              })
-            });
-            
-            // Como não podemos ler a resposta com no-cors, retornamos um sucesso genérico
-            console.log('Requisição no-cors enviada (resposta não legível)');
-            return { 
-              success: true, 
-              message: "Solicitação enviada pelo modo alternativo. O resultado não pode ser verificado.",
-              registro: data, // Retorna os dados que foram enviados
-              fromNoCors: true // Flag para identificar este caso especial
-            };
-          } catch (noCorsError) {
-            console.error('Falha na abordagem alternativa no-cors:', noCorsError);
-          }
+        // Calcula dimensões preservando proporção
+        let width = img.width;
+        let height = img.height;
+        
+        if (width > settings.maxWidth) {
+          const ratio = settings.maxWidth / width;
+          width = settings.maxWidth;
+          height = height * ratio;
         }
-      }
+        
+        if (height > settings.maxHeight) {
+          const ratio = settings.maxHeight / height;
+          height = settings.maxHeight;
+          width = width * ratio;
+        }
+        
+        // Cria um canvas para redimensionar
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Desenha a imagem no canvas
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Converte para DataURL
+        const mimeType = `image/${settings.format}`;
+        const dataUrl = canvas.toDataURL(mimeType, settings.quality);
+        
+        resolve(dataUrl);
+      };
       
-      // Se tudo falhar, retorna erro
-      throw new Error(`Erro de comunicação: ${error.message}`);
+      img.onerror = function() {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Erro ao carregar imagem para processamento'));
+      };
+      
+      // Inicia o carregamento da imagem
+      img.src = objectUrl;
+    });
+  }
+  
+  /**
+   * Faz upload de uma imagem para uma manutenção
+   * @param {string} manutencaoId - ID da manutenção
+   * @param {File|Blob} fileOrBlob - Arquivo ou Blob da imagem
+   * @param {Object} options - Opções de processamento
+   * @returns {Promise<Object>} Resultado do upload
+   */
+  async function uploadImagem(manutencaoId, fileOrBlob, options = {}) {
+    try {
+      // Processa a imagem antes do upload
+      const dataUrl = await processarImagem(fileOrBlob, options);
+      
+      // Tenta fazer upload da imagem usando JSONP
+      return await uploadImageViaJSONP(manutencaoId, dataUrl);
+    } catch (error) {
+      console.error('Erro no upload de imagem:', error);
+      throw error;
     }
   }
-
+  
   /**
-   * Busca uma lista de registros
-   * @param {Object} params - Parâmetros de filtro
-   * @returns {Promise<Object>} Lista de registros
+   * Captura imagem da webcam
+   * @returns {Promise<Blob>} Blob da imagem capturada
    */
-  async function listarRegistros(params = {}) {
-    return apiRequest('GET', 'listarManutencoes', params);
-  }
-
-  /**
-   * Obtém um registro específico por ID
-   * @param {string} id - ID do registro
-   * @returns {Promise<Object>} Dados do registro
-   */
-  async function obterRegistro(id) {
-    return apiRequest('GET', 'obterManutencao', { id });
-  }
-
-  /**
-   * Salva ou atualiza um registro
-   * @param {Object} registro - Dados do registro
-   * @returns {Promise<Object>} Registro salvo
-   */
-  async function salvarRegistro(registro) {
-    if (!registro || !registro.id) {
-      return Promise.reject(new Error('Dados de registro inválidos para salvar.'));
-    }
-    
-    return apiRequest('POST', 'salvarManutencao', registro);
-  }
-
-  /**
-   * Exclui um registro
-   * @param {string} id - ID do registro
-   * @returns {Promise<Object>} Resultado
-   */
-  async function excluirRegistro(id) {
-    return apiRequest('GET', 'excluirManutencao', { id });
-  }
-
-  /**
-   * Atualiza o status de um registro
-   * @param {string} id - ID do registro
-   * @param {string} status - Novo status
-   * @returns {Promise<Object>} Registro atualizado
-   */
-  async function atualizarStatusRegistro(id, status) {
-    return apiRequest('GET', 'atualizarStatusManutencao', { id, status });
-  }
-
-  /**
-   * Obtém configurações iniciais da API
-   * @returns {Promise<Object>} Configurações
-   */
-  async function obterConfiguracoesIniciais() {
-    return apiRequest('GET', 'obterConfiguracoesIniciais');
-  }
-
-  /**
-   * Testa a conexão com a API
-   * @returns {Promise<Object>} Resposta do ping
-   */
-  async function ping() {
-    return apiRequest('GET', 'ping');
+  function capturarImagemWebcam() {
+    return new Promise((resolve, reject) => {
+      // Cria elementos de vídeo e canvas para captura
+      const video = document.createElement('video');
+      const canvas = document.createElement('canvas');
+      let stream = null;
+      
+      // Configuração de vídeo
+      video.autoplay = true;
+      video.setAttribute('playsinline', true); // Necessário para iOS
+      
+      // Solicitação de acesso à câmera
+      navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+        .then((mediaStream) => {
+          stream = mediaStream;
+          video.srcObject = mediaStream;
+          
+          // Espera o vídeo carregar
+          video.onloadedmetadata = () => {
+            // Define dimensões do canvas baseado no vídeo
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Captura um frame
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0);
+            
+            // Converte para blob
+            canvas.toBlob((blob) => {
+              // Interrompe o stream da câmera
+              const tracks = stream.getTracks();
+              tracks.forEach(track => track.stop());
+              
+              resolve(blob);
+            }, 'image/jpeg', 0.9);
+          };
+        })
+        .catch(error => {
+          console.error('Erro ao acessar câmera:', error);
+          reject(new Error(`Não foi possível acessar a câmera: ${error.message}`));
+        });
+    });
   }
 
   // API pública
   return {
     init,
-    listarRegistros,
-    obterRegistro,
-    salvarRegistro,
-    excluirRegistro, 
-    atualizarStatusRegistro,
-    obterConfiguracoesIniciais,
-    ping,
-    apiRequest
+    uploadImagem,
+    processarImagem,
+    capturarImagemWebcam,
+    uploadImageViaJSONP
   };
 });
